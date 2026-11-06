@@ -6,6 +6,8 @@ test("BillyDPI has a responsive Quick Snap action and sequential document workfl
   assert.match(html,/id="simpleQuickSnap"/);
   assert.match(flow,/bind\("simpleQuickSnap", startSnapCamera\)/);
   assert.match(css,/any-pointer:coarse/);
+  assert.match(css,/background:#2b2d30!important;color:#f2f2f2!important/);
+  assert.doesNotMatch(css,/background:#f0f0f0!important;color:#101112!important/);
   assert.match(css,/\.simple-home \.simple-choice-grid\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(html,/id="simpleNewDocument"[^>]*class="simple-choice"|id="simpleNewDocument" class="simple-choice"/);
   assert.match(html,/id="simpleUploadedDocuments"[^>]*class="simple-choice"/);
