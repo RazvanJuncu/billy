@@ -127,6 +127,7 @@
     showMode("editor");
     stopCamera();
     captureFromCamera=fromCamera;
+    $("scanRetake").hidden = !fromCamera;
     originalFile=file;
     announce("Loading image…");
     try {
@@ -236,7 +237,7 @@
   }
 
   async function correctedFile() {
-    if (!imageCanvas || editorBusy) return null;
+    if (!imageCanvas) return null;
     if(!P.validCorners(corners)) throw new Error("The corners overlap. Adjust all four handles.");
     const canvas=correctedCanvas();
     const blob=await canvasToBlob(canvas);
@@ -304,11 +305,21 @@
     guessCorners();
   }
 
-  function useOriginal() {
-    if(!originalFile) return;
+  async function useOriginal() {
+    if(!originalFile || !imageCanvas) return;
     const file=originalFile;
-    hideOverlay();
-    onUse(file);
+    const isHeic=/\.(heic|heif)$/i.test(file.name);
+    if(!isHeic) {
+      hideOverlay();
+      onUse(file);
+      return;
+    }
+    await executeBusy(async()=>{
+      const blob=await canvasToBlob(imageCanvas);
+      const converted=new File([blob],"billy-original.jpg",{type:"image/jpeg"});
+      hideOverlay();
+      onUse(converted);
+    });
   }
 
   function init(options) {
