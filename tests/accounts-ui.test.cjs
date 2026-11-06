@@ -9,7 +9,8 @@ test("accounts gate is shown before the workspace and fail-closed without config
   assert.match(html,/class="auth-locked"/);
   assert.match(accounts,/if\(!ready\|\|!window.supabase\?\.createClient\)/);
   assert.match(accounts,/setAttribute\("inert"/);
-  assert.match(get("site/account-config.js"),/publishableKey: ""/);
+  assert.match(get("site/account-config.js"),/sb_publishable_/);
+  assert.match(get("site/account-config.js"),/ookafdnvavohfopxfxpf\.supabase\.co/);
 });
 test("email signup, login, reset and membership owner approval are wired",()=>{
   for(const phrase of ["auth.signUp","auth.signInWithPassword","auth.resetPasswordForEmail",
