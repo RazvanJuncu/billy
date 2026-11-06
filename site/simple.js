@@ -1,4 +1,4 @@
-/* BillyDPI / Progressive workflow.
+/* BillyDPI / Progressive workflow, shared with Billy Crew.
    Each action reveals only the next functional action. Nothing is uploaded to
    company storage or Excel until a real server-side connector is configured. */
 (() => {
