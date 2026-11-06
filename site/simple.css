@@ -517,3 +517,45 @@ body[data-billy-screen] .account-button:active{transform:scale(.985)}
   .simple-choice:hover,.simple-main-action:hover:not(:disabled),
   .simple-secondary-action:hover:not(:disabled){transform:none!important}
 }
+
+/* One Billy homepage: Quick Snap is the primary touch-device action. */
+.simple-quick-snap{display:none!important}
+@media (max-width:900px), (any-pointer:coarse) and (max-width:1400px){
+  .simple-home .simple-quick-snap{
+    display:flex!important;position:relative;flex-direction:column;align-items:flex-start;
+    justify-content:space-between;min-height:245px;width:100%;padding:26px!important;
+    border:0!important;border-radius:18px!important;text-align:left;cursor:pointer;
+    background:#f0f0f0!important;color:#101112!important;
+    touch-action:manipulation;transition:background-color 170ms ease,transform 170ms ease;
+  }
+  .simple-home .simple-quick-snap:hover,.simple-home .simple-quick-snap:focus-visible{background:#fff!important}
+  .simple-home .simple-quick-snap:active{transform:scale(.992)}
+  .simple-quick-snap:focus-visible{outline:2px solid #fff;outline-offset:4px}
+  .simple-quick-snap-icon{display:grid;place-items:center;width:56px;height:56px;background:#dedede;border-radius:14px}
+  .simple-quick-snap-icon svg{width:30px;height:30px;fill:none;stroke:#131415;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+  .simple-quick-snap-copy{display:flex;flex-direction:column;gap:7px}
+  .simple-quick-snap-copy strong{font-size:clamp(29px,4vw,39px);font-weight:700;line-height:1.05;letter-spacing:-.05em}
+  .simple-quick-snap-copy small{font-size:13px;color:#56585a}
+  .simple-quick-snap-arrow{position:absolute;right:24px;bottom:22px;font-size:24px;line-height:1}
+  .simple-home{transform:none;justify-content:center}
+  .simple-home .simple-greeting{min-height:0;margin-bottom:21px}
+  .simple-home .simple-choice-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}
+  .simple-home .simple-choice{
+    min-height:128px!important;padding:17px!important;gap:14px!important;
+    border-radius:13px!important;
+  }
+  .simple-home .simple-choice-icon{width:34px;height:34px;border-radius:9px!important}
+  .simple-home .simple-choice-icon svg{width:19px;height:19px}
+  .simple-home .simple-choice-title{font-size:clamp(14px,2vw,18px)!important;line-height:1.18}
+  .simple-home .simple-choice-caption{font-size:11px!important;line-height:1.35}
+}
+@media(max-width:380px){
+  .simple-home .simple-quick-snap{min-height:220px;padding:22px!important}
+  .simple-home .simple-choice{padding:13px!important}
+  .simple-home .simple-choice-title{font-size:14px!important}
+  .simple-home .simple-choice-caption{font-size:10px!important}
+}
+@media(prefers-reduced-motion:reduce){
+  .simple-quick-snap{transition:none!important}
+  .simple-quick-snap:active{transform:none!important}
+}
