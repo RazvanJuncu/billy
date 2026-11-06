@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f8fc">
+  <meta name="description" content="Billy — invoice scanning, readable and structured.">
+  <title>Billy — Your invoices, decoded.</title>
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="identity" href="./" aria-label="Billy home">
+        <span class="logo">b<span>.</span></span>
+        <span class="wordmark">billy<span>.</span></span>
+        <span class="header-divider"></span>
+        <span class="product-name">DOCUMENT STUDIO</span>
+      </a>
+      <div class="header-right">
+        <span class="version">BETA 0.1</span>
+        <a class="github-link" href="https://github.com/RazvanJuncu/billy" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+      </div>
+    </div>
+  </header>
+  <main class="shell">
+    <section class="intro">
+      <div class="eyebrow"><span class="eyebrow-line"></span> INVOICE PROCESSING WORKSPACE</div>
+      <h1>Your invoices, <span>decoded.</span></h1>
+      <p>Turn a paper invoice into clean, structured text. Upload a document, run PaddleOCR, and inspect every page alongside the original.</p>
+    </section>
+
+    <div class="statusbar">
+      <div class="engine-line">
+        <span id="statusDot" class="status-dot"></span>
+        <strong id="statusText">Checking OCR engine…</strong>
+        <span class="engine-sublabel">PaddleOCR · PP-StructureV3</span>
+      </div>
+      <details class="settings" id="settings">
+        <summary>Engine settings <span aria-hidden="true">⌄</span></summary>
+        <div class="settings-body">
+          <label for="endpoint">OCR API address</label>
+          <div class="settings-control"><input id="endpoint" type="url" spellcheck="false" value="http://127.0.0.1:8000"><button id="connectButton" type="button">Connect</button></div>
+          <p>The default is your computer. No document is uploaded until you click <strong>Scan invoice</strong>. Remote endpoints must use HTTPS.</p>
+        </div>
+      </details>
+    </div>
+
+    <section class="workspace" aria-label="Invoice reader workspace">
+      <div class="panel source-panel">
+        <div class="panel-header"><div><div class="section-index">01 / INPUT</div><h2>Source document</h2></div><span class="small-tag">ORIGINAL</span></div>
+        <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Choose or drop an invoice">
+          <input type="file" id="filePicker" accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,.bmp,application/pdf,image/*" hidden>
+          <div id="emptySource" class="empty-source">
+            <div class="upload-mark">↑</div>
+            <h3>Drop an invoice here</h3>
+            <p>or <span class="link-accent">browse your files</span></p>
+            <div class="filetypes">PDF &nbsp;·&nbsp; JPG &nbsp;·&nbsp; PNG &nbsp;·&nbsp; TIFF &nbsp;·&nbsp; BMP</div>
+            <div class="size-hint">Up to 20 MiB per document</div>
+          </div>
+          <div id="sourcePreview" class="source-preview" hidden></div>
+        </div>
+        <div class="file-row" id="fileRow" hidden>
+          <div class="file-icon">DOC</div>
+          <div class="file-details"><strong id="filename"></strong><span id="filesize"></span></div>
+          <button id="replaceButton" class="text-button" type="button">Replace</button>
+        </div>
+        <div class="panel-actions">
+          <button id="scanButton" class="primary-button" type="button" disabled><span id="scanLabel">Scan invoice</span><span aria-hidden="true">→</span></button>
+        </div>
+        <div class="muted-hint">The OCR engine processes this document at the connected endpoint. It is not sent to GitHub.</div>
+      </div>
+
+      <div class="panel result-panel">
+        <div class="panel-header"><div><div class="section-index">02 / OUTPUT</div><h2>Extracted document</h2></div><span class="small-tag blue-tag">STRUCTURED</span></div>
+        <div class="result-toolbar" id="resultToolbar" hidden>
+          <div class="tab-row" role="tablist" aria-label="Result format">
+            <button type="button" class="tab active" data-tab="document" role="tab" aria-selected="true">Document</button>
+            <button type="button" class="tab" data-tab="markdown" role="tab" aria-selected="false">Markdown</button>
+            <button type="button" class="tab" data-tab="json" role="tab" aria-selected="false">JSON</button>
+          </div>
+          <select id="pagePicker" aria-label="Select document page"></select>
+        </div>
+        <div class="result-body" id="resultBody">
+          <div class="output-placeholder" id="outputPlaceholder">
+            <div class="document-illustration"><div class="doc-top"></div><div class="doc-line long"></div><div class="doc-line"></div><div class="doc-grid"><i></i><i></i><i></i><i></i><i></i><i></i></div><span class="star">✳</span></div>
+            <h3>Ready when you are.</h3>
+            <p>Your parsed text, reconstructed tables and original OCR JSON will appear here.</p>
+          </div>
+          <div id="formattedOutput" class="formatted-output" hidden></div>
+          <pre id="rawOutput" class="raw-output" hidden></pre>
+        </div>
+        <div id="outputFooter" class="output-footer" hidden>
+          <div id="summaryText" class="summary-text"></div>
+          <div class="export-row"><button type="button" id="downloadMd" class="outline-button">↓ Markdown</button><button type="button" id="downloadJson" class="outline-button">↓ JSON</button></div>
+        </div>
+      </div>
+    </section>
+
+    <div id="notification" class="notification" role="status" aria-live="polite" hidden></div>
+
+    <section class="details-row">
+      <div class="info-card"><span class="info-number">01</span><div><h3>Layout-aware</h3><p>Document structure and tables, not just disconnected OCR text.</p></div></div>
+      <div class="info-card"><span class="info-number">02</span><div><h3>Reviewable</h3><p>The original stays visible. Always verify monetary amounts before use.</p></div></div>
+      <div class="info-card"><span class="info-number">03</span><div><h3>AI-ready</h3><p>Structured JSON provides the foundation for future financial interpretation.</p></div></div>
+    </section>
+  </main>
+  <footer class="footer"><span>billy<span class="accent-dot">.</span> / DOCUMENT INTELLIGENCE</span><span>Built with PaddleOCR · <a href="https://github.com/RazvanJuncu/billy" target="_blank" rel="noopener noreferrer">Open repository ↗</a></span></footer>
+</body>
+</html>
