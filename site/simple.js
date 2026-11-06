@@ -169,6 +169,7 @@
   bind("simpleHomeButton", () => showScreen("home"));
   bind("simpleBack", goBack);
   bind("simpleNewDocument", () => showScreen("new"));
+  bind("simpleQuickSnap", startSnapCamera);
   bind("snapStartCamera", startSnapCamera);
   bind("snapLaunchUpload", chooseSnapFile);
   bind("snapCameraUpload", chooseSnapFile);
