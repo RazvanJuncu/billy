@@ -127,17 +127,21 @@ py -3.11 -m http.server 5173 --directory site
 
 Visit `http://localhost:5173`, choose an image or PDF, ensure the API status is connected, and click **Scan invoice**.
 
-## BillySnap (mobile entry, development)
+## Billy Crew: install from BillyDPI (development)
 
-BillySnap is a **separately installable entry point into the existing BillyDPI document studio**. It does not create a second scanner, review implementation, account provider or cloud upload service.
+**Billy Crew** is the installable phone companion, powered by the **same** BillyDPI scanner, crop editor, authentication, OCR, review and export workflow. The main BillyDPI home screen has a **Get Billy Crew** link to the installation page.
 
-- Open **https://razvanjuncu.github.io/billy/?snap=1** on a phone. In a supported browser, use **Add to Home Screen / Install app**. BillySnap uses a separate web app manifest ID and app label.
-- The same Supabase team identity is required. After the account and team membership are confirmed, BillySnap opens the existing camera scanner automatically when possible. If camera permission is denied or automatic capture is unsupported, press **Open camera** or **Use native camera**.
-- The scanner screen has **Upload file instead** at the bottom. It uses the same image/PDF import control as BillyDPI. Imported photos use the same corner adjustment; PDFs follow the existing document path.
-- After capturing, continue with the existing **Edit → Process → Review & Approve → Upload / Export** flow. Both entry modes use the same JavaScript, validation, OCR endpoint and account session.
-- Existing Supabase session persistence is used; credentials are **not copied into URLs or stored by BillySnap**. A standalone home-screen web app may require a one-time login even if the browser is already logged in, depending on platform storage isolation.
-- The application still **does not upload to company Excel or persistent corporate document storage**; the final screen transparently offers local CSV/JSON exports. A secure corporate upload backend must be built separately. **Do not upload confidential company records to the development service.**
-- Camera access requires HTTPS, device permissions and compatible browsers. Test on actual iOS Safari PWA, Chrome/Samsung Internet Android and Huawei browsers before deployment to staff.
+- **Central installation page:** https://razvanjuncu.github.io/billy/install.html
+- **Desktop Windows/macOS/Linux:** shows a local QR code for that public installation address. The QR contains no account secrets, sign-in tokens or personal data. The QR bitmap is encoded in `site/install.js` and must be regenerated if the public URL changes.
+- **iPhone/iPad:** detects iOS and shows Safari's Share → Add to Home Screen → Open as Web App → Add instructions. If opened as an installed web app, the installer redirects to the camera entry.
+- **Android/Samsung:** where supported, the installer captures `beforeinstallprompt` and displays an Install Billy Crew button; otherwise it shows manual browser-menu instructions.
+- **Huawei:** displays Huawei Browser → Add to Home screen instructions. Depending on Huawei/browser version, this may create a shortcut instead of a full standalone PWA. Platform detection is best effort; users can switch devices manually.
+- **Direct scanner entry:** https://razvanjuncu.github.io/billy/?crew=1 (legacy `?snap=1` still works as an alias). The Billy Crew webmanifest has an independent identity (`./billycrew`) and opens the same original capture workflow.
+- The same Supabase account and approved team membership are required. Credentials are **not placed in QR codes or installation URLs**. The PWA may require a one-time login independently of the main browser session, depending on the OS.
+- After capture/import, the original BillyDPI process continues: **Edit → Process → Review & Approve → Upload / Export**.
+- **Corporate Excel upload and long-term document storage are still not connected.** The app truthfully shows the current development limitation and can export approved CSV/JSON. Do not use real confidential company documents before secure production backend, storage and permissions are audited.
+
+Testing: `node --check site/install.js`, `node --test tests/snap-ui.test.cjs tests/crew-install.test.cjs`, and device-level install/camera validation on iPhone, Android/Samsung and Huawei.
 
 ## Billy on iPhone
 
