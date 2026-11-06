@@ -68,3 +68,12 @@ html[data-billy-snap="1"] .snap-launch button:focus-visible{outline:2px solid #f
 .crew-install-cta-chevron{font-size:19px;color:#aaa}
 html[data-billy-snap="1"] .crew-install-cta{display:none!important}
 @media(max-width:720px){.crew-install-cta{min-height:64px;padding:10px 14px}}
+
+/* Installation does not require signing in to the full BillyDPI website first. */
+.crew-auth-install-link{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  margin-top:14px;background:#1d1e20;border-radius:10px;padding:14px 16px;
+  color:#ddd;text-decoration:none;font-size:12px}
+.crew-auth-install-link strong{font-size:12px;color:#fff;font-weight:680}
+.crew-auth-install-link:hover{background:#292a2c}
+html[data-billy-snap="1"] .crew-auth-install-link{display:none!important}
+@media(max-width:380px){.crew-auth-install-link{flex-direction:column;align-items:flex-start}}
