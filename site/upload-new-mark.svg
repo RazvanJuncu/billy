@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" fill="#fff" aria-hidden="true">
+  <!-- Vector trace of the user's supplied Billy scan logo. -->
+  <polygon points="214.5,0.0 214.5,23.0 295.0,23.2 295.0,114.3 319.8,114.3 319.8,0.0"/>
+  <polygon points="104.2,0.0 0.0,0.0 0.0,113.5 23.6,113.7 23.6,23.2 104.2,23.0"/>
+  <ellipse cx="134.93" cy="124.87" rx="34.11" ry="53.04" transform="rotate(89.91 134.93 124.87)"/>
+  <ellipse cx="161.81" cy="206.11" rx="34.27" ry="79.47" transform="rotate(89.92 161.81 206.11)"/>
+  <polygon points="0.0,223.8 0.0,319.8 104.2,319.8 104.2,294.5 23.8,294.5 23.6,223.8"/>
+  <polygon points="319.8,224.4 295.0,224.4 294.9,294.5 214.5,294.5 214.5,319.8 319.8,319.8"/>
+</svg>
