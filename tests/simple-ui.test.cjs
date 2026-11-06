@@ -107,8 +107,8 @@ test("Original logo splash and inline processing loader use the same vector and 
   assert.match(preloader,/\.classList\.add\("is-revealing"\)/);
   assert.match(preloader,/\.classList\.add\("is-leaving"\)/);
   assert.match(css,/@keyframes billy-head-path/);
-  assert.match(css,/@keyframes billy-head-deform/);
-  assert.match(css,/@keyframes billy-base-deform/);
+  assert.doesNotMatch(css,/billy-head-deform|billy-base-deform|billy-top-squash|billy-bottom-squash/);
+  assert.equal((html.match(/class="billy-top-flight"/g)||[]).length,2);
   assert.match(css,/prefers-reduced-motion:reduce/);
   assert.match(accounts,/billy:auth-resolved/);
   assert.match(scanner,/BillyLoader\?\.startWork\("image"/);
@@ -125,4 +125,33 @@ test("Workspace label and all diagonal card arrows are removed",()=>{
   assert.doesNotMatch(html,/Your workspace is ready\./);
   assert.doesNotMatch(html,/>Workspace<\/span><\/button>/);
   assert.match(html,/>Home<\/span><\/button>/);
+});
+
+test("Magnetic orbit stays outside the lower oval for the entire flight",()=>{
+  const css=read("site/preloader.css"),html=read("site/index.html"),js=read("site/preloader.js");
+  assert.match(css,/--billy-motion-cycle:2350ms/);
+  assert.match(js,/const cycleMs = 2350/);
+  assert.doesNotMatch(css,/scale\(|squash|deform|jiggle|bounce/i);
+  assert.doesNotMatch(html,/billy-top-squash|billy-bottom-squash/);
+  const segment=css.match(/@keyframes billy-head-path\{([\s\S]*?)\n\}/);
+  assert.ok(segment,"The magnetic orbit must be defined");
+  const frames=[...segment[1].matchAll(/([\d.]+)%\{transform:translate\(([-\d.]+)px,([-\d.]+)px\);/g)]
+    .map(m=>({t:+m[1],x:100+Number(m[2]),y:68+Number(m[3])}));
+  assert.ok(frames.length>=18);
+  assert.equal(frames[0].t,0);
+  assert.equal(frames.at(-1).t,100);
+  assert.deepEqual([frames[0].x,frames[0].y],[100,68]);
+  assert.deepEqual([frames.at(-1).x,frames.at(-1).y],[100,68]);
+  let clearance=Infinity;
+  for(let i=1;i<frames.length;i++){
+    const a=frames[i-1],b=frames[i];
+    assert.ok(b.t>a.t,"Timestamps must increase");
+    for(let j=0;j<=100;j++){
+      const u=j/100,x=a.x+(b.x-a.x)*u,y=a.y+(b.y-a.y)*u;
+      clearance=Math.min(clearance,Math.hypot((x-146)/230,(y-206)/123));
+    }
+  }
+  assert.ok(clearance>1.06,"Upper oval must keep an air gap: "+clearance);
+  assert.match(css,/94%\{transform:translate\(0px,0px\)/);
+  assert.match(css,/100%\{transform:translate\(0px,0px\)/);
 });

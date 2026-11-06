@@ -2,6 +2,13 @@
 
 **Your invoices, decoded.** Billy is an installable mobile invoice scanning workbench with an offline-capable camera, perspective correction and a separate local Python OCR service built on [PaddleOCR PP-StructureV3](https://www.paddleocr.ai/latest/en/version3.x/pipeline_usage/PP-StructureV3.html).
 
+## BillyDPI magnetic loader v1.1
+
+The upper oval follows a collision-tested path around the lower oval, then
+slows into the original floating position. The two shapes stay unchanged.
+The site splash reveals the wordmark at the end of the cycle; the image and AI
+loaders show only the animated logo.
+
 ## BillyDPI v0.9: personalized, icon-led workspace
 
 The home screen cycles through 15 short, friendly greetings using the signed-in

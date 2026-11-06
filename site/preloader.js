@@ -7,7 +7,7 @@
   const work = document.getElementById("billyWorkLoader");
   if (!splash || !work) return;
 
-  const cycleMs = 1950;
+  const cycleMs = 2350;
   const startedAt = performance.now();
   const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
   const activeWork = new Set();
