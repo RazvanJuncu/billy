@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="BillyDPI">
   <meta name="description" content="BillyDPI — Document Processing Intelligence. Capture, interpret and review invoices and Fuel Releases.">
-  <title>BillyDPI — Document Processing Intelligence</title>
+  <title>BillyDPI</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icon-192.png?v=0.7.0">
   <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=0.7.0">
@@ -17,6 +17,7 @@
   <link rel="stylesheet" href="./review.css?v=0.5.0">
   <link rel="stylesheet" href="./accounts.css?v=0.7.0">
   <link rel="stylesheet" href="./document-type.css?v=0.6.0">
+  <link rel="stylesheet" href="./simple.css?v=0.8.0">
   <script src="./perspective.js?v=0.4.1" defer></script>
   <script src="./scanner.js?v=0.4.1" defer></script>
   <script src="./vision-review.js?v=0.6.0" defer></script>
@@ -25,19 +26,18 @@
   <script src="./account-config.js?v=0.6.0" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
   <script src="./accounts.js?v=0.6.0" defer></script>
+  <script src="./simple.js?v=0.8.0" defer></script>
 </head>
-<body data-view="capture" class="auth-locked">
+<body data-view="capture" data-billy-screen="home" class="auth-locked">
 <section class="auth-gate" id="authGate" aria-label="BillyDPI account access">
   <div class="auth-layout">
     <div class="auth-brand">
       <img class="auth-brand-mark" src="./billydpi-logo.svg" alt="" width="38" height="36">
       <div class="auth-brand-lockup">
         <span class="auth-brand-word">BillyDPI</span>
-        <span class="auth-brand-tag">DOCUMENT PROCESSING INTELLIGENCE</span>
       </div>
     </div>
     <div class="auth-card">
-      <span class="auth-kicker">ACCOUNT / WORKSPACE</span>
       <h1 id="gateHeading" class="auth-heading">Welcome back.</h1>
       <p id="gateMessage" class="auth-message" role="status" aria-live="polite" hidden></p>
       <form id="accountForm" class="auth-form">
@@ -71,7 +71,6 @@
         <button type="button" id="setupSignOut" class="account-signout">Log out</button>
       </div>
     </div>
-    <p class="auth-footnote">Secure identity and team membership · Scans are not shared with visitors.</p>
   </div>
 </section>
 <div class="studio-app" id="studioApp">
@@ -96,16 +95,19 @@
       <button id="railEngine" class="rail-tool" type="button" aria-label="Engine settings" title="Engine settings">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v2m0 15v2M2.5 12h2m15 0h2M5.3 5.3l1.5 1.5m10.4 10.4 1.5 1.5M18.7 5.3l-1.5 1.5M6.8 17.2l-1.5 1.5"/></svg>
       </button>
-      <span class="rail-version">0.7</span>
+      <span class="rail-version">0.8</span>
     </div>
   </aside>
 
   <div class="studio-shell">
     <header class="studio-header">
       <div class="studio-location">
+        <button id="simpleHomeButton" class="simple-brand-button" type="button" aria-label="BillyDPI home">
+          <img src="./billydpi-logo.svg" alt="" width="30" height="30"><span>BillyDPI</span>
+        </button>
         <div class="mobile-wordmark"><img src="./billydpi-logo.svg" alt="" width="27" height="26"><span>BillyDPI</span></div>
         <div class="location-path"><span>BILLYDPI</span><span class="path-slash">/</span><strong>DOCUMENT STUDIO</strong></div>
-        <p>Capture workspace</p>
+        <p>Workspace</p>
       </div>
       <div class="studio-header-actions">
         <span class="session-badge"><span class="session-dot"></span>LOCAL SESSION</span>
@@ -119,6 +121,75 @@
 
     <div class="studio-workspace">
       <main class="studio-stage" id="workspaceStage">
+        <div class="simple-flow-header" id="simpleFlowHeader" hidden>
+          <button id="simpleBack" class="simple-back" type="button" aria-label="Back">←</button>
+          <span id="simpleFlowTitle" class="simple-flow-title"></span>
+          <button id="simpleReviewToUpload" class="simple-secondary-action simple-review-next" type="button" hidden>Upload →</button>
+        </div>
+        <p id="simpleFlowNotice" class="simple-flow-notice" role="status" aria-live="polite" hidden></p>
+
+        <section class="simple-home simple-screen" id="simpleHome" aria-label="Main menu">
+          <span class="simple-home-label">Workspace</span>
+          <div class="simple-choice-grid">
+            <button id="simpleNewDocument" class="simple-choice" type="button">
+              <span class="simple-choice-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v16M4 12h16"/></svg></span>
+              <span class="simple-choice-lower"><span><span class="simple-choice-title">New Document</span><span class="simple-choice-caption">Scan or add a file</span></span><span class="simple-choice-arrow">↗</span></span>
+            </button>
+            <button id="simpleUploadedDocuments" class="simple-choice" type="button">
+              <span class="simple-choice-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h6l2 2h8v11H4z"/><path d="M4 7V5h6"/></svg></span>
+              <span class="simple-choice-lower"><span><span class="simple-choice-title">Uploaded Documents</span><span class="simple-choice-caption">Files and previous work</span></span><span class="simple-choice-arrow">↗</span></span>
+            </button>
+          </div>
+        </section>
+
+        <section class="simple-new simple-screen" id="simpleNew" aria-label="New document" hidden>
+          <h1 class="simple-heading">New Document</h1>
+          <div class="simple-choice-grid">
+            <button class="simple-choice" id="simpleCapture" type="button">
+              <span class="simple-choice-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h4l2-2h6l2 2h4v12H3z"/><circle cx="12" cy="13" r="4"/></svg></span>
+              <span class="simple-choice-lower"><span class="simple-choice-title">Scan</span><span class="simple-choice-arrow">↗</span></span>
+            </button>
+            <button class="simple-choice" id="simpleAddFiles" type="button">
+              <span class="simple-choice-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m-4 4 4-4 4 4"/><path d="M4 16v4h16v-4"/></svg></span>
+              <span class="simple-choice-lower"><span class="simple-choice-title">Add files</span><span class="simple-choice-arrow">↗</span></span>
+            </button>
+          </div>
+          <p class="simple-subline">Or drop a PDF or photo here.</p>
+        </section>
+
+        <section class="simple-uploaded simple-screen" id="simpleUploaded" aria-label="Uploaded documents" hidden>
+          <h1 class="simple-heading">Uploaded Documents</h1>
+          <p id="simpleDocumentsIntro" class="simple-subline">No documents have been uploaded to company storage.</p>
+          <div id="simpleDocumentsEmpty" class="simple-empty">Company document storage is not connected yet.</div>
+          <div id="simpleDocumentsList" class="simple-documents-list" aria-label="Files added in this browser session"></div>
+          <div><button id="simpleUploadedBackToHome" class="simple-secondary-action" type="button">Back to workspace</button></div>
+        </section>
+
+        <section class="simple-process simple-screen" id="simpleProcess" aria-label="Process document" hidden>
+          <div class="simple-flow-card">
+            <h2 class="simple-heading">Ready to process.</h2>
+            <button id="simpleRunProcess" type="button" class="simple-main-action">Process Document <span aria-hidden="true">→</span></button>
+            <p id="simpleProcessStatus" class="simple-process-status" role="status" aria-live="polite"></p>
+          </div>
+        </section>
+
+        <section class="simple-upload simple-screen" id="simpleUpload" aria-label="Upload approved document" hidden>
+          <div class="simple-flow-card">
+            <div class="simple-upload-icon" aria-hidden="true">✓</div>
+            <h2 class="simple-heading">Approved.</h2>
+            <p id="simpleUploadNote" class="simple-upload-note">Company Excel upload is not connected yet.</p>
+            <div class="simple-upload-locked"><strong>Upload to company Excel</strong><span>Not connected</span></div>
+            <div class="simple-action-row">
+              <button class="simple-secondary-action" id="simpleExportCsv" type="button">Export CSV</button>
+              <button class="simple-secondary-action" id="simpleExportJson" type="button">Export JSON</button>
+            </div>
+            <div class="simple-action-row">
+              <button class="simple-secondary-action" id="simpleReviewAgain" type="button">View review</button>
+              <button class="simple-main-action" id="simpleNewFromUpload" type="button">New Document →</button>
+            </div>
+          </div>
+        </section>
+
         <div class="stage-topbar">
           <div class="stage-label"><span class="stage-indicator"></span><span id="stageEyebrow">WORKSPACE</span><span class="stage-separator">/</span><strong id="stageDocumentName">UNTITLED DOCUMENT</strong></div>
           <div class="view-switch" role="group" aria-label="Workspace view">
@@ -128,7 +199,7 @@
         </div>
 
         <section class="source-panel panel" id="sourcePanel" aria-label="Document canvas">
-          <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Choose or drop an invoice">
+          <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Document preview">
             <input type="file" id="filePicker" accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/jpeg,image/png,image/webp" hidden>
             <div id="emptySource" class="empty-source">
               <div class="scan-target" aria-hidden="true">
@@ -168,6 +239,7 @@
               <button id="fixPerspective" class="text-button" type="button" hidden>Adjust corners</button>
               <button id="replaceButton" class="text-button" type="button">Replace</button>
             </div>
+            <div class="simple-edit-action-row"><button id="simpleContinue" class="simple-main-action" type="button">Continue →</button></div>
             <div class="mobile-file-actions" id="mobileFileActions" hidden>
               <button id="mobileFixButton" type="button">Adjust corners</button>
               <button id="mobileReadButton" type="button">Extract text <span>↗</span></button>
@@ -208,7 +280,7 @@
 
         <div class="stage-bottom">
           <span><span class="fine-dot"></span> CAMERA &amp; PERSPECTIVE RUN ON DEVICE</span>
-          <span>DOCUMENT ENGINE / v0.7</span>
+          <span>DOCUMENT ENGINE / v0.8</span>
         </div>
       </main>
 

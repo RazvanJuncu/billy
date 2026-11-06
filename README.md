@@ -2,6 +2,15 @@
 
 **Your invoices, decoded.** Billy is an installable mobile invoice scanning workbench with an offline-capable camera, perspective correction and a separate local Python OCR service built on [PaddleOCR PP-StructureV3](https://www.paddleocr.ai/latest/en/version3.x/pipeline_usage/PP-StructureV3.html).
 
+## BillyDPI v0.8 — progressive workspace
+
+The product uses the same monochrome, flat, instrument-first design philosophy as Glide. The screen opens with **two wide choices**: New Document and Uploaded Documents. New Document reveals only **Scan** or **Add files**. After capturing/importing a file the interface progresses through **Edit → Process → Review & Approve → Upload / Export**. Every action reveals the next relevant function; the old sidebar and dense inspector remain hidden.
+
+- **Uploaded Documents** currently lists only files added during the current browser session. No persistent company archive is deployed. The screen explicitly discloses this, and opening a file starts a new draft.
+- **Upload to company Excel** is not connected and is never simulated. When a real OCR review is approved, the current pilot allows exporting CSV / JSON, not uploading to company workbooks.
+- Existing scanner / perspective adjustment, fuel release recognition schema, and team account APIs remain in the app.
+- This is a UI/UX iteration, not a claim that the production AI backend or company storage now exists.
+
 ## Design direction (v0.4)
 
 Billy is now a **full-screen document instrument environment**, drawing from Glide's actual satin-obsidian design: a compact navigation rail, central document viewport, dedicated control inspector, and iPhone bottom dock. No homepage hero, white dashboard cards or fake status indicators. The four stages are Capture → Straighten → Extract → Review. See [`BRANDING.md`](./BRANDING.md) for the tokens and interaction principles.

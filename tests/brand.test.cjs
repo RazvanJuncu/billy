@@ -66,7 +66,7 @@ test("BillyDPI uses the exact two-ellipse monochrome vector mark throughout the 
   assert.match(html,/class="auth-brand-mark" src="\.\/billydpi-logo\.svg"/);
   assert.match(html,/class="mobile-wordmark"><img src="\.\/billydpi-logo\.svg"/);
   assert.match(html,/class="studio-rail-brand"[^>]*><img src="\.\/billydpi-logo\.svg"/);
-  assert.match(html,/<title>BillyDPI — Document Processing Intelligence<\/title>/);
+  assert.match(html,/<title>BillyDPI<\/title>/);
   assert.match(favicon,/<rect[^>]+fill="#050607"/);
   assert.equal(manifest.short_name,"BillyDPI");
   assert.match(accountsCss,/.auth-brand-mark/);

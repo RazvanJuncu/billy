@@ -117,8 +117,8 @@
     corners=result.corners;
     detected=result.detected;
     announce(detected
-      ? "Document edges estimated. Drag any blue corner to refine the crop."
-      : "Document edges were not found reliably. Drag all four blue corners to match the page.");
+      ? "Document edges estimated. Drag any white corner to refine the crop."
+      : "Document edges were not found reliably. Drag all four white corners to match the page.");
     root.requestAnimationFrame(drawEditor);
   }
 
@@ -163,10 +163,10 @@
     ctx.beginPath();
     corners.forEach((p,i)=>i===0?ctx.moveTo(p.x*w,p.y*h):ctx.lineTo(p.x*w,p.y*h));
     ctx.closePath();
-    ctx.fillStyle="rgba(57, 139, 255, .14)";
+    ctx.fillStyle="rgba(255,255,255,.07)";
     ctx.fill();
-    ctx.strokeStyle="#3a97ff";ctx.lineWidth=2.5;ctx.stroke();
-    ctx.fillStyle="#fff";ctx.strokeStyle="#297cd8";ctx.lineWidth=3;
+    ctx.shadowColor="#000";ctx.shadowBlur=4;ctx.strokeStyle="#f5f5f5";ctx.lineWidth=2.5;ctx.stroke();
+    ctx.fillStyle="#fff";ctx.strokeStyle="#171717";ctx.lineWidth=3;
     for (let i=0;i<4;i++) {
       ctx.beginPath();ctx.arc(corners[i].x*w,corners[i].y*h,9,0,Math.PI*2);ctx.fill();ctx.stroke();
     }
@@ -346,7 +346,7 @@
     $("scanRetake").addEventListener("click",startCamera);
     $("scannerClose").addEventListener("click",hideOverlay);
     $("scanAuto").addEventListener("click",guessCorners);
-    $("scanReset").addEventListener("click",()=>{corners=P.defaultCorners();detected=false;announce("Drag the blue handles to the document's four corners.");drawEditor();});
+    $("scanReset").addEventListener("click",()=>{corners=P.defaultCorners();detected=false;announce("Drag the white handles to the document's four corners.");drawEditor();});
     $("scanRotate").addEventListener("click",rotateImage);
     $("scanApply").addEventListener("click",applyScan);
     $("scanSave").addEventListener("click",saveScan);

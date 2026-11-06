@@ -18,6 +18,11 @@ function showNotification(message, error = false) {
   $("notification").textContent = message;
   $("notification").classList.toggle("error", error);
   $("notification").hidden = !message;
+  const simple = $("simpleFlowNotice");
+  if (simple) {
+    simple.textContent = message;
+    simple.hidden = !message;
+  }
 }
 
 function apiAddress(value) {
@@ -102,6 +107,7 @@ async function connectEngine() {
     showNotification("Vision server not reachable. The camera still works locally; AI needs a secure backend.", true);
   }
   updateScanButton();
+  window.dispatchEvent(new CustomEvent("billy:engine-updated"));
 }
 
 function discardPreview() {
@@ -307,12 +313,13 @@ async function scanInvoice() {
     state.tab = "document";
     renderResult();
     window.dispatchEvent(new CustomEvent("billy:ocr-ready", {detail:{model:responseBody.model}}));
-    showNotification("Extraction complete. Review each field against the original before approval.");
+    showNotification("Check the extracted values against the original before approval.");
   } catch (error) {
     showNotification("Could not scan this document: " + (error.message || "Connection error"), true);
   } finally {
     state.busy = false;
     updateScanButton();
+    window.dispatchEvent(new CustomEvent("billy:process-complete"));
   }
 }
 
@@ -359,7 +366,8 @@ $("documentType").addEventListener("change", () => {
   document.querySelector(".result-panel")?.classList.remove("has-results");
   setStage(state.file ? 2 : 0);
   updateScanButton();
-  showNotification("Document type updated. Extract again to create a new review record.");
+  showNotification("");
+  window.dispatchEvent(new CustomEvent("billy:document-revised"));
 });
 $("connectButton").addEventListener("click", connectEngine);
 $("endpoint").addEventListener("keydown", (event) => {
@@ -400,3 +408,12 @@ window.addEventListener("billy:account-ready", () => {
     $("statusText").textContent = "Team signed in · Vision server not connected";
   }
 });
+
+/* Public local-only UI actions for the progressively disclosed document flow.
+   No backend keys or elevated access are provided here. */
+window.BillyApp = {
+  isOnline: () => state.online,
+  hasDocument: () => Boolean(state.file),
+  openFile: selectFile,
+  acceptFile: handlePhotoOrDocument
+};
