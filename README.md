@@ -15,7 +15,29 @@ Billy is now a **full-screen document instrument environment**, drawing from Gli
 
 > GitHub Pages cannot run Python. **Taking photos, cropping, perspective flattening, and saving corrected JPEGs work without an OCR backend. Reading invoice text with PaddleOCR requires a separately running Python API.** No simulated OCR output is presented as genuine.
 
-## Start the OCR backend (Windows)
+## Start real OCR on Windows (recommended first)
+
+To resolve **“Scanner ready · OCR not connected”** on a Windows PC:
+
+1. Install **64-bit Python 3.11** from [python.org](https://www.python.org/downloads/) with the Python launcher.
+2. Download or clone this GitHub repository to your Windows PC.
+3. Double-click **\`start-billy.cmd\`** in the project folder. On first launch it creates a local virtual environment and installs PaddlePaddle CPU 3.2.0, PaddleOCR document parser, FastAPI and other dependencies.
+4. Billy opens locally at **http://127.0.0.1:5173/**. The small engine status should automatically change to **OCR engine connected** after the API starts at **http://127.0.0.1:8000/**. Refresh the page once if needed.
+5. Capture/import your invoice and choose **Scan invoice**. The first real OCR scan downloads its model files. **The API health check alone does not verify model inference.**
+
+Keep the PowerShell window open while using Billy. Closing it stops the API. Files are processed by the local Python server and not uploaded to GitHub.
+
+> **iPhone is a separate step.** Opening the public \`https://razvanjuncu.github.io/billy/\` app does not automatically reach the Windows OCR server. The phone's \`127.0.0.1\` refers to the phone. OCR from iPhone will require an authenticated HTTPS service or another carefully secured connection; never expose an unauthenticated local port publicly.
+
+### Windows troubleshooting
+
+- If the launcher says Python cannot be found: install Python 3.11 (64-bit) and confirm \`py -3.11 --version\` works in PowerShell.
+- If the local website loads but OCR says offline: open \`http://127.0.0.1:8000/api/health\` on the PC. It should return \`{"status":"online", ...}\`. If it does not, inspect the launcher console for errors.
+- If \`localhost:5173\` is already in use, stop the other server occupying that port.
+- If the engine connects but extraction fails: read the Python console error; the OCR models and CPU inference have **not** yet been tested on your machine.
+- If you want to reinstall dependencies, delete the \`.venv\` folder while Billy is stopped, then run \`start-billy.cmd\` again.
+
+## Manual startup — advanced (Windows)
 
 Install **Python 3.11 64-bit** and PaddlePaddle CPU per the [official installation matrix](https://www.paddlepaddle.org.cn/en/install/quick). Then in PowerShell:
 
