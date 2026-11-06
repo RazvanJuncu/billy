@@ -29,3 +29,17 @@
 .scan-hint.ready{color:#287650}
 .scan-hint.need-engine{color:#845c30}
 @media(max-width:580px){.settings{margin-left:auto}.settings[open]{width:100%}.settings-body{width:100%;max-width:none;padding:16px 0 2px}.settings-control{flex-wrap:wrap}.settings-control input{flex-basis:100%;min-height:42px}.settings-control button{flex:1}.scan-hint{font-size:11px}.statusbar{padding:13px 16px}}
+
+
+/* Phone-first launch screen: scanning should be above the fold, not beneath a marketing hero. */
+@media(max-width:580px){
+  .shell{padding-top:20px}
+  .intro{margin-bottom:16px}
+  .intro h1{font-size:clamp(29px,8vw,38px);margin:10px 0 5px;line-height:1.09}
+  .intro p{font-size:11px;line-height:1.5;max-width:100%;margin:6px 0}
+  .eyebrow{font-size:9px;letter-spacing:.11em}
+  .statusbar{min-height:52px;margin-bottom:13px}
+  .panel-header{margin-bottom:15px}
+  .panel h2{font-size:18px}
+  .capture-row{margin-bottom:13px}
+}
