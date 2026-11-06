@@ -91,7 +91,7 @@ async function connectEngine() {
     state.api = address;
     state.online = Boolean(payload.configured);
     dot.className = state.online ? "status-dot online" : "status-dot offline";
-    label.textContent = state.online ? "Vision AI ready · " + payload.model : "Vision server online · API key missing";
+    label.textContent = state.online ? "Vision configured · " + payload.model : "Vision server online · API key missing";
     $("settings").open = !state.online;
     showNotification(state.online ? "" : "Vision server is running, but GEMINI_API_KEY is not configured on the server.");
   } catch (error) {

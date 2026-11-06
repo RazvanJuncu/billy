@@ -56,6 +56,10 @@ class VisionTests(unittest.TestCase):
             response = client.post("/api/vision/extract",files={"file":("a.pdf",b"%PDF-1.7")})
         self.assertEqual(response.status_code, 503)
 
+    def test_public_pages_cannot_access_local_vision_pilot(self):
+        response = client.get("/api/vision/health", headers={"Origin":"https://razvanjuncu.github.io"})
+        self.assertEqual(response.status_code, 403)
+
     def test_untrusted_origin_rejected(self):
         with patch.dict(os.environ, {"GEMINI_API_KEY": "fake-not-real"}):
             response = client.post("/api/vision/extract",files={"file":("a.pdf",b"%PDF-1.7")},headers={"Origin":"https://evil.example"})
