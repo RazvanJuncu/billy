@@ -5,6 +5,8 @@
   "use strict";
   const $ = id => document.getElementById(id);
   const body = document.body;
+  const snapMode = document.documentElement.dataset.billySnap === "1";
+  let snapCameraStarted = false;
   const screens = ["home", "new", "uploaded", "edit", "process", "review", "upload"];
   const names = {new:"New Document",uploaded:"Uploaded Documents",edit:"Edit Document",process:"Process Document",review:"Review Document",upload:"Upload Document"};
   const sessionFiles = [];
@@ -53,7 +55,7 @@
   }
 
   function showScreen(name) {
-    const next = screens.includes(name) ? name : "home";
+    const next = snapMode && name === "home" ? "new" : (screens.includes(name) ? name : "home");
     body.dataset.billyScreen = next;
     for (const section of screens) {
       const el = $("simple" + section.charAt(0).toUpperCase() + section.slice(1));
@@ -140,6 +142,25 @@
     else showScreen("home");
   }
 
+  function startSnapCamera() {
+    if (!window.BillyAccounts?.active?.()) return;
+    showScreen("new");
+    window.BillyScanner?.startCamera?.();
+  }
+
+  function startSnapOnce() {
+    if (!snapMode || snapCameraStarted || !window.BillyAccounts?.active?.()) return;
+    snapCameraStarted = true;
+    startSnapCamera();
+  }
+
+  function chooseSnapFile() {
+    if (!window.BillyAccounts?.active?.()) return;
+    // Dismiss the camera first; image imports continue through the shared crop editor.
+    window.BillyScanner?.close?.();
+    $("filePicker").click();
+  }
+
   function bind(id, fn) {
     const el = $(id);
     if (!el) throw Error("BillyDPI control missing: " + id);
@@ -148,6 +169,9 @@
   bind("simpleHomeButton", () => showScreen("home"));
   bind("simpleBack", goBack);
   bind("simpleNewDocument", () => showScreen("new"));
+  bind("snapStartCamera", startSnapCamera);
+  bind("snapLaunchUpload", chooseSnapFile);
+  bind("snapCameraUpload", chooseSnapFile);
   bind("simpleUploadedDocuments", () => showScreen("uploaded"));
   bind("simpleCapture", () => $("scanOpenCamera").click());
   bind("simpleAddFiles", () => $("filePicker").click());
@@ -161,7 +185,10 @@
   bind("simpleExportJson", () => window.BillyReview?.exportJSON());
   bind("simpleReviewAgain", () => showScreen("review"));
   bind("simpleReviewToUpload", () => { if (approved) showScreen("upload"); });
-  bind("simpleNewFromUpload", () => showScreen("new"));
+  bind("simpleNewFromUpload", () => {
+    showScreen("new");
+    if (snapMode) startSnapCamera();
+  });
   bind("simpleUploadedBackToHome", () => showScreen("home"));
 
   const addArea = $("simpleNew");
@@ -199,6 +226,7 @@
   window.addEventListener("billy:account-ready",event => {
     chooseGreeting(String(event.detail?.firstName || "").trim().slice(0,32));
     if (body.dataset.billyScreen === "process") updateProcess();
+    startSnapOnce();
   });
   window.addEventListener("billy:document-approved",() => {
     approved = true;
@@ -207,7 +235,8 @@
     showScreen("upload");
   });
 
-  showScreen("home");
+  showScreen(snapMode ? "new" : "home");
+  startSnapOnce();
   if (window.BillyAccounts?.active?.()) {
     chooseGreeting(String(window.BillyAccounts.firstName?.() || "").trim().slice(0,32));
   }

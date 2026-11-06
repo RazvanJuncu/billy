@@ -1,0 +1,49 @@
+/* BillySnap: a separate installable capture entry, sharing BillyDPI's full workflow.
+   No second document implementation, account store or upload endpoint. */
+.snap-brand,.snap-launch,.snap-camera-upload{display:none!important}
+html[data-billy-snap="1"] .full-brand{display:none!important}
+html[data-billy-snap="1"] .snap-brand{display:inline!important}
+html[data-billy-snap="1"] .studio-header .repo-control,
+html[data-billy-snap="1"] .studio-header .location-path,
+html[data-billy-snap="1"] .studio-header #topNew{display:none!important}
+html[data-billy-snap="1"] body[data-billy-screen="new"] .simple-new>.simple-heading,
+html[data-billy-snap="1"] body[data-billy-screen="new"] .simple-new>.simple-choice-grid,
+html[data-billy-snap="1"] body[data-billy-screen="new"] .simple-new>.simple-subline{display:none!important}
+html[data-billy-snap="1"] body[data-billy-screen="new"] .simple-flow-header{display:none!important}
+html[data-billy-snap="1"] body[data-billy-screen="new"] .simple-new{
+  justify-content:center!important;align-items:center!important;
+  width:min(460px,calc(100% - 36px))!important;margin:auto!important;padding:22px 0 42px!important;
+}
+html[data-billy-snap="1"] .snap-launch{
+  display:flex!important;flex:1;flex-direction:column;justify-content:center;align-items:center;
+  gap:16px;text-align:center;width:100%;max-width:410px;
+}
+.snap-launch img{width:64px;height:64px;object-fit:contain;margin-bottom:14px}
+.snap-launch h1{color:#f5f5f5;font-size:clamp(29px,7vw,39px);line-height:1.08;letter-spacing:-.055em;margin:0}
+.snap-launch p{color:#a8a8a8;font-size:14px;line-height:1.55;margin:0 0 22px;max-width:320px}
+.snap-launch small{font-size:11px;color:#878787;line-height:1.45}
+html[data-billy-snap="1"] .snap-launch button{
+  display:flex!important;align-items:center;justify-content:center;gap:10px;
+  width:100%;min-height:56px!important;border-radius:13px!important;
+  font-weight:650;font-size:15px;letter-spacing:-.015em;
+}
+html[data-billy-snap="1"] .snap-launch .snap-primary{background:#f2f2f2!important;color:#101112!important}
+html[data-billy-snap="1"] .snap-launch .snap-secondary{background:#232426!important;color:#f2f2f2!important}
+.snap-primary svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round}
+html[data-billy-snap="1"] .snap-camera-upload{
+  display:flex!important;justify-content:center;align-items:center;
+  padding:8px 12px max(10px,env(safe-area-inset-bottom));
+  flex:none;
+}
+html[data-billy-snap="1"] .snap-camera-upload button{
+  min-height:45px!important;min-width:180px;padding:9px 24px!important;
+  border:0!important;border-radius:12px!important;
+  background:#27292b!important;color:#eee!important;
+  font-size:13px;font-weight:620;
+}
+html[data-billy-snap="1"] .snap-camera-upload button:focus-visible,
+html[data-billy-snap="1"] .snap-launch button:focus-visible{outline:2px solid #fff;outline-offset:3px}
+@media(max-width:720px){
+  html[data-billy-snap="1"] .snap-camera-upload{padding-bottom:max(8px,env(safe-area-inset-bottom))}
+  html[data-billy-snap="1"] .snap-launch{min-height:360px}
+}

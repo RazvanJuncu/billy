@@ -371,5 +371,5 @@
     });
   }
 
-  root.BillyScanner={init,editFile,startCamera,stopCamera};
+  root.BillyScanner={init,editFile,startCamera,stopCamera,close:hideOverlay};
 })(window);
