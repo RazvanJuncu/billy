@@ -26,7 +26,7 @@ function render(result,endpoint,authHeaders){
  extractId=result.extraction_id;api=endpoint;getHeaders=authHeaders;approved=false;
  const root=$("formattedOutput");root.replaceChildren();root.hidden=false;root.classList.add("vision-review");
  const title=node("div","review-intro");
- title.append(node("span","review-eyebrow","BILLY / VERIFIED DOCUMENT WORKFLOW"),node("h3","review-title",documentType==="fuel_release"?"Review Fuel Release":"Review extracted invoice"),node("p","review-note","Edit any field. The model's confidence is not calibrated; verify against the original."));
+ title.append(node("span","review-eyebrow","BILLYDPI / VERIFIED DOCUMENT WORKFLOW"),node("h3","review-title",documentType==="fuel_release"?"Review Fuel Release":"Review extracted invoice"),node("p","review-note","Edit any field. The model's confidence is not calibrated; verify against the original."));
  const metadata=node("div","review-metadata");metadata.append(node("span","",result.model||"Vision AI"),node("span","","No automatic Excel writes"));title.appendChild(metadata);root.appendChild(title);
  const warnings=result.validation_warnings||[];
  const warn=node("div","review-warnings");

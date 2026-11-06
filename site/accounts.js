@@ -73,7 +73,7 @@
       .eq("user_id", user.id);
     if (run !== sequence) return;
     if(memError){
-      status("Workspace database not ready. Apply the Billy Supabase migration: "+fmtError(memError),true);
+      status("Workspace database not ready. Apply the BillyDPI Supabase migration: "+fmtError(memError),true);
       gateHeading.textContent="Workspace configuration needed.";
       login.hidden=true;setup.hidden=true;setGate(true);return;
     }
@@ -189,7 +189,7 @@
     const ready=config.url&&config.publishableKey&&/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(config.url);
     if(!ready||!window.supabase?.createClient){
       login.hidden=true;setup.hidden=true;
-      gateHeading.textContent="Billy Accounts setup.";
+      gateHeading.textContent="BillyDPI Accounts setup.";
       status("The team identity provider is not connected yet. Configure the public Supabase project URL and publishable key in account-config.js and apply the database migration. No documents can be processed while accounts are unavailable.",true);
       return;
     }

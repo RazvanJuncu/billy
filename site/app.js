@@ -290,7 +290,7 @@ async function scanInvoice() {
   state.busy = true;
   setStage(2);
   updateScanButton();
-  showNotification("Billy Vision is extracting structured data. Excel will not be modified.");
+  showNotification("BillyDPI Vision is extracting structured data. Excel will not be modified.");
   const currentFile = state.file;
   const form = new FormData();
   form.append("file", currentFile, currentFile.name);

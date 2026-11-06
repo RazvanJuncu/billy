@@ -52,3 +52,23 @@ test("iPhone PWA and local-only scanner remain intact",()=>{
   assert.match(read("site/sw.js"),/"\.\/workspace.js"/);
   assert.equal(JSON.parse(read("site/manifest.webmanifest")).display,"standalone");
 });
+
+test("BillyDPI uses the exact two-ellipse monochrome vector mark throughout the existing app",()=>{
+  const mark=read("site/billydpi-logo.svg");
+  const favicon=read("site/favicon.svg");
+  const manifest=JSON.parse(read("site/manifest.webmanifest"));
+  const accountsCss=read("site/accounts.css");
+  assert.match(mark,/<ellipse id="billydpi-head"/);
+  assert.match(mark,/<ellipse id="billydpi-base"/);
+  assert.equal((mark.match(/<ellipse /g)||[]).length,2);
+  assert.match(mark,/fill="#fff"/);
+  assert.doesNotMatch(mark,/#(?:[0-9a-f]{3}|[0-9a-f]{6})[^"\n]*blue/i);
+  assert.match(html,/class="auth-brand-mark" src="\.\/billydpi-logo\.svg"/);
+  assert.match(html,/class="mobile-wordmark"><img src="\.\/billydpi-logo\.svg"/);
+  assert.match(html,/class="studio-rail-brand"[^>]*><img src="\.\/billydpi-logo\.svg"/);
+  assert.match(html,/<title>BillyDPI — Document Processing Intelligence<\/title>/);
+  assert.match(favicon,/<rect[^>]+fill="#050607"/);
+  assert.equal(manifest.short_name,"BillyDPI");
+  assert.match(accountsCss,/.auth-brand-mark/);
+  assert.match(read("site/sw.js"),/"\.\/billydpi-logo\.svg"/);
+});
