@@ -7,7 +7,7 @@ class TestWindowsLauncher(unittest.TestCase):
     def test_local_only_backend(self):
         content=(ROOT/"start-billy.ps1").read_text(encoding="utf-8")
         self.assertIn('"127.0.0.1"', content)
-        self.assertIn('"8000"', content)
+        self.assertIn("--port 8000", content)
         self.assertIn('"5173"', content)
         self.assertNotIn('0.0.0.0', content)
 
