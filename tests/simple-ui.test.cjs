@@ -2,6 +2,24 @@ const test=require("node:test"), assert=require("node:assert/strict"), fs=requir
 const read=file=>fs.readFileSync(path.join(__dirname,"..",file),"utf8");
 const html=read("site/index.html"),css=read("site/simple.css"),flow=read("site/simple.js");
 const app=read("site/app.js"),review=read("site/vision-review.js");
+test("Phones and tablets start with only the centered Upload New button and an opt-in reveal control",()=>{
+  assert.match(html,/data-billy-mobile/);
+  assert.match(html,/navigator\.maxTouchPoints > 1/);
+  assert.match(html,/pointer: coarse/);
+  assert.match(html,/id="simpleQuickSnap"/);
+  assert.match(html,/id="simpleRevealFunctions"/);
+  assert.match(html,/aria-expanded="false" aria-controls="simpleFunctionArea"/);
+  assert.match(html,/class="simple-quick-art"/);
+  assert.match(html,/>Upload New<\/span>/);
+  assert.match(css,/body:not\(\.billy-functions-revealed\) \.simple-home-expanded\{display:none!important\}/);
+  assert.match(css,/body:not\(\.billy-functions-revealed\) \.studio-header\{display:none!important\}/);
+  assert.match(css,/body\.billy-functions-revealed \.simple-home-expanded\{display:contents\}/);
+  assert.match(flow,/bind\("simpleRevealFunctions", toggleRevealedFunctions\)/);
+  assert.match(flow,/body\.classList\.toggle\("billy-functions-revealed"\)/);
+  assert.match(flow,/aria-expanded/);
+  assert.doesNotMatch(flow,/localStorage\.setItem\("billy-functions-revealed"/);
+});
+
 test("BillyDPI has a responsive Quick Snap action and sequential document workflow",()=>{
   assert.match(html,/id="simpleQuickSnap"/);
   assert.match(flow,/bind\("simpleQuickSnap", startSnapCamera\)/);
