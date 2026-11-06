@@ -127,27 +127,47 @@ py -3.11 -m http.server 5173 --directory site
 
 Visit `http://localhost:5173`, choose an image or PDF, ensure the API status is connected, and click **Scan invoice**.
 
-## Billy Crew: install from BillyDPI (development)
+## Billy on mobile: one-button home and installation
 
-**Billy Crew** is the installable phone companion, powered by the **same** BillyDPI scanner, crop editor, authentication, OCR, review and export workflow. The main BillyDPI home screen has a **Get Billy Crew** link to the installation page.
+BillyDPI is one application with one logo, one manifest, and one document workflow.
+On phones and tablets (iPhone, iPad, Android/Samsung, Huawei), the default authenticated
+home screen shows a centered **Upload New** action using the scan-bracket Billy mark.
+Tapping it opens the existing camera directly. Closing the camera without capturing
+returns to the single-button home. A small **Reveal functions** control temporarily
+exposes the full Billy home, greeting, account menu, document controls, and install guide.
+**Hide functions** collapses the home again; refreshing/relaunching Billy always resets
+to the single-action view. Desktop keeps the regular document home and account menu.
 
-- **Central installation page:** https://razvanjuncu.github.io/billy/install.html
-- **Desktop Windows/macOS/Linux:** shows a local QR code for that public installation address. The QR contains no account secrets, sign-in tokens or personal data. The QR bitmap is encoded in `site/install.js` and must be regenerated if the public URL changes.
-- **iPhone/iPad:** detects iOS and shows Safari's Share → Add to Home Screen → Open as Web App → Add instructions. If opened as an installed web app, the installer redirects to the camera entry.
-- **Android/Samsung:** where supported, the installer captures `beforeinstallprompt` and displays an Install Billy Crew button; otherwise it shows manual browser-menu instructions.
-- **Huawei:** displays Huawei Browser → Add to Home screen instructions. Depending on Huawei/browser version, this may create a shortcut instead of a full standalone PWA. Platform detection is best effort; users can switch devices manually.
-- **Direct scanner entry:** https://razvanjuncu.github.io/billy/?crew=1 (legacy `?snap=1` still works as an alias). The Billy Crew webmanifest has an independent identity (`./billycrew`) and opens the same original capture workflow.
-- The same Supabase account and approved team membership are required. Credentials are **not placed in QR codes or installation URLs**. The PWA may require a one-time login independently of the main browser session, depending on the OS.
-- After capture/import, the original BillyDPI process continues: **Edit → Process → Review & Approve → Upload / Export**.
-- **Corporate Excel upload and long-term document storage are still not connected.** The app truthfully shows the current development limitation and can export approved CSV/JSON. Do not use real confidential company documents before secure production backend, storage and permissions are audited.
+- **Installer tool:** https://razvanjuncu.github.io/billy/install.html
+- Access the tool using **Install Billy on your phone** on the desktop home, or
+  **Reveal functions > Install Billy on your phone** on mobile. It is also available
+  from the expanded account menu.
+- **Desktop Windows/macOS/Linux:** the installer shows a QR for the public guide address.
+  This QR contains no credentials, tokens, or account details.
+- **iPhone/iPad:** open the guide in Safari, tap Open Billy, then use Safari Share >
+  Add to Home Screen, with Open as Web App when offered.
+- **Android/Samsung:** Chrome/Samsung Internet can offer the normal Billy installation
+  prompt, or users can open the main Billy page and choose Install app/Add to Home screen.
+- **Huawei:** open the main Billy page in Huawei Browser, then Add to Home screen. On
+  some Huawei models this creates a browser shortcut instead of a standalone PWA.
+- Old `?crew=1` and `?snap=1` bookmarks now open Billy's normal home. Existing
+  separately installed Billy Crew icons may need to be removed manually from devices.
+- Billy retains the existing Supabase login and team approval requirements. Depending
+  on the platform, installing a PWA can require one login separate from the browser.
+- **The corporate Excel upload / permanent company storage backend is not yet
+  connected.** The development workflow still follows capture, crop, process,
+  review and local export. Do not use confidential company documents before the
+  production backend and access controls are ready.
 
-Testing: `node --check site/install.js`, `node --test tests/snap-ui.test.cjs tests/crew-install.test.cjs`, and device-level install/camera validation on iPhone, Android/Samsung and Huawei.
+Testing: `node --check site/install.js`, `node --check site/simple.js`,
+`node --test tests/simple-ui.test.cjs tests/snap-ui.test.cjs tests/crew-install.test.cjs`,
+and physical camera / installation checks on iOS Safari, Android/Samsung and Huawei.
 
 ## Billy on iPhone
 
 1. Open **https://razvanjuncu.github.io/billy/** in Safari.
 2. Tap **Share → Add to Home Screen**, turn on **Open as Web App**, then choose **Add**.
-3. Open Billy from the new Home Screen icon. Choose **Open camera** and grant camera permission, or **Import photo** to correct an existing image.
+3. Open Billy from the Home Screen icon. Tap **Upload New** to open the camera and grant permission. Use **Reveal functions** to access additional document controls.
 4. Capture the page or choose a photo. Billy attempts to locate bright paper edges against a darker backdrop. **Blue corners are draggable**; refine them manually if detection is inaccurate.
 5. Tap **Straighten & use** to transform the trapezoid to a flat document JPEG, or **Save image** to share/download without running OCR. PDF input can still be sent straight to OCR.
 
