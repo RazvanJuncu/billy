@@ -11,10 +11,10 @@ const accounts = read("site/accounts.js");
 const styles = read("site/snap.css");
 const manifest = JSON.parse(read("site/snap.webmanifest"));
 
-test("BillySnap has a separate installable identity using the same origin and document studio", () => {
-  assert.equal(manifest.name, "BillySnap");
+test("Billy Crew has a separate installable identity using the same origin and document studio", () => {
+  assert.equal(manifest.name, "Billy Crew");
   assert.equal(manifest.display, "standalone");
-  assert.equal(manifest.start_url, "./?snap=1");
+  assert.equal(manifest.start_url, "./?crew=1");
   assert.notEqual(manifest.id, JSON.parse(read("site/manifest.webmanifest")).id);
   assert.match(html, /id="billyManifest"/);
   assert.match(html, /data\.billySnap = "1"/);
@@ -24,7 +24,7 @@ test("BillySnap has a separate installable identity using the same origin and do
   assert.match(read("site/sw.js"), /"\.\/snap\.css"/);
 });
 
-test("BillySnap skips home, starts camera only after team auth, supports normal file import", () => {
+test("Billy Crew skips home, starts camera only after team auth, supports normal file import", () => {
   for (const id of ["snapStartCamera","snapLaunchUpload","snapCameraUpload"]) {
     assert.match(html, new RegExp('id="' + id + '"'));
     assert.match(simple, new RegExp('bind\\("' + id + '"'));

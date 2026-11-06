@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#050607">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Billy Crew">
+  <meta name="description" content="Install Billy Crew, the mobile document companion to BillyDPI.">
+  <title>Install Billy Crew | BillyDPI</title>
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <link rel="apple-touch-icon" href="./icon-192.png">
+  <link rel="manifest" href="./snap.webmanifest">
+  <link rel="stylesheet" href="./install.css?v=1">
+  <script src="./install.js?v=1" defer></script>
+</head>
+<body>
+  <header class="top">
+    <a href="./" class="home-link" aria-label="BillyDPI home">
+      <img src="./billydpi-logo.svg" alt="" width="30" height="30">
+      <span>BillyDPI</span>
+    </a>
+    <span class="top-label">MOBILE COMPANION</span>
+  </header>
+  <main class="layout">
+    <div class="intro">
+      <span class="eyebrow">BILLY / CREW</span>
+      <h1>Paperwork, on the go.</h1>
+      <p>Capture a document, review it, and continue through Billy's familiar workflow. No app store required.</p>
+    </div>
+    <section class="installer" aria-label="Billy Crew installation">
+      <div class="product">
+        <div class="product-icon"><img src="./billydpi-logo.svg" alt="" width="42" height="42"></div>
+        <div><h2>Billy Crew</h2><p>Official BillyDPI companion</p></div>
+      </div>
+      <div class="detector">
+        <span id="detectedLabel">Checking your device...</span>
+        <label for="platformChoice">Other device?</label>
+        <select id="platformChoice" aria-label="Change your device type">
+          <option value="auto">Auto detect</option>
+          <option value="ios">iPhone / iPad</option>
+          <option value="android">Android / Samsung</option>
+          <option value="huawei">Huawei</option>
+          <option value="desktop">Windows / macOS / Linux</option>
+        </select>
+      </div>
+      <section id="desktopGuide" class="guide" hidden aria-label="Install on phone using QR code">
+        <div id="qrCode" class="qr" role="img" aria-label="QR code linking to the Billy Crew installation page"></div>
+        <h3>Scan with your phone.</h3>
+        <p>Open your phone's camera, scan this code and follow the instructions shown for your device.</p>
+        <a id="qrTarget" href="https://razvanjuncu.github.io/billy/install.html" class="qr-address">razvanjuncu.github.io/billy/install.html</a>
+        <button id="copyLink" type="button" class="secondary">Copy installation link</button>
+        <p class="fine">This QR code contains only the public installation address. No passwords, personal details or access tokens.</p>
+      </section>
+      <section id="mobileGuide" class="guide" hidden aria-label="Install on this phone">
+        <div class="device-heading">
+          <span id="deviceIcon" aria-hidden="true">◉</span>
+          <div><h3 id="deviceTitle">Install on your phone</h3><p id="deviceSubtitle">Follow the steps below.</p></div>
+        </div>
+        <ol id="steps" class="steps"></ol>
+        <button id="installButton" type="button" class="primary" hidden>Install Billy Crew</button>
+        <a id="openCrew" class="primary" href="./?crew=1">Open Billy Crew</a>
+        <p id="installHelp" class="fine" aria-live="polite"></p>
+      </section>
+      <p id="feedback" class="feedback" role="status" aria-live="polite"></p>
+    </section>
+    <footer><span>One scanner. One Billy account.</span><span>Protected access required to process documents.</span></footer>
+  </main>
+</body>
+</html>

@@ -1,4 +1,4 @@
-/* BillySnap: a separate installable capture entry, sharing BillyDPI's full workflow.
+/* Billy Crew: a separate installable capture entry, sharing BillyDPI's full workflow.
    No second document implementation, account store or upload endpoint. */
 .snap-brand,.snap-launch,.snap-camera-upload{display:none!important}
 html[data-billy-snap="1"] .full-brand{display:none!important}
@@ -47,3 +47,33 @@ html[data-billy-snap="1"] .snap-launch button:focus-visible{outline:2px solid #f
   html[data-billy-snap="1"] .snap-camera-upload{padding-bottom:max(8px,env(safe-area-inset-bottom))}
   html[data-billy-snap="1"] .snap-launch{min-height:360px}
 }
+
+/* Optional companion entry point on BillyDPI's normal home screen. */
+.crew-install-cta{
+  display:flex;align-items:center;gap:13px;
+  background:#1c1d1f;color:#f2f2f2;border-radius:12px;
+  text-decoration:none;width:min(430px,100%);min-height:70px;
+  padding:12px 16px;margin:0 auto 0;
+  transition:background-color 140ms ease;
+}
+.crew-install-cta:hover,.crew-install-cta:focus-visible{background:#292a2c}
+.crew-install-cta-icon{
+  display:grid;place-items:center;width:39px;height:39px;flex:none;
+  background:#333436;border-radius:10px
+}
+.crew-install-cta-icon svg{width:22px;height:22px;stroke:#fff;fill:none;stroke-width:1.7;stroke-linecap:round}
+.crew-install-cta-copy{display:flex;flex-direction:column;gap:3px;text-align:left;flex:1}
+.crew-install-cta-copy strong{font-size:13px;font-weight:670}
+.crew-install-cta-copy small{color:#aaa;font-size:11px}
+.crew-install-cta-chevron{font-size:19px;color:#aaa}
+html[data-billy-snap="1"] .crew-install-cta{display:none!important}
+@media(max-width:720px){.crew-install-cta{min-height:64px;padding:10px 14px}}
+
+/* Installation does not require signing in to the full BillyDPI website first. */
+.crew-auth-install-link{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  margin-top:14px;background:#1d1e20;border-radius:10px;padding:14px 16px;
+  color:#ddd;text-decoration:none;font-size:12px}
+.crew-auth-install-link strong{font-size:12px;color:#fff;font-weight:680}
+.crew-auth-install-link:hover{background:#292a2c}
+html[data-billy-snap="1"] .crew-auth-install-link{display:none!important}
+@media(max-width:380px){.crew-auth-install-link{flex-direction:column;align-items:flex-start}}
