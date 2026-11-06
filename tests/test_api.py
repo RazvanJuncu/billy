@@ -29,6 +29,10 @@ class TestAPI(unittest.TestCase):
         self.assertEqual(result.status_code, 200)
         self.assertEqual(result.json()["pages"][0]["markdown"], "sample")
 
+    def test_rejects_untrusted_origin_before_inference(self):
+        result = client.post("/api/parse", files={"file": ("invoice.pdf", b"stub")}, headers={"Origin": "https://untrusted.example"})
+        self.assertEqual(result.status_code, 403)
+
     def test_cors_allowed_host(self):
         r = client.options("/api/parse", headers={
             "Origin": "https://razvanjuncu.github.io",
