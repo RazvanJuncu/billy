@@ -2,164 +2,247 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f6f8fc">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#080b0d">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Billy">
+  <meta name="description" content="Billy Document Studio — capture, straighten and read invoices.">
+  <title>Billy — Document Studio</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icon-192.png">
-  <meta name="description" content="Billy — invoice scanning, readable and structured.">
-  <title>Billy — Your invoices, decoded.</title>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <link rel="stylesheet" href="./styles.css">
   <link rel="stylesheet" href="./brand.css">
   <script src="./perspective.js" defer></script>
   <script src="./scanner.js" defer></script>
   <script src="./app.js" defer></script>
+  <script src="./workspace.js" defer></script>
 </head>
-<body>
-  <header class="topbar">
-    <div class="topbar-inner">
-      <a class="identity" href="./" aria-label="Billy home">
-        <span class="logo">b<span>.</span></span>
-        <span class="wordmark">billy<span>.</span></span>
-        <span class="header-divider"></span>
-        <span class="product-name">DOCUMENT STUDIO</span>
-      </a>
-      <div class="header-right">
-        <span class="version">PREVIEW 0.3</span>
-        <a class="github-link" href="https://github.com/RazvanJuncu/billy" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
-      </div>
+<body data-view="capture">
+<div class="studio-app" id="studioApp">
+  <aside class="studio-rail" aria-label="Tools">
+    <div class="studio-rail-brand" aria-label="Billy" title="Billy"><span>b</span><i>.</i></div>
+    <div class="rail-toolbox" role="group" aria-label="Workspace tools">
+      <button id="railCapture" class="rail-tool is-active" type="button" aria-label="Document workspace" title="Document workspace">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h7l4.5 4.5v12.5H7z"/><path d="M14 3.5V8h4.5M10 12.5h5M10 16h5"/></svg>
+      </button>
+      <button id="railCamera" class="rail-tool" type="button" aria-label="Open camera" title="Open camera">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h4l2-2h6l2 2h4v12H3z"/><circle cx="12" cy="13" r="4"/></svg>
+      </button>
+      <button id="railImport" class="rail-tool" type="button" aria-label="Import photo" title="Import photo">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><circle cx="9" cy="9" r="1.6"/><path d="m5 17 5-5 3 3 2-2 4 4"/></svg>
+      </button>
+      <span class="rail-divider" aria-hidden="true"></span>
+      <button id="railReview" class="rail-tool" type="button" aria-label="Review extracted document" title="Review extracted document">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3.5h14v17H5zM9 9h6M9 13h6M9 17h4"/></svg>
+      </button>
     </div>
-  </header>
-  <main class="shell">
-    <section class="intro">
-      <div class="eyebrow"><span class="eyebrow-line"></span> BILLY / DOCUMENT STUDIO</div>
-      <h1>Paper, <span>decoded.</span></h1>
-      <p>From paper to clarity. Capture a document, straighten it, and extract structured text when your OCR engine is connected.</p>
-    </section>
-    <nav class="workflow-steps" aria-label="Document scanning workflow">
-      <div class="workflow-step is-current" data-stage="0" aria-current="step"><span class="step-number">01</span><span class="step-title">Capture</span></div>
-      <div class="workflow-step" data-stage="1"><span class="step-number">02</span><span class="step-title">Straighten</span></div>
-      <div class="workflow-step" data-stage="2"><span class="step-number">03</span><span class="step-title">Extract</span></div>
-      <div class="workflow-step" data-stage="3"><span class="step-number">04</span><span class="step-title">Review</span></div>
-    </nav>
-
-
-    <section class="workspace" aria-label="Invoice reader workspace">
-      <div class="panel source-panel">
-        <div class="panel-header"><div><div class="section-index">YOUR WORKSPACE / 01</div><h2>Capture a document</h2></div><span class="small-tag">INPUT</span></div>
-        <p class="panel-intro">Take a photo or bring in a file. Billy handles the perspective.</p>
-        <div class="capture-row">
-          <button class="camera-button" id="scanOpenCamera" type="button"><span class="camera-glyph" aria-hidden="true">◉</span> Capture document</button>
-          <button class="camera-button secondary" id="scanImportPhoto" type="button">Choose photo</button>
-          <input type="file" id="nativeGallery" accept="image/*,.heic,.heif" hidden>
-          <input type="file" id="nativeCapture" accept="image/*" capture="environment" hidden>
-        </div>
-        <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Choose or drop an invoice">
-          <input type="file" id="filePicker" accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,.bmp,application/pdf,image/*" hidden>
-          <div id="emptySource" class="empty-source">
-            <div class="upload-mark">↑</div>
-            <h3>Choose a PDF or image</h3>
-            <p>or <span class="link-accent">browse your files</span></p>
-            <div class="filetypes">PDF &nbsp;·&nbsp; JPG &nbsp;·&nbsp; PNG &nbsp;·&nbsp; TIFF &nbsp;·&nbsp; BMP</div>
-            <div class="size-hint">Up to 20 MiB per document</div>
-          </div>
-          <div id="sourcePreview" class="source-preview" hidden></div>
-        </div>
-        <div class="file-row" id="fileRow" hidden>
-          <div class="file-icon">DOC</div>
-          <div class="file-details"><strong id="filename"></strong><span id="filesize"></span></div>
-          <button id="fixPerspective" class="text-button" type="button" hidden>Fix corners</button>
-          <button id="replaceButton" class="text-button" type="button">Replace</button>
-        </div>
-        <div class="panel-actions">
-          <button id="scanButton" class="primary-button" type="button" disabled><span id="scanLabel">Select a document first</span><span aria-hidden="true">→</span></button>
-          <p class="scan-hint" id="ocrHint">Capture and straighten on your device. Text extraction needs an OCR connection.</p>
-        </div>
-        <div class="statusbar">
-      <div class="engine-line">
-        <span id="statusDot" class="status-dot"></span>
-        <span class="engine-copy"><strong id="statusText">Scanner ready · OCR not connected</strong>
-        <span class="engine-sublabel">Optional text extraction</span></span>
-      </div>
-      <details class="settings" id="settings">
-        <summary>OCR settings <span aria-hidden="true">⌄</span></summary>
-        <div class="settings-body">
-          <label for="endpoint">PaddleOCR server URL</label>
-          <div class="settings-control"><input id="endpoint" type="url" spellcheck="false" placeholder="https://your-ocr-server.example" autocomplete="url"><button id="connectButton" type="button">Connect</button></div>
-          <p id="engineHelp">On iPhone, <code>127.0.0.1</code> refers to the phone itself. To extract text with PaddleOCR, Billy needs a separate HTTPS server. Camera scanning and perspective correction work without one. Files are only uploaded after you explicitly start OCR.</p>
-        </div>
-      </details>
+    <div class="rail-bottom">
+      <button id="railEngine" class="rail-tool" type="button" aria-label="Engine settings" title="Engine settings">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v2m0 15v2M2.5 12h2m15 0h2M5.3 5.3l1.5 1.5m10.4 10.4 1.5 1.5M18.7 5.3l-1.5 1.5M6.8 17.2l-1.5 1.5"/></svg>
+      </button>
+      <span class="rail-version">0.4</span>
     </div>
+  </aside>
 
-        <div id="notification" class="notification" role="status" aria-live="polite" hidden></div>
-        <div class="muted-hint"><span aria-hidden="true">◈</span> Local-first scanning · Documents are never uploaded to GitHub.</div>
+  <div class="studio-shell">
+    <header class="studio-header">
+      <div class="studio-location">
+        <div class="mobile-wordmark">billy<span>.</span></div>
+        <div class="location-path"><span>BILLY</span><span class="path-slash">/</span><strong>DOCUMENT STUDIO</strong></div>
+        <p>Capture workspace</p>
       </div>
+      <div class="studio-header-actions">
+        <span class="session-badge"><span class="session-dot"></span>LOCAL SESSION</span>
+        <button id="topNew" class="new-scan-control" type="button" aria-label="New scan"><span>＋</span> New scan</button>
+        <a class="repo-control" href="https://github.com/RazvanJuncu/billy" title="GitHub repository" target="_blank" rel="noopener noreferrer" aria-label="Open Billy on GitHub">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 19c-4 1-4-2-6-2m12 5v-3.5c0-1 .2-1.5-.5-2 4-.5 6-2 6-6a5 5 0 0 0-1.4-3.5c.2-1 0-2.1-.5-3.1-1.2 0-2.5.8-3.2 1.5a12 12 0 0 0-6.8 0C6.8 4.7 5.5 3.9 4.3 3.9c-.5 1-.7 2.1-.5 3.1A5 5 0 0 0 2.5 10c0 4 2 5.5 6 6-.7.5-.5 1-.5 2V22"/></svg>
+        </a>
+      </div>
+    </header>
 
-      <div class="panel result-panel">
-        <div class="panel-header"><div><div class="section-index">YOUR WORKSPACE / 02</div><h2>Review document</h2></div><span class="small-tag blue-tag">OUTPUT</span></div>
-        <div class="result-toolbar" id="resultToolbar" hidden>
-          <div class="tab-row" role="tablist" aria-label="Result format">
-            <button type="button" class="tab active" data-tab="document" role="tab" aria-selected="true">Document</button>
-            <button type="button" class="tab" data-tab="markdown" role="tab" aria-selected="false">Markdown</button>
-            <button type="button" class="tab" data-tab="json" role="tab" aria-selected="false">JSON</button>
+    <div class="studio-workspace">
+      <main class="studio-stage" id="workspaceStage">
+        <div class="stage-topbar">
+          <div class="stage-label"><span class="stage-indicator"></span><span id="stageEyebrow">WORKSPACE</span><span class="stage-separator">/</span><strong id="stageDocumentName">UNTITLED DOCUMENT</strong></div>
+          <div class="view-switch" role="group" aria-label="Workspace view">
+            <button id="desktopSource" type="button" class="view-tab is-active" aria-pressed="true">Source</button>
+            <button id="desktopReview" type="button" class="view-tab" aria-pressed="false">Extracted</button>
           </div>
-          <select id="pagePicker" aria-label="Select document page"></select>
         </div>
-        <div class="result-body" id="resultBody">
-          <div class="output-placeholder" id="outputPlaceholder">
-            <div class="document-illustration"><div class="doc-top"></div><div class="doc-line long"></div><div class="doc-line"></div><div class="doc-grid"><i></i><i></i><i></i><i></i><i></i><i></i></div><span class="star">✳</span></div>
-            <h3>From image to information.</h3>
-            <p>Once text extraction is connected, the document and its tables will appear here for review.</p>
-          </div>
-          <div id="formattedOutput" class="formatted-output" hidden></div>
-          <pre id="rawOutput" class="raw-output" hidden></pre>
-        </div>
-        <div id="outputFooter" class="output-footer" hidden>
-          <div id="summaryText" class="summary-text"></div>
-          <div class="export-row"><button type="button" id="downloadMd" class="outline-button">↓ Markdown</button><button type="button" id="downloadJson" class="outline-button">↓ JSON</button></div>
-        </div>
-      </div>
-    </section>
 
-    <div class="product-note"><span class="note-icon">↗</span><span>Capture locally. Review before you trust. Keep full control of your documents.</span></div>
-  </main>
-  <div id="scannerOverlay" class="scanner-overlay" role="dialog" aria-modal="true" aria-labelledby="scannerHeading" hidden>
-    <div class="scanner-frame">
-      <div class="scanner-header">
-        <div><div class="section-index">BILLY / SCANNER</div><h2 id="scannerHeading">Capture document</h2></div>
-        <button id="scannerClose" class="scanner-close" aria-label="Close scanner" type="button">×</button>
-      </div>
-      <div id="scanLive" class="scan-live" hidden>
-        <div class="video-frame">
-          <video id="scanVideo" autoplay muted playsinline aria-label="Live camera preview"></video>
-          <div class="camera-frame-guide" aria-hidden="true"></div>
+        <section class="source-panel panel" id="sourcePanel" aria-label="Document canvas">
+          <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Choose or drop an invoice">
+            <input type="file" id="filePicker" accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,.bmp,application/pdf,image/*" hidden>
+            <div id="emptySource" class="empty-source">
+              <div class="scan-target" aria-hidden="true">
+                <div class="scan-corner tl"></div><div class="scan-corner tr"></div><div class="scan-corner br"></div><div class="scan-corner bl"></div>
+                <div class="scan-document-glyph"><span></span><span></span><span></span><span></span></div>
+              </div>
+              <div class="surface-kicker">NO DOCUMENT LOADED</div>
+              <h2>Ready to capture.</h2>
+              <p>Photograph a document or drop a file into the workspace.</p>
+              <div class="surface-format">PDF &nbsp; · &nbsp; JPG &nbsp; · &nbsp; PNG &nbsp; · &nbsp; TIFF</div>
+            </div>
+            <div id="sourcePreview" class="source-preview" hidden></div>
+          </div>
+          <div class="source-controls">
+            <div class="capture-row">
+              <button class="camera-button" id="scanOpenCamera" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h4l2-2h6l2 2h4v12H3z"/><circle cx="12" cy="13" r="4"/></svg>
+                Capture document
+              </button>
+              <button class="camera-button secondary" id="scanImportPhoto" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="2"/><path d="m5 17 4.5-5 3.5 3 2-2 4 4"/></svg>
+                Import photo
+              </button>
+              <input type="file" id="nativeGallery" accept="image/*,.heic,.heif" hidden>
+              <input type="file" id="nativeCapture" accept="image/*" capture="environment" hidden>
+            </div>
+            <div class="file-row" id="fileRow" hidden>
+              <div class="file-icon">DOC</div>
+              <div class="file-details"><strong id="filename"></strong><span id="filesize"></span></div>
+              <button id="fixPerspective" class="text-button" type="button" hidden>Adjust corners</button>
+              <button id="replaceButton" class="text-button" type="button">Replace</button>
+            </div>
+            <div class="mobile-file-actions" id="mobileFileActions" hidden>
+              <button id="mobileFixButton" type="button">Adjust corners</button>
+              <button id="mobileReadButton" type="button">Extract text <span>↗</span></button>
+            </div>
+            <div id="notification" class="notification" role="status" aria-live="polite" hidden></div>
+          </div>
+        </section>
+
+        <section class="result-panel panel" id="resultPanel" aria-label="Document text review">
+          <div class="result-panel-head"><strong>EXTRACTED DOCUMENT</strong><span>READ-ONLY PREVIEW</span></div>
+          <div class="result-toolbar" id="resultToolbar" hidden>
+            <div class="tab-row" role="tablist" aria-label="Result format">
+              <button type="button" class="tab active" data-tab="document" role="tab" aria-selected="true">Formatted</button>
+              <button type="button" class="tab" data-tab="markdown" role="tab" aria-selected="false">Markdown</button>
+              <button type="button" class="tab" data-tab="json" role="tab" aria-selected="false">JSON</button>
+            </div>
+            <select id="pagePicker" aria-label="Select document page"></select>
+          </div>
+          <div class="result-body" id="resultBody">
+            <div class="output-placeholder" id="outputPlaceholder">
+              <div class="output-symbol" aria-hidden="true"><svg viewBox="0 0 80 94"><path d="M15 3h32l17 17v70H15z"/><path d="M47 3v17h17M26 35h28M26 46h28M26 57h19M26 69h12"/></svg></div>
+              <div class="surface-kicker">NOT PROCESSED</div>
+              <h3>No extracted text yet.</h3>
+              <p>Connect the PaddleOCR engine to reconstruct text and tables from your scan. Nothing has been sent to a server.</p>
+              <button id="reviewConnect" type="button" class="quiet-action">Open OCR settings <span>↗</span></button>
+            </div>
+            <div id="formattedOutput" class="formatted-output" hidden></div>
+            <pre id="rawOutput" class="raw-output" hidden></pre>
+          </div>
+          <div id="outputFooter" class="output-footer" hidden>
+            <div id="summaryText" class="summary-text"></div>
+            <div class="export-row">
+              <button type="button" id="downloadMd" class="outline-button">↓ Markdown</button>
+              <button type="button" id="downloadJson" class="outline-button">↓ JSON</button>
+            </div>
+          </div>
+        </section>
+
+        <div class="stage-bottom">
+          <span><span class="fine-dot"></span> CAMERA &amp; PERSPECTIVE RUN ON DEVICE</span>
+          <span>DOCUMENT ENGINE / v0.4</span>
         </div>
-        <div class="live-controls">
-          <button id="scannerNativeCapture" class="outline-button" type="button">Use native camera</button>
-          <button id="scanCapture" class="camera-shutter" type="button" aria-label="Capture document"><span></span></button>
-          <span class="shutter-spacer"></span>
-        </div>
-      </div>
-      <div id="scanEditor" class="scan-editor" hidden>
-        <div id="scanCanvasWrap" class="scan-canvas-wrap"><canvas id="scanCanvas" aria-label="Document preview. Drag blue crop corners to match the page."></canvas></div>
-        <div class="scan-tool-row">
-          <button id="scanAuto" class="scanner-tool" type="button">Auto-detect</button>
-          <button id="scanReset" class="scanner-tool" type="button">Reset corners</button>
-          <button id="scanRotate" class="scanner-tool" type="button">Rotate 90°</button>
-        </div>
-        <div class="scan-actions">
-          <button id="scanUseOriginal" class="outline-button" type="button">Skip crop</button>
-          <button id="scanSave" class="outline-button" type="button">Save image</button>
-          <button id="scanApply" class="primary-button" type="button">Use this scan →</button>
-        </div>
-        <button id="scanRetake" class="scanner-retake" type="button">Retake photo</button>
-      </div>
-      <p id="scanMessage" class="scan-message" role="status" aria-live="polite"></p>
+      </main>
+
+      <aside class="studio-inspector" id="studioInspector" aria-label="Document controls">
+        <div class="inspector-top"><div><span class="micro-title">CONTROL CENTER</span><h2>Document tools</h2></div><span class="inspector-icon" aria-hidden="true">⌘</span></div>
+
+        <section class="inspector-section workflow-section" aria-label="Document workflow">
+          <div class="inspector-label"><span>WORKFLOW</span><span>01 — 04</span></div>
+          <div class="workflow-steps" aria-label="Document processing progress">
+            <div class="workflow-step is-current" data-stage="0" aria-current="step"><span class="step-number">01</span><span class="step-title">Capture</span></div>
+            <div class="workflow-step" data-stage="1"><span class="step-number">02</span><span class="step-title">Straighten</span></div>
+            <div class="workflow-step" data-stage="2"><span class="step-number">03</span><span class="step-title">Extract</span></div>
+            <div class="workflow-step" data-stage="3"><span class="step-number">04</span><span class="step-title">Review</span></div>
+          </div>
+        </section>
+
+        <section class="inspector-section engine-section" aria-label="OCR engine">
+          <div class="inspector-label"><span>DOCUMENT ENGINE</span><span>PADDLE / V3</span></div>
+          <div class="statusbar">
+            <div class="engine-line">
+              <span id="statusDot" class="status-dot offline"></span>
+              <div class="engine-copy">
+                <strong id="statusText">Scanner ready · OCR not connected</strong>
+                <span class="engine-sublabel">Optional text extraction</span>
+              </div>
+            </div>
+          </div>
+          <div class="panel-actions">
+            <button id="scanButton" class="primary-button" type="button" disabled><span id="scanLabel">Select a document first</span><span aria-hidden="true">→</span></button>
+            <p class="scan-hint" id="ocrHint">Capture and straighten on this device. Connect OCR when you're ready to extract text.</p>
+          </div>
+          <details class="settings" id="settings">
+            <summary>Configure OCR engine <span aria-hidden="true">⌄</span></summary>
+            <div class="settings-body">
+              <label for="endpoint">PaddleOCR server URL</label>
+              <div class="settings-control"><input id="endpoint" type="url" spellcheck="false" placeholder="https://your-ocr-server.example" autocomplete="url"><button id="connectButton" type="button">Connect</button></div>
+              <p id="engineHelp">The public site cannot run PaddleOCR itself. On an iPhone, <code>127.0.0.1</code> is the phone, not your computer. Use a secured HTTPS OCR endpoint. Files are sent only after you choose to extract text.</p>
+            </div>
+          </details>
+        </section>
+        <section class="inspector-section precision-section">
+          <div class="inspector-label"><span>DOCUMENT INTEGRITY</span></div>
+          <div class="precision-row"><span class="precision-icon">⌗</span><div><strong>Perspective correction</strong><small>Runs locally · Manual corners supported</small></div></div>
+          <div class="precision-row"><span class="precision-icon">◎</span><div><strong>Original always visible</strong><small>Verify figures before exporting</small></div></div>
+        </section>
+        <div class="inspector-bottom"><span class="fine-dot"></span> LOCAL-FIRST WORKSPACE</div>
+      </aside>
     </div>
   </div>
-  <footer class="footer"><span>billy<span class="accent-dot">.</span> · Paper, decoded.</span><span>PaddleOCR-powered when connected · <a href="https://github.com/RazvanJuncu/billy" target="_blank" rel="noopener noreferrer">Source ↗</a></span></footer>
+</div>
+
+<nav class="mobile-dock" aria-label="Mobile workspace tabs">
+  <button id="mobileCaptureTab" class="mobile-tab is-active" type="button" aria-current="page">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h7l4.5 4.5v12.5H7zM14 3.5V8h4.5M10 12h5M10 16h5"/></svg><span>Capture</span>
+  </button>
+  <button id="mobileReviewTab" class="mobile-tab" type="button">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3.5" width="14" height="17" rx="1"/><path d="M9 9h6M9 13h6M9 17h4"/></svg><span>Review</span>
+  </button>
+  <button id="mobileEngineTab" class="mobile-tab" type="button">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v2m0 15v2M2.5 12h2m15 0h2M5.3 5.3l1.5 1.5m10.4 10.4 1.5 1.5M18.7 5.3l-1.5 1.5M6.8 17.2l-1.5 1.5"/></svg><span>Engine</span>
+  </button>
+</nav>
+
+<div id="scannerOverlay" class="scanner-overlay" role="dialog" aria-modal="true" aria-labelledby="scannerHeading" hidden>
+  <div class="scanner-frame">
+    <div class="scanner-header">
+      <div><div class="section-index">BILLY / SCANNER</div><h2 id="scannerHeading">Capture document</h2></div>
+      <button id="scannerClose" class="scanner-close" aria-label="Close scanner" type="button">×</button>
+    </div>
+    <div id="scanLive" class="scan-live" hidden>
+      <div class="video-frame">
+        <video id="scanVideo" autoplay muted playsinline aria-label="Live camera preview"></video>
+        <div class="camera-frame-guide" aria-hidden="true"></div>
+      </div>
+      <div class="live-controls">
+        <button id="scannerNativeCapture" class="outline-button" type="button">Use native camera</button>
+        <button id="scanCapture" class="camera-shutter" type="button" aria-label="Capture document"><span></span></button>
+        <span class="shutter-spacer"></span>
+      </div>
+    </div>
+    <div id="scanEditor" class="scan-editor" hidden>
+      <div id="scanCanvasWrap" class="scan-canvas-wrap"><canvas id="scanCanvas" aria-label="Document preview. Drag blue crop corners to match the page."></canvas></div>
+      <div class="scan-tool-row">
+        <button id="scanAuto" class="scanner-tool" type="button">Auto-detect</button>
+        <button id="scanReset" class="scanner-tool" type="button">Reset corners</button>
+        <button id="scanRotate" class="scanner-tool" type="button">Rotate 90°</button>
+      </div>
+      <div class="scan-actions">
+        <button id="scanUseOriginal" class="outline-button" type="button">Skip crop</button>
+        <button id="scanSave" class="outline-button" type="button">Save image</button>
+        <button id="scanApply" class="primary-button" type="button">Use this scan →</button>
+      </div>
+      <button id="scanRetake" class="scanner-retake" type="button">Retake photo</button>
+    </div>
+    <p id="scanMessage" class="scan-message" role="status" aria-live="polite"></p>
+  </div>
+</div>
 </body>
 </html>

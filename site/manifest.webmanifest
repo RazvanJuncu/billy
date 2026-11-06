@@ -1,13 +1,13 @@
 {
   "id": "./",
-  "name": "Billy — Document Scanner",
+  "name": "Billy — Document Studio",
   "short_name": "Billy",
-  "description": "Capture, straighten and read invoices",
+  "description": "Capture, straighten and review invoices in a focused document workspace",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f6f8fc",
-  "theme_color": "#f6f8fc",
+  "background_color": "#080b0d",
+  "theme_color": "#080b0d",
   "orientation": "any",
   "icons": [
     {

@@ -1,42 +1,54 @@
-const test = require("node:test");
-const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const path = require("node:path");
-const read = (file) => fs.readFileSync(path.resolve(__dirname, "../", file), "utf8");
-
-test("Billy brand stylesheet is loaded after base UI styles", () => {
-  const html = read("site/index.html");
-  assert.ok(html.indexOf('href="./styles.css"') < html.indexOf('href="./brand.css"'));
-  assert.match(read("site/brand.css"), /--brand-blue:#326dcc/);
-  assert.match(read("site/brand.css"), /\.result-panel:not\(\.has-results\)\{display:none\}/);
+const test=require("node:test");
+const assert=require("node:assert/strict");
+const fs=require("node:fs");
+const path=require("node:path");
+const read=f=>fs.readFileSync(path.join(__dirname,"..",f),"utf8");
+const html=read("site/index.html");
+const css=read("site/brand.css");
+const js=read("site/workspace.js");
+test("Billy is a full-screen application shell rather than a marketing landing page",()=>{
+  for(const name of ["studio-app","studio-rail","studio-stage","studio-inspector","mobile-dock"]){
+    assert.ok(html.includes('class="'+name) || html.includes(" "+name),name);
+  }
+  assert.doesNotMatch(html,/<h1[^>]*>Your invoices/i);
+  assert.match(css,/--black:#050607/);
+  assert.match(css,/position:fixed;inset:0;display:grid/);
+  assert.match(css,/@media\(max-width:720px\)/);
 });
-
-test("Capture-first workflow has four ordered stages", () => {
-  const html = read("site/index.html");
-  for(const [index,label] of ["Capture","Straighten","Extract","Review"].entries()) {
+test("Original scan, OCR and editor hooks remain connected",()=>{
+  for(const id of ["scanOpenCamera","scanImportPhoto","dropzone","filePicker","nativeGallery","nativeCapture","fixPerspective","replaceButton","scanButton","endpoint","connectButton","statusDot","statusText","ocrHint","settings","notification","resultToolbar","formattedOutput","rawOutput","outputPlaceholder","resultBody","pagePicker","outputFooter","downloadMd","downloadJson","scanVideo","scanCanvas","scanCapture","scanAuto","scanReset","scanRotate","scanApply","scanSave","scanUseOriginal","scannerClose"]){
+    assert.match(html,new RegExp('id="'+id+'"'),"missing "+id);
+  }
+  assert.ok(html.indexOf('src="./perspective.js"')<html.indexOf('src="./scanner.js"'));
+  assert.ok(html.indexOf('src="./scanner.js"')<html.indexOf('src="./app.js"'));
+  assert.ok(html.indexOf('src="./app.js"')<html.indexOf('src="./workspace.js"'));
+});
+test("All desktop and mobile navigation controls are functional",()=>{
+  for(const id of ["railCapture","railCamera","railImport","railReview","railEngine","topNew","desktopSource","desktopReview","mobileCaptureTab","mobileReviewTab","mobileEngineTab","reviewConnect","mobileFixButton","mobileReadButton"]){
+    assert.match(html,new RegExp('id="'+id+'"'),"missing button "+id);
+    assert.ok(js.includes('bind("'+id+'"'),"missing handler "+id);
+  }
+  assert.match(js,/billy:document-loaded/);
+  assert.match(js,/billy:ocr-ready/);
+  const app=read("site/app.js");
+  assert.match(app,/dispatchEvent\(new CustomEvent\("billy:document-loaded"/);
+  assert.match(app,/dispatchEvent\(new CustomEvent\("billy:ocr-ready"/);
+});
+test("Workflow uses real state transitions and source can be revisited",()=>{
+  for(const [index,label] of ["Capture","Straighten","Extract","Review"].entries()){
     assert.match(html,new RegExp('data-stage="'+index+'"'));
     assert.match(html,new RegExp('step-title">'+label+'<'));
   }
-  assert.ok(html.indexOf('id="scanOpenCamera"') < html.indexOf('id="statusDot"'));
-  assert.ok(html.indexOf('id="scanOpenCamera"') < html.indexOf('id="resultToolbar"'));
-  assert.equal((html.match(/id="notification"/g)||[]).length,1);
+  assert.match(css,/body\[data-view="review"\] \.source-panel\{display:none\}/);
+  assert.match(js,/function showView\(view\)/);
+  assert.match(js,/showView\("capture"\)/);
+  assert.match(js,/showView\("review"\)/);
 });
-
-test("Scan and OCR states drive workflow instead of decorative steps", () => {
-  const app=read("site/app.js");
-  const scanner=read("site/scanner.js");
-  assert.match(app,/function setStage\(index\)/);
-  assert.match(app,/setStage\(2\)/);
-  assert.match(app,/setStage\(3\)/);
-  assert.match(app,/billy:scanner-stage/);
-  assert.match(scanner,/billy:scanner-stage/);
-  assert.match(app,/result-panel"\)\?\.classList\.add\("has-results"\)/);
-});
-
-test("Mobile design keeps scanner and OCR status non-obstructive", () => {
-  const css=read("site/brand.css");
-  assert.match(css,/@media\(max-width:600px\)/);
-  assert.match(css,/\.settings-body\{position:static/);
-  assert.match(css,/\.camera-button\{min-height:48px/);
-  assert.match(read("site/sw.js"),/"\.\/brand.css"/);
+test("iPhone PWA and local-only scanner remain intact",()=>{
+  assert.match(html,/apple-mobile-web-app-capable/);
+  assert.match(html,/manifest.webmanifest/);
+  assert.match(html,/capture="environment"/);
+  assert.match(css,/env\(safe-area-inset-bottom\)/);
+  assert.match(read("site/sw.js"),/"\.\/workspace.js"/);
+  assert.equal(JSON.parse(read("site/manifest.webmanifest")).display,"standalone");
 });

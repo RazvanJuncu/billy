@@ -51,10 +51,10 @@ function updateScanButton() {
     !state.file ? "Select a document first" :
     state.online ? "Scan invoice" : "Connect OCR to read text";
   $("ocrHint").textContent = !state.file
-    ? "Scan and straighten offline. Connect OCR only when you're ready to extract text."
+    ? "The scanner is ready. Start with the camera or choose a file."
     : state.online
-    ? "Your document is ready. Extract the text and review the result."
-    : "Document ready. Connect PaddleOCR to read its text; your scan stays on this device.";
+    ? "Document ready. Extraction preserves text and tables for your review."
+    : "Document ready. A connected OCR server is required for text recognition.";
   $("ocrHint").classList.toggle("ready", state.online);
   $("ocrHint").classList.toggle("need-engine", !state.online);
 }
@@ -158,6 +158,7 @@ function selectFile(file) {
   $("rawOutput").hidden = true;
   updateScanButton();
   showNotification("");
+  window.dispatchEvent(new CustomEvent("billy:document-loaded", {detail:{file}}));
 }
 
 function handlePhotoOrDocument(file) {
@@ -297,6 +298,7 @@ async function scanInvoice() {
   if (!state.file || state.busy) return;
   if (!state.online) {
     $("settings").open = true;
+    window.BillyWorkspace?.showView("engine");
     $("settings").scrollIntoView({behavior:"smooth",block:"nearest"});
     $("endpoint").focus({preventScroll:true});
     showNotification("The invoice photo is ready, but PaddleOCR is not connected. Connect an HTTPS OCR server above to extract its text.");
@@ -319,6 +321,7 @@ async function scanInvoice() {
     state.page = 0;
     state.tab = "document";
     renderResult();
+    window.dispatchEvent(new CustomEvent("billy:ocr-ready", {detail:{pageCount:responseBody.pages.length}}));
     showNotification("Scan complete. Please verify dates, amounts and VAT against the original invoice.");
   } catch (error) {
     showNotification("Could not scan this document: " + (error.message || "Connection error"), true);

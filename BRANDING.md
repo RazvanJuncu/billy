@@ -1,52 +1,44 @@
-# Billy — Brand and Interface Principles
+# Billy / Document Studio — interface direction v0.4
 
-## Brand promise
-**Billy. Paper, decoded.**
+Billy uses the **instrument-first philosophy of Glide**, not a marketing website theme.
 
-Billy turns uneven, imperfect paper into clean, reviewable documents. The name is playful; the interface is purposeful.
+## Reference: Glide's actual visual language
 
-## Borrowed philosophy (Glide)
+Glide is built around an uninterrupted work surface (map) with compact, purpose-built floating instruments. Its actual design tokens in \`RazvanJuncu/laneform/src/style.css\` are satin obsidian (#050607), panels (#0D1114), raised surfaces (#171C20), platinum (#E7EAED), silver (#C7CDD2), and steel (#7F8C96). Billy adopts this *environment* for paper/document handling.
 
-The UI should act as guidance, not a dashboard. One unmistakable next action, progressive disclosure, and quiet supporting information. Maintain a flat minimalist finish with carefully restrained borders and shadow; no gradients, glass, glow, or ornamental badges.
+## Interface layout
 
-## Core values
+- **Desktop:** 62px navigation rail on the left; document canvas in the center; 310px contextual control center on the right; compact topbar. Full-viewport, no hero and no dead dashboard cards.
+- **iPhone:** App-like full-screen work surface, dedicated document viewport and camera/import controls; three functional bottom tabs (Capture, Review, Engine); safe-area-aware layout.
+- **Document viewport:** original scan is always a visual artifact, not an upload form. Blank state uses an unobtrusive outline and miniature page; loaded state displays the real image or PDF.
+- **Processing inspector:** numbered Capture → Straighten → Extract → Review flow, connection status, OCR action, endpoint settings, integrity notes.
+- **Review mode:** source ↔ extracted tabs; blank review explicitly states that OCR is not connected, never inventing a successful result.
 
-1. **Clarity:** Capture → Straighten → Extract → Review, with an explicit active stage.
-2. **Control:** The camera and perspective correction run on-device. Users can adjust corners and inspect originals.
-3. **Precision:** Never imply successful OCR when the PaddleOCR backend is disconnected; require review of money values.
-4. **Calm:** Errors are informative and recoverable, not alarming. No red warning for an optional offline OCR engine.
-5. **Efficiency:** On iPhone, the camera is the obvious first action, visible without scrolling through a dashboard hero.
+## Visual principles
 
-## Design tokens
+1. Work surface is dominant; settings and controls contextual.
+2. Almost monochrome with muted neutral accents, low contrast borders and restrained shadows.
+3. Rounded 6–11px instruments; flat, no liquid glass, no kitsch, no glows.
+4. One solid platinum CTA at a time; contextual controls only when actionable.
+5. Important source-traceability and OCR constraints are explicit.
+6. Small technical labels provide structure without ornamental badges.
 
-| Role | Token | Hex |
-|---|---|---|
-| Primary text | Midnight ink | `#172B49` |
-| Primary interaction | Billy blue | `#326DCC` |
-| Subtle interactive fill | Soft blue | `#EAF1FD` |
-| App background | Paper mist | `#F6F8FB` |
-| Border | Cool gray | `#E3E9F1` |
-| Secondary text | Muted slate | `#6A7B91` |
+## Tokens
 
-System UI font stack (Inter when installed). No external font download is required. 9–14px card radii, 1px borders, short low-contrast shadows, generous desktop space but compact mobile actions.
+| Role | Value |
+|---|---|
+| Obsidian / app | \`#050607\` |
+| Panel | \`#0D1114\` |
+| Raised control | \`#171C20\` |
+| Platinum text / primary action | \`#E7EAED\` |
+| Silver | \`#C7CDD2\` |
+| Steel | \`#7F8C96\` |
+| Divider | \`rgba(199,205,210,.13)\` |
 
-## Mobile-first rules
+## Real functionality constraints
 
-- 1st screen: product name, short promise, four-stage progress line and camera/import actions.
-- Start action: **Capture document**. Second action: **Choose photo**. File-picker fallback remains inside the source area.
-- Camera flow: capture, adjust four corners, perspective flatten, save/use scan. OCR remains an optional next step.
-- Once a document is chosen, step **Extract** becomes current; on valid OCR output, **Review** becomes current.
-- The empty review panel is hidden on narrow screens until results exist. On desktop it can explain the forthcoming output.
-- Keep status in a subtle informational strip within the capture card; expanded OCR settings must never overlay the document.
+PaddleOCR remains a separate Python service. GitHub Pages only hosts the PWA shell. On iPhone, its loopback address is not the Windows PC; mobile OCR will require a secured HTTPS API. Scanning, manual crop and perspective correction run on-device, with no invented AI interpretations. The camera and OCR hooks must survive every styling refactor.
 
-## Copy guidelines
+## Next pass
 
-Prefer: “Capture a document”, “Adjust corners”, “Use this scan”, “Review document”. Reserve words like “endpoint”, “pipeline” or “inference” for diagnostic or setup sections.
-
-## Technical boundaries
-
-This design pass does **not** add a hosted OCR service. GitHub Pages is static. The iPhone cannot reach a PC over `127.0.0.1`; actual text extraction still requires a properly secured, reachable HTTPS PaddleOCR backend. Browser-based perspective correction is supported separately.
-
-## Future
-
-Document intelligence cards, confidence badges only for meaningful uncertainty, field-to-source highlighting, multi-page scans, and AI financial interpretation. Do not build these as decoration before they function.
+Hands-on iPhone screenshots, then calibration of image capture and document detection; finally a properly authenticated OCR service and field-level review.
