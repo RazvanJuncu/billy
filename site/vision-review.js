@@ -26,8 +26,8 @@ function render(result,endpoint,authHeaders){
  extractId=result.extraction_id;api=endpoint;getHeaders=authHeaders;approved=false;
  const root=$("formattedOutput");root.replaceChildren();root.hidden=false;root.classList.add("vision-review");
  const title=node("div","review-intro");
- title.append(node("span","review-eyebrow","BILLYDPI / VERIFIED DOCUMENT WORKFLOW"),node("h3","review-title",documentType==="fuel_release"?"Review Fuel Release":"Review extracted invoice"),node("p","review-note","Edit any field. The model's confidence is not calibrated; verify against the original."));
- const metadata=node("div","review-metadata");metadata.append(node("span","",result.model||"Vision AI"),node("span","","No automatic Excel writes"));title.appendChild(metadata);root.appendChild(title);
+ title.append(node("span","review-eyebrow","BILLYDPI / VERIFIED DOCUMENT WORKFLOW"),node("h3","review-title",documentType==="fuel_release"?"Review Fuel Release":"Review extracted invoice"),node("p","review-note","Verify and correct the extracted fields."));
+ root.appendChild(title);
  const warnings=result.validation_warnings||[];
  const warn=node("div","review-warnings");
  warn.append(node("strong","",warnings.length?warnings.length+" validation checks require review":"No validation warnings detected"),node("p","",warnings.join(" · ")||"This does not prove that extraction is correct. Check each field."));root.appendChild(warn);
@@ -59,7 +59,7 @@ function render(result,endpoint,authHeaders){
  }
  add.addEventListener("click",()=>{const items=documentType==="fuel_release"?draft.handwritten_entries:draft.lines;if(items.length>=100)return;const blank={};lineKeys.forEach(k=>blank[k[0]]=null);if(documentType==="fuel_release"){blank.label="Additional field";blank.legibility="uncertain";}items.push(blank);dirty();paint();});paint();
  const footer=node("section","review-approval");const label=node("label","review-confirm-label");checkbox=document.createElement("input");checkbox.type="checkbox";label.append(checkbox,node("span","","I checked every value and unclear handwritten entry against the original document."));footer.appendChild(label);
- approveButton=node("button","review-approve","Approve reviewed invoice");approveButton.type="button";approveButton.disabled=true;checkbox.addEventListener("change",()=>{approveButton.disabled=!checkbox.checked||approved;});
+ approveButton=node("button","review-approve","Approve document");approveButton.type="button";approveButton.disabled=true;checkbox.addEventListener("change",()=>{approveButton.disabled=!checkbox.checked||approved;});
  approveButton.addEventListener("click",async()=>{
   if(!checkbox.checked||approved)return;approveButton.disabled=true;approveButton.textContent="Saving approval…";
   try{
@@ -67,11 +67,16 @@ function render(result,endpoint,authHeaders){
    const resultBody=await response.json();
    if(!response.ok)throw Error(resultBody.detail||"Approval was not saved");
    approved=true;approveButton.textContent="Approved · record "+resultBody.approval_id;
-   notice.textContent="Saved to local pilot log. "+resultBody.correction_count+" field groups corrected. Excel not modified.";
+   notice.textContent="Approved. Company storage and Excel are not connected.";
    exports.hidden=false;
+   root.querySelectorAll(".review-grid input, .review-items input, .review-items select, .review-add-line, .line-remove").forEach(el=>{el.disabled=true;});
+   checkbox.disabled=true;
+   window.dispatchEvent(new CustomEvent("billy:document-approved",{
+     detail:{approvalId:resultBody.approval_id,documentType}
+   }));
   }catch(err){approveButton.textContent="Approve reviewed invoice";approveButton.disabled=!checkbox.checked;notice.textContent="Approval failed: "+(err.message||"Unknown error");}
  });
- footer.appendChild(approveButton);notice=node("p","review-approval-note","Approval saves the corrected invoice to the local pilot log, not Excel.");footer.appendChild(notice);
+ footer.appendChild(approveButton);notice=node("p","review-approval-note","Approval is required before moving to Upload.");footer.appendChild(notice);
  const exports=node("div","review-export");exports.hidden=true;exportPanel=exports;
  const csv=node("button","review-export-button","↓ Excel-compatible CSV");csv.type="button";csv.addEventListener("click",exportCSV);
  const json=node("button","review-export-button secondary","↓ Approved JSON");json.type="button";json.addEventListener("click",exportJSON);

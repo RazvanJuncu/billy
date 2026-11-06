@@ -6,10 +6,12 @@ test("BillyDPI has only two prominent home choices and a sequential document wor
   assert.match(html,/id="simpleNewDocument"[^>]*class="simple-choice"|id="simpleNewDocument" class="simple-choice"/);
   assert.match(html,/id="simpleUploadedDocuments"[^>]*class="simple-choice"/);
   for(const id of ["simpleCapture","simpleAddFiles","simpleContinue","simpleRunProcess",
-    "simpleDocumentsList","simpleBack","simpleExportCsv","simpleExportJson"]){
+    "simpleBack","simpleExportCsv","simpleExportJson"]){
     assert.match(html,new RegExp('id="'+id+'"'),id);
     assert.match(flow,new RegExp('bind\\("'+id+'"'),"Unbound "+id);
   }
+  assert.match(html,/id="simpleDocumentsList"/);
+  assert.match(flow,/\$\("simpleDocumentsList"\)/);
   assert.match(flow,/"new",\s*"uploaded",\s*"edit",\s*"process",\s*"review",\s*"upload"/);
   assert.match(flow,/billy:document-loaded/);
   assert.match(flow,/billy:ocr-ready/);
