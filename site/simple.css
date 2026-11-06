@@ -650,3 +650,84 @@ html[data-billy-mobile="1"] body.billy-functions-revealed .simple-reveal-functio
 @media(prefers-reduced-motion:reduce){
   html[data-billy-mobile="1"] .simple-home .simple-quick-snap{transition:none!important}
 }
+
+
+/* Upload New: tactile control using the supplied Billy scan mark. */
+html[data-billy-mobile="1"] body[data-billy-screen="home"] .studio-app .simple-home #simpleQuickSnap{
+  width:min(100%,342px)!important;
+  min-height:408px!important;
+  padding:27px 24px 25px!important;
+  gap:14px!important;
+  justify-content:center!important;
+  border:1px solid #363a40!important;
+  border-radius:24px!important;
+  background:#1d2024!important;
+  box-shadow:0 13px 33px rgba(0,0,0,.30),0 3px 9px rgba(0,0,0,.18)!important;
+  color:#f4f4f4!important;
+  cursor:pointer!important;
+  -webkit-tap-highlight-color:transparent;
+  user-select:none;
+  transition:background-color 150ms ease,box-shadow 150ms ease,
+    border-color 150ms ease,transform 150ms ease!important;
+}
+html[data-billy-mobile="1"] body[data-billy-screen="home"] .studio-app .simple-home #simpleQuickSnap:hover{
+  background:#272b30!important;
+  border-color:#4a5058!important;
+  opacity:1!important;
+}
+html[data-billy-mobile="1"] body[data-billy-screen="home"] .studio-app .simple-home #simpleQuickSnap:focus-visible{
+  outline:2px solid #cfd3d8!important;
+  outline-offset:4px!important;
+}
+html[data-billy-mobile="1"] body[data-billy-screen="home"] .studio-app .simple-home #simpleQuickSnap:active{
+  background:#292d32!important;
+  border-color:#5a616a!important;
+  transform:translateY(2px) scale(.985)!important;
+  box-shadow:0 4px 12px rgba(0,0,0,.22)!important;
+}
+html[data-billy-mobile="1"] .simple-home .simple-quick-art{
+  width:min(54vw,208px)!important;
+  height:auto!important;
+  max-width:100%;
+  object-fit:contain;
+  pointer-events:none;
+}
+html[data-billy-mobile="1"] .simple-home .simple-quick-label{
+  margin-top:4px;
+  font-size:clamp(29px,7vw,36px)!important;
+}
+html[data-billy-mobile="1"] .simple-quick-cta{
+  display:inline-flex;align-items:center;justify-content:center;
+  gap:11px;padding:10px 17px;
+  border-radius:999px;
+  background:#33373d;color:#e3e6ea;
+  font-size:12px;font-weight:650;letter-spacing:.015em;
+}
+html[data-billy-mobile="1"] .simple-quick-cta-arrow{
+  font-size:16px;line-height:1;font-weight:650;
+}
+html[data-billy-mobile="1"] body.billy-functions-revealed .studio-app .simple-home #simpleQuickSnap{
+  min-height:160px!important;width:100%!important;
+  padding:21px!important;
+  flex-direction:row!important;
+  justify-content:flex-start!important;
+  gap:19px!important;
+}
+html[data-billy-mobile="1"] body.billy-functions-revealed .simple-home .simple-quick-art{
+  width:86px!important;
+}
+html[data-billy-mobile="1"] body.billy-functions-revealed .simple-quick-cta{
+  display:none!important;
+}
+@media(max-width:380px){
+  html[data-billy-mobile="1"] body[data-billy-screen="home"] .studio-app .simple-home #simpleQuickSnap{
+    min-height:363px!important;
+    padding:23px 17px!important;
+  }
+  html[data-billy-mobile="1"] .simple-home .simple-quick-art{width:min(53vw,186px)!important}
+}
+@media(prefers-reduced-motion:reduce){
+  html[data-billy-mobile="1"] body[data-billy-screen="home"] .studio-app .simple-home #simpleQuickSnap{
+    transition:none!important;
+  }
+}
