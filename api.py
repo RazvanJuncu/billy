@@ -6,20 +6,22 @@ import threading
 from pathlib import Path
 from functools import lru_cache
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 from billy import __version__
 from billy.ocr import MAX_UPLOAD_BYTES, SUPPORTED_SUFFIXES, extract_document, make_pipeline
 
+ALLOWED_WEB_ORIGINS = {
+    "https://razvanjuncu.github.io",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+}
+
 app = FastAPI(title="Billy OCR API", version=__version__)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://razvanjuncu.github.io",
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=sorted(ALLOWED_WEB_ORIGINS),
     allow_credentials=False,
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type"],
@@ -45,7 +47,10 @@ def health():
 
 
 @app.post("/api/parse")
-def parse(file: UploadFile = File(...)):
+def parse(request: Request, file: UploadFile = File(...)):
+    origin = request.headers.get("origin")
+    if origin and origin not in ALLOWED_WEB_ORIGINS:
+        raise HTTPException(status_code=403, detail="Origin not allowed.")
     name = file.filename or "invoice"
     content = file.file.read(MAX_UPLOAD_BYTES + 1)
     if len(content) > MAX_UPLOAD_BYTES:
