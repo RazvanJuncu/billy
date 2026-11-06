@@ -66,7 +66,7 @@ async function connectEngine() {
     state.online = false;
     dot.className = "status-dot offline";
     label.textContent = "OCR engine offline";
-    showNotification("Start Billy's local Python server to scan invoices. See the README on GitHub for Windows installation instructions. " + (error.message || ""), true);
+    showNotification("OCR is offline. You can still use the camera, auto-detect paper edges and save a flattened scan on this device. PaddleOCR requires a separate engine.");
   }
   updateScanButton();
 }
@@ -116,6 +116,7 @@ function selectFile(file) {
   $("filename").textContent = file.name;
   $("filesize").textContent = (file.size / 1024 / 1024).toFixed(2) + " MiB";
   $("fileRow").hidden = false;
+  $("fixPerspective").hidden = extension === "pdf";
   $("resultToolbar").hidden = true;
   $("outputFooter").hidden = true;
   $("outputPlaceholder").hidden = false;
@@ -125,8 +126,17 @@ function selectFile(file) {
   showNotification("");
 }
 
+function handlePhotoOrDocument(file) {
+  if(!file) return;
+  const ext=(file.name.split(".").pop()||"").toLowerCase();
+  if (["jpg","jpeg","png","bmp","tif","tiff","heic","heif"].includes(ext) && window.BillyScanner) {
+    window.BillyScanner.editFile(file);
+  } else {
+    selectFile(file);
+  }
+}
 function fileInputHandler() {
-  selectFile($("filePicker").files[0]);
+  handlePhotoOrDocument($("filePicker").files[0]);
   $("filePicker").value = "";
 }
 
@@ -306,7 +316,7 @@ $("dropzone").addEventListener("dragleave", () => $("dropzone").classList.remove
 $("dropzone").addEventListener("drop", (event) => {
   event.preventDefault();
   $("dropzone").classList.remove("dragging");
-  selectFile(event.dataTransfer.files[0]);
+  handlePhotoOrDocument(event.dataTransfer.files[0]);
 });
 $("scanButton").addEventListener("click", scanInvoice);
 $("connectButton").addEventListener("click", connectEngine);
@@ -328,4 +338,10 @@ $("downloadJson").addEventListener("click", () => {
   if (state.result) downloadFile(JSON.stringify(state.result, null, 2), "billy-output.json", "application/json;charset=utf-8");
 });
 window.addEventListener("beforeunload", discardPreview);
+window.BillyScanner?.init({onUse: selectFile, getSource: () => state.file});
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  });
+}
 connectEngine();
