@@ -1,12 +1,10 @@
-/* BillyDPI / Progressive workflow, shared with Billy Crew.
+/* BillyDPI / Progressive workflow, shared on phone, tablet and desktop.
    Each action reveals only the next functional action. Nothing is uploaded to
    company storage or Excel until a real server-side connector is configured. */
 (() => {
   "use strict";
   const $ = id => document.getElementById(id);
   const body = document.body;
-  const snapMode = document.documentElement.dataset.billySnap === "1";
-  let snapCameraStarted = false;
   const screens = ["home", "new", "uploaded", "edit", "process", "review", "upload"];
   const names = {new:"New Document",uploaded:"Uploaded Documents",edit:"Edit Document",process:"Process Document",review:"Review Document",upload:"Upload Document"};
   const sessionFiles = [];
@@ -55,7 +53,7 @@
   }
 
   function showScreen(name) {
-    const next = snapMode && name === "home" ? "new" : (screens.includes(name) ? name : "home");
+    const next = screens.includes(name) ? name : "home";
     body.dataset.billyScreen = next;
     for (const section of screens) {
       const el = $("simple" + section.charAt(0).toUpperCase() + section.slice(1));
@@ -148,10 +146,11 @@
     window.BillyScanner?.startCamera?.();
   }
 
-  function startSnapOnce() {
-    if (!snapMode || snapCameraStarted || !window.BillyAccounts?.active?.()) return;
-    snapCameraStarted = true;
-    startSnapCamera();
+  // Intentionally transient: a refresh or relaunch returns to the one-button home.
+  function toggleRevealedFunctions() {
+    const revealed = body.classList.toggle("billy-functions-revealed");
+    $("simpleRevealFunctions").textContent = revealed ? "Hide functions" : "Reveal functions";
+    $("simpleRevealFunctions").setAttribute("aria-expanded", String(revealed));
   }
 
   function chooseSnapFile() {
@@ -170,6 +169,7 @@
   bind("simpleBack", goBack);
   bind("simpleNewDocument", () => showScreen("new"));
   bind("simpleQuickSnap", startSnapCamera);
+  bind("simpleRevealFunctions", toggleRevealedFunctions);
   bind("snapStartCamera", startSnapCamera);
   bind("snapLaunchUpload", chooseSnapFile);
   bind("snapCameraUpload", chooseSnapFile);
@@ -188,7 +188,7 @@
   bind("simpleReviewToUpload", () => { if (approved) showScreen("upload"); });
   bind("simpleNewFromUpload", () => {
     showScreen("new");
-    if (snapMode) startSnapCamera();
+    // Returning to the new-document menu never triggers the camera unexpectedly.
   });
   bind("simpleUploadedBackToHome", () => showScreen("home"));
 
@@ -227,7 +227,6 @@
   window.addEventListener("billy:account-ready",event => {
     chooseGreeting(String(event.detail?.firstName || "").trim().slice(0,32));
     if (body.dataset.billyScreen === "process") updateProcess();
-    startSnapOnce();
   });
   window.addEventListener("billy:document-approved",() => {
     approved = true;
@@ -236,8 +235,7 @@
     showScreen("upload");
   });
 
-  showScreen(snapMode ? "new" : "home");
-  startSnapOnce();
+  showScreen("home");
   if (window.BillyAccounts?.active?.()) {
     chooseGreeting(String(window.BillyAccounts.firstName?.() || "").trim().slice(0,32));
   }
