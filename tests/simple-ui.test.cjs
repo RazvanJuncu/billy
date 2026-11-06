@@ -2,7 +2,11 @@ const test=require("node:test"), assert=require("node:assert/strict"), fs=requir
 const read=file=>fs.readFileSync(path.join(__dirname,"..",file),"utf8");
 const html=read("site/index.html"),css=read("site/simple.css"),flow=read("site/simple.js");
 const app=read("site/app.js"),review=read("site/vision-review.js");
-test("BillyDPI has only two prominent home choices and a sequential document workflow",()=>{
+test("BillyDPI has a responsive Quick Snap action and sequential document workflow",()=>{
+  assert.match(html,/id="simpleQuickSnap"/);
+  assert.match(flow,/bind\("simpleQuickSnap", startSnapCamera\)/);
+  assert.match(css,/any-pointer:coarse/);
+  assert.match(css,/\.simple-home \.simple-choice-grid\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(html,/id="simpleNewDocument"[^>]*class="simple-choice"|id="simpleNewDocument" class="simple-choice"/);
   assert.match(html,/id="simpleUploadedDocuments"[^>]*class="simple-choice"/);
   for(const id of ["simpleCapture","simpleAddFiles","simpleContinue","simpleRunProcess",
