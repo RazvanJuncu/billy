@@ -20,6 +20,22 @@ test("Phones and tablets start with only the centered Upload New button and an o
   assert.doesNotMatch(flow,/localStorage\.setItem\("billy-functions-revealed"/);
 });
 
+test("Upload New uses the supplied scan logo, with obvious clickable feedback",()=>{
+  const artwork=read("site/upload-new-mark.svg");
+  const sw=read("site/sw.js");
+  assert.match(html, /src="\.\/upload-new-mark\.svg"/);
+  assert.doesNotMatch(html, /<svg class="simple-quick-art"/);
+  assert.match(artwork, /viewBox="0 0 320 320"/);
+  assert.match(artwork, /cx="134\.93"/);
+  assert.match(artwork, /cx="161\.81"/);
+  assert.match(html, /class="simple-quick-cta"[^>]*>Tap to scan/);
+  assert.match(css, /#simpleQuickSnap\{[\s\S]*?border:1px solid #363a40!important/);
+  assert.match(css, /box-shadow:0 13px 33px/);
+  assert.match(css, /#simpleQuickSnap:active\{/);
+  assert.match(css, /#simpleQuickSnap:focus-visible\{/);
+  assert.match(sw, /"\.\/upload-new-mark\.svg"/);
+});
+
 test("BillyDPI has a responsive Quick Snap action and sequential document workflow",()=>{
   assert.match(html,/id="simpleQuickSnap"/);
   assert.match(flow,/bind\("simpleQuickSnap", startSnapCamera\)/);
