@@ -17,7 +17,7 @@ from fastapi import FastAPI, File, Form, Depends, HTTPException, Request, Upload
 from fastapi.middleware.cors import CORSMiddleware
 
 from billy import __version__
-from billy.ocr import MAX_UPLOAD_BYTES, SUPPORTED_SUFFIXES, extract_document, make_pipeline
+from billy.ocr import MAX_UPLOAD_BYTES, SUPPORTED_SUFFIXES, extract_document as extract_ocr_document, make_pipeline
 from billy.vision import (
     MAX_VISION_BYTES, VisionProviderError, configured, extract_document, selected_model,
 )
@@ -73,7 +73,7 @@ def parse(request: Request, file: UploadFile = File(...), principal: Principal =
         raise HTTPException(status_code=400, detail="Unsupported file extension.")
     try:
         with _inference_lock:
-            result = extract_document(name, content, get_pipeline())
+            result = extract_ocr_document(name, content, get_pipeline())
         return result.json_data
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

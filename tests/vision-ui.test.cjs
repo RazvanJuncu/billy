@@ -11,7 +11,7 @@ test("Source, review, approval and exports are wired without client keys",()=>{
   assert.match(app,/\/api\/vision\/extract/);
   assert.match(app,/\/api\/vision\/health/);
   assert.match(review,/\/api\/vision\/approve/);
-  assert.match(review,/I verified the invoice values/);
+  assert.match(review,/I checked every value/);
   assert.match(review,/function exportCSV/);
   assert.match(review,/source_sha256/);
   assert.doesNotMatch(html,/GEMINI_API_KEY\s*=\s*[^<]/);

@@ -30,17 +30,29 @@ function render(result,endpoint,authHeaders){
  const metadata=node("div","review-metadata");metadata.append(node("span","",result.model||"Vision AI"),node("span","","No automatic Excel writes"));title.appendChild(metadata);root.appendChild(title);
  const warnings=result.validation_warnings||[];
  const warn=node("div","review-warnings");
- warn.append(node("strong","",warnings.length?warnings.length+" validation checks require review":"No arithmetic discrepancy detected"),node("p","",warnings.join(" · ")||"This does not prove that extraction is correct. Check each field."));root.appendChild(warn);
+ warn.append(node("strong","",warnings.length?warnings.length+" validation checks require review":"No validation warnings detected"),node("p","",warnings.join(" · ")||"This does not prove that extraction is correct. Check each field."));root.appendChild(warn);
  const grid=node("div","review-grid");
  fieldKeys.forEach(pair=>{const label=node("label","review-field");label.append(node("span","review-field-name",pair[1]),textbox(draft[pair[0]],v=>{draft[pair[0]]=v;}));grid.appendChild(label);});root.appendChild(grid);
- const heading=node("div","review-list-header");heading.appendChild(node("strong","",documentType==="fuel_release"?"Handwritten fields":"Invoice line items"));const add=node("button","review-add-line","+ Add line");add.type="button";heading.appendChild(add);root.appendChild(heading);
+ const heading=node("div","review-list-header");heading.appendChild(node("strong","",documentType==="fuel_release"?"Handwritten fields":"Invoice line items"));const add=node("button","review-add-line",documentType==="fuel_release"?"+ Add handwritten field":"+ Add line");add.type="button";heading.appendChild(add);root.appendChild(heading);
  const scroll=node("div","review-table-scroll");const table=node("table","review-items");const head=node("thead");const hrow=node("tr");lineKeys.forEach(x=>hrow.appendChild(node("th","",x[1])));hrow.appendChild(node("th","",""));head.appendChild(hrow);table.appendChild(head);
  const body=node("tbody");table.appendChild(body);scroll.appendChild(table);root.appendChild(scroll);
  function paint(){
    body.replaceChildren();
    (documentType==="fuel_release"?draft.handwritten_entries:draft.lines).forEach((line,index)=>{
      const tr=node("tr");
-     lineKeys.forEach(pair=>{const td=node("td");td.appendChild(textbox(line[pair[0]],v=>{line[pair[0]]=v;},pair[0]==="description"||pair[0]==="transcription"?"review-input review-description":"review-input review-numeric"));tr.appendChild(td);});
+     lineKeys.forEach(pair=>{
+       const td=node("td");
+       if(pair[0]==="legibility"){
+         const select=node("select","review-input review-numeric");
+         for(const value of ["clear","uncertain","illegible"]){
+           const opt=node("option","",value);opt.value=value;select.appendChild(opt);
+         }
+         select.value=line.legibility||"uncertain";
+         select.addEventListener("change",()=>{line.legibility=select.value;dirty();});
+         td.appendChild(select);
+       }else td.appendChild(textbox(line[pair[0]],v=>{line[pair[0]]=v;},pair[0]==="description"||pair[0]==="transcription"?"review-input review-description":"review-input review-numeric"));
+       tr.appendChild(td);
+     });
      const td=node("td");const remove=node("button","line-remove","×");remove.type="button";remove.setAttribute("aria-label","Remove line "+(index+1));remove.addEventListener("click",()=>{(documentType==="fuel_release"?draft.handwritten_entries:draft.lines).splice(index,1);dirty();paint();});td.appendChild(remove);tr.appendChild(td);body.appendChild(tr);
    });
    if(!(documentType==="fuel_release"?draft.handwritten_entries:draft.lines).length){const tr=node("tr");const td=node("td","empty-items","No fields extracted — add them manually if needed.");td.colSpan=lineKeys.length+1;tr.appendChild(td);body.appendChild(tr);}
