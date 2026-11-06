@@ -19,9 +19,9 @@ test("Original scan, OCR and editor hooks remain connected",()=>{
   for(const id of ["scanOpenCamera","scanImportPhoto","dropzone","filePicker","nativeGallery","nativeCapture","fixPerspective","replaceButton","scanButton","endpoint","connectButton","statusDot","statusText","ocrHint","settings","notification","resultToolbar","formattedOutput","rawOutput","outputPlaceholder","resultBody","pagePicker","outputFooter","downloadMd","downloadJson","scanVideo","scanCanvas","scanCapture","scanAuto","scanReset","scanRotate","scanApply","scanSave","scanUseOriginal","scannerClose"]){
     assert.match(html,new RegExp('id="'+id+'"'),"missing "+id);
   }
-  assert.ok(html.indexOf('src="./perspective.js"')<html.indexOf('src="./scanner.js"'));
-  assert.ok(html.indexOf('src="./scanner.js"')<html.indexOf('src="./app.js"'));
-  assert.ok(html.indexOf('src="./app.js"')<html.indexOf('src="./workspace.js"'));
+  assert.ok(html.indexOf('src="./perspective.js')<html.indexOf('src="./scanner.js'));
+  assert.ok(html.indexOf('src="./scanner.js')<html.indexOf('src="./app.js'));
+  assert.ok(html.indexOf('src="./app.js')<html.indexOf('src="./workspace.js'));
 });
 test("All desktop and mobile navigation controls are functional",()=>{
   for(const id of ["railCapture","railCamera","railImport","railReview","railEngine","topNew","desktopSource","desktopReview","mobileCaptureTab","mobileReviewTab","mobileEngineTab","reviewConnect","mobileFixButton","mobileReadButton"]){

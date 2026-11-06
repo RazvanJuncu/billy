@@ -72,8 +72,8 @@ test("PWA includes mobile camera, offline worker and proper PNG assets",()=>{
   assert.match(html,/id="scanCanvas"/);
   assert.match(html,/manifest.webmanifest/);
   assert.match(html,/apple-touch-icon/);
-  assert.ok(html.indexOf('src="./perspective.js"') < html.indexOf('src="./scanner.js"'));
-  assert.ok(html.indexOf('src="./scanner.js"') < html.indexOf('src="./app.js"'));
+  assert.ok(html.indexOf('src="./perspective.js') < html.indexOf('src="./scanner.js'));
+  assert.ok(html.indexOf('src="./scanner.js') < html.indexOf('src="./app.js'));
   const manifest=JSON.parse(fs.readFileSync(path.join(__dirname,"../site/manifest.webmanifest"),"utf8"));
   assert.equal(manifest.display,"standalone");
   for(const icon of ["icon-192.png","icon-512.png"]) {
