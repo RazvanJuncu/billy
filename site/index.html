@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="BillyDPI">
   <meta name="description" content="BillyDPI: Document Processing Intelligence. Capture, interpret and review invoices and Fuel Releases.">
   <title>BillyDPI</title>
-  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="manifest" id="billyManifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icon-192.png?v=0.7.0">
   <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=0.7.0">
   <link rel="stylesheet" href="./styles.css?v=0.4.1">
@@ -19,6 +19,7 @@
   <link rel="stylesheet" href="./document-type.css?v=0.6.0">
   <link rel="stylesheet" href="./simple.css?v=0.9.0">
   <link rel="stylesheet" href="./preloader.css?v=1.2.0">
+  <link rel="stylesheet" href="./snap.css?v=0.1.0">
   <script src="./perspective.js?v=0.4.1" defer></script>
   <script src="./scanner.js?v=0.4.1" defer></script>
   <script src="./vision-review.js?v=0.6.0" defer></script>
@@ -27,8 +28,19 @@
   <script src="./account-config.js?v=0.6.0" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
   <script src="./accounts.js?v=0.9.0" defer></script>
-  <script src="./simple.js?v=1.0.0" defer></script>
+  <script src="./simple.js?v=1.1.0" defer></script>
   <script src="./preloader.js?v=1.2.0" defer></script>
+  <script>
+    // A dedicated installable entry into the same BillyDPI document workflow.
+    (() => {
+      if (new URLSearchParams(location.search).get("snap") !== "1") return;
+      document.documentElement.dataset.billySnap = "1";
+      document.title = "BillySnap";
+      document.getElementById("billyManifest").href = "./snap.webmanifest";
+      document.querySelector('meta[name="apple-mobile-web-app-title"]').content = "BillySnap";
+      document.querySelector('meta[name="description"]').content = "BillySnap: capture, straighten, review and export documents through Billy.";
+    })();
+  </script>
 </head>
 <body data-view="capture" data-billy-screen="home" class="auth-locked">
 <div class="billy-splash" id="billySplash" role="status" aria-label="Loading BillyDPI">
@@ -120,9 +132,9 @@
     <header class="studio-header">
       <div class="studio-location">
         <button id="simpleHomeButton" class="simple-brand-button" type="button" aria-label="BillyDPI home">
-          <img src="./billydpi-logo.svg" alt="" width="30" height="30"><span>BillyDPI</span>
+          <img src="./billydpi-logo.svg" alt="" width="30" height="30"><span class="full-brand">BillyDPI</span><span class="snap-brand">BillySnap</span>
         </button>
-        <div class="mobile-wordmark"><img src="./billydpi-logo.svg" alt="" width="27" height="26"><span>BillyDPI</span></div>
+        <div class="mobile-wordmark"><img src="./billydpi-logo.svg" alt="" width="27" height="26"><span class="full-brand">BillyDPI</span><span class="snap-brand">BillySnap</span></div>
         <div class="location-path"><span>BILLYDPI</span><span class="path-slash">/</span><strong>DOCUMENT STUDIO</strong></div>
       </div>
       <div class="studio-header-actions">
@@ -173,6 +185,17 @@
         </section>
 
         <section class="simple-new simple-screen" id="simpleNew" aria-label="New document" hidden>
+          <div class="snap-launch" aria-label="BillySnap document capture">
+            <img src="./billydpi-logo.svg" alt="" width="64" height="64">
+            <h1>Ready to scan.</h1>
+            <p>Photograph your document, then continue through Billy's familiar workflow.</p>
+            <button id="snapStartCamera" class="snap-primary" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h4l2-2h6l2 2h4v12H3z"/><circle cx="12" cy="13" r="4"/></svg>
+              Open camera
+            </button>
+            <button id="snapLaunchUpload" class="snap-secondary" type="button">Upload file</button>
+            <small>PDF, JPG, PNG or WebP. Your team login is required.</small>
+          </div>
           <h1 class="simple-heading">New Document</h1>
           <div class="simple-choice-grid">
             <button class="simple-choice" id="simpleCapture" type="button">
@@ -400,7 +423,7 @@
 <div id="scannerOverlay" class="scanner-overlay" role="dialog" aria-modal="true" aria-labelledby="scannerHeading" hidden>
   <div class="scanner-frame">
     <div class="scanner-header">
-      <div><div class="section-index">BILLYDPI / SCANNER</div><h2 id="scannerHeading">Capture document</h2></div>
+      <div><div class="section-index"><span class="full-brand">BILLYDPI</span><span class="snap-brand">BILLYSNAP</span> / SCANNER</div><h2 id="scannerHeading">Capture document</h2></div>
       <button id="scannerClose" class="scanner-close" aria-label="Close scanner" type="button">×</button>
     </div>
     <div id="scanLive" class="scan-live" hidden>
@@ -413,6 +436,7 @@
         <button id="scanCapture" class="camera-shutter" type="button" aria-label="Capture document"><span></span></button>
         <span class="shutter-spacer"></span>
       </div>
+      <div class="snap-camera-upload"><button type="button" id="snapCameraUpload">Upload file instead</button></div>
     </div>
     <div id="scanEditor" class="scan-editor" hidden>
       <div id="scanCanvasWrap" class="scan-canvas-wrap"><canvas id="scanCanvas" aria-label="Document preview. Drag blue crop corners to match the page."></canvas></div>
