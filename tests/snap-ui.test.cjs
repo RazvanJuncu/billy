@@ -11,14 +11,14 @@ const accounts = read("site/accounts.js");
 const styles = read("site/snap.css");
 const manifest = JSON.parse(read("site/snap.webmanifest"));
 
-test("Billy Crew has a separate installable identity using the same origin and document studio", () => {
+test("Legacy Crew shortcuts use the single Billy application identity", () => {
   assert.equal(manifest.name, "Billy Crew");
   assert.equal(manifest.display, "standalone");
   assert.equal(manifest.start_url, "./?crew=1");
   assert.notEqual(manifest.id, JSON.parse(read("site/manifest.webmanifest")).id);
-  assert.match(html, /id="billyManifest"/);
+  assert.match(html, /id="billyManifest" href="\.\/manifest\.webmanifest"/);
   assert.match(html, /dataset\.billySnap = "1"/);
-  assert.match(html, /\.\/snap\.webmanifest/);
+  assert.doesNotMatch(html, /document\.getElementById\("billyManifest"\)\.href = "\.\/snap\.webmanifest"/);
   assert.match(styles, /data-billy-snap="1"/);
   assert.match(read("site/sw.js"), /"\.\/snap\.webmanifest"/);
   assert.match(read("site/sw.js"), /"\.\/snap\.css"/);
