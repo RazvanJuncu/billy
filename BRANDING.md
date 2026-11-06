@@ -1,4 +1,4 @@
-# Billy / Document Studio — interface direction v0.4
+# BillyDPI / Document Processing Intelligence — interface direction v0.7
 
 Billy uses the **instrument-first philosophy of Glide**, not a marketing website theme.
 
@@ -42,3 +42,7 @@ PaddleOCR remains a separate Python service. GitHub Pages only hosts the PWA she
 ## Next pass
 
 Hands-on iPhone screenshots, then calibration of image capture and document detection; finally a properly authenticated OCR service and field-level review.
+
+## BillyDPI logo
+
+The official mark is the supplied **two-offset-ellipses** black-and-white logo, manually traced into `site/billydpi-logo.svg` as separate `#billydpi-head` and `#billydpi-base` ellipse elements. It is white on a transparent background for the black application. These independent SVG elements can be animated later as a loading indicator without generating a different logo or introducing color. The browser favicon and installed app icons use a black field with the same white mark. The website remains the existing specialized instrument-style work surface, **not a marketing landing page**.

@@ -6,16 +6,16 @@
   <meta name="theme-color" content="#080b0d">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Billy">
-  <meta name="description" content="Billy Document Studio — capture, straighten and read invoices.">
-  <title>Billy — Document Studio</title>
+  <meta name="apple-mobile-web-app-title" content="BillyDPI">
+  <meta name="description" content="BillyDPI — Document Processing Intelligence. Capture, interpret and review invoices and Fuel Releases.">
+  <title>BillyDPI — Document Processing Intelligence</title>
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="apple-touch-icon" href="./icon-192.png">
-  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <link rel="apple-touch-icon" href="./icon-192.png?v=0.7.0">
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=0.7.0">
   <link rel="stylesheet" href="./styles.css?v=0.4.1">
-  <link rel="stylesheet" href="./brand.css?v=0.4.1">
+  <link rel="stylesheet" href="./brand.css?v=0.7.0">
   <link rel="stylesheet" href="./review.css?v=0.5.0">
-  <link rel="stylesheet" href="./accounts.css?v=0.6.0">
+  <link rel="stylesheet" href="./accounts.css?v=0.7.0">
   <link rel="stylesheet" href="./document-type.css?v=0.6.0">
   <script src="./perspective.js?v=0.4.1" defer></script>
   <script src="./scanner.js?v=0.4.1" defer></script>
@@ -27,9 +27,15 @@
   <script src="./accounts.js?v=0.6.0" defer></script>
 </head>
 <body data-view="capture" class="auth-locked">
-<section class="auth-gate" id="authGate" aria-label="Billy account access">
+<section class="auth-gate" id="authGate" aria-label="BillyDPI account access">
   <div class="auth-layout">
-    <div class="auth-brand"><span class="auth-brand-word">billy<span>.</span></span><span class="auth-brand-tag">DOCUMENT INTELLIGENCE</span></div>
+    <div class="auth-brand">
+      <img class="auth-brand-mark" src="./billydpi-logo.svg" alt="" width="38" height="36">
+      <div class="auth-brand-lockup">
+        <span class="auth-brand-word">BillyDPI</span>
+        <span class="auth-brand-tag">DOCUMENT PROCESSING INTELLIGENCE</span>
+      </div>
+    </div>
     <div class="auth-card">
       <span class="auth-kicker">ACCOUNT / WORKSPACE</span>
       <h1 id="gateHeading" class="auth-heading">Welcome back.</h1>
@@ -70,7 +76,7 @@
 </section>
 <div class="studio-app" id="studioApp">
   <aside class="studio-rail" aria-label="Tools">
-    <div class="studio-rail-brand" aria-label="Billy" title="Billy"><span>b</span><i>.</i></div>
+    <div class="studio-rail-brand" aria-label="BillyDPI" title="BillyDPI"><img src="./billydpi-logo.svg" alt="" width="27" height="26"></div>
     <div class="rail-toolbox" role="group" aria-label="Workspace tools">
       <button id="railCapture" class="rail-tool is-active" type="button" aria-label="Document workspace" title="Document workspace">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h7l4.5 4.5v12.5H7z"/><path d="M14 3.5V8h4.5M10 12.5h5M10 16h5"/></svg>
@@ -90,15 +96,15 @@
       <button id="railEngine" class="rail-tool" type="button" aria-label="Engine settings" title="Engine settings">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v2m0 15v2M2.5 12h2m15 0h2M5.3 5.3l1.5 1.5m10.4 10.4 1.5 1.5M18.7 5.3l-1.5 1.5M6.8 17.2l-1.5 1.5"/></svg>
       </button>
-      <span class="rail-version">0.6</span>
+      <span class="rail-version">0.7</span>
     </div>
   </aside>
 
   <div class="studio-shell">
     <header class="studio-header">
       <div class="studio-location">
-        <div class="mobile-wordmark">billy<span>.</span></div>
-        <div class="location-path"><span>BILLY</span><span class="path-slash">/</span><strong>DOCUMENT STUDIO</strong></div>
+        <div class="mobile-wordmark"><img src="./billydpi-logo.svg" alt="" width="27" height="26"><span>BillyDPI</span></div>
+        <div class="location-path"><span>BILLYDPI</span><span class="path-slash">/</span><strong>DOCUMENT STUDIO</strong></div>
         <p>Capture workspace</p>
       </div>
       <div class="studio-header-actions">
@@ -202,7 +208,7 @@
 
         <div class="stage-bottom">
           <span><span class="fine-dot"></span> CAMERA &amp; PERSPECTIVE RUN ON DEVICE</span>
-          <span>DOCUMENT ENGINE / v0.6</span>
+          <span>DOCUMENT ENGINE / v0.7</span>
         </div>
       </main>
 
@@ -256,7 +262,7 @@
 
 <aside id="accountPanel" class="account-panel" aria-label="Account settings" hidden>
   <div class="account-sheet">
-    <div class="account-sheet-header"><strong>Billy / Account</strong><button type="button" id="accountClose" class="account-close" aria-label="Close account panel">×</button></div>
+    <div class="account-sheet-header"><strong>BillyDPI / Account</strong><button type="button" id="accountClose" class="account-close" aria-label="Close account panel">×</button></div>
     <section class="account-section">
       <h3>Your account</h3><p id="teamEmail"></p>
       <div class="account-field"><span>Team</span><select id="accountSwitcher" aria-label="Switch team"></select></div>
@@ -292,7 +298,7 @@
 <div id="scannerOverlay" class="scanner-overlay" role="dialog" aria-modal="true" aria-labelledby="scannerHeading" hidden>
   <div class="scanner-frame">
     <div class="scanner-header">
-      <div><div class="section-index">BILLY / SCANNER</div><h2 id="scannerHeading">Capture document</h2></div>
+      <div><div class="section-index">BILLYDPI / SCANNER</div><h2 id="scannerHeading">Capture document</h2></div>
       <button id="scannerClose" class="scanner-close" aria-label="Close scanner" type="button">×</button>
     </div>
     <div id="scanLive" class="scan-live" hidden>

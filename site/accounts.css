@@ -53,3 +53,15 @@ body.auth-locked .mobile-dock{pointer-events:none}
  .auth-links{flex-wrap:wrap}
  .account-sheet{padding:calc(23px + env(safe-area-inset-top)) 18px calc(20px + env(safe-area-inset-bottom))}
 }
+
+/* BillyDPI login identity: black/white only, no accent recoloring. */
+.auth-brand{justify-content:flex-start;gap:13px}
+.auth-brand-mark{display:block;width:38px;height:36px;object-fit:contain;flex:none}
+.auth-brand-lockup{display:flex;flex-direction:column;gap:5px;min-width:0}
+.auth-brand-word{color:#fff;font-size:28px;font-weight:735;letter-spacing:-.055em;line-height:1}
+.auth-brand-tag{display:block;letter-spacing:.09em;font-size:8px;color:#c7cdd2;font-weight:620}
+@media(max-width:600px){
+  .auth-brand-mark{width:34px;height:33px}
+  .auth-brand-word{font-size:25px}
+  .auth-brand-tag{font-size:7px}
+}

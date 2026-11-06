@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 292 274" role="img" aria-labelledby="billydpiTitle">
+  <title id="billydpiTitle">BillyDPI</title>
+  <!-- Two independently addressable vector shapes for future loading animation -->
+  <ellipse id="billydpi-head" cx="100" cy="68" rx="90" ry="58" fill="#fff"/>
+  <ellipse id="billydpi-base" cx="146" cy="206" rx="135" ry="58" fill="#fff"/>
+</svg>

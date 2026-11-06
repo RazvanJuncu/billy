@@ -295,3 +295,12 @@ body.has-document .capture-row{display:none}
   .surface-format{margin-top:12px}
 }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
+
+/* BillyDPI mark: faithful monochrome vector of the supplied two-oval logo. */
+.studio-rail-brand{padding-right:0}
+.studio-rail-brand img{display:block;width:27px;height:26px;object-fit:contain;flex:none}
+.mobile-wordmark img{width:26px;height:25px;object-fit:contain;flex:none}
+@media(max-width:720px){
+  .mobile-wordmark{display:flex;align-items:center;gap:9px;letter-spacing:-.045em;font-size:21px}
+  .mobile-wordmark span{color:#f0f2f3}
+}

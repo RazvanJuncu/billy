@@ -1,13 +1,13 @@
 {
   "id": "./",
-  "name": "Billy — Document Studio",
-  "short_name": "Billy",
-  "description": "Capture, straighten and review invoices in a focused document workspace",
+  "name": "BillyDPI — Document Processing Intelligence",
+  "short_name": "BillyDPI",
+  "description": "Document Processing Intelligence — scan, interpret and approve invoices and handwritten Fuel Releases",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#080b0d",
-  "theme_color": "#080b0d",
+  "background_color": "#050607",
+  "theme_color": "#050607",
   "orientation": "any",
   "icons": [
     {
