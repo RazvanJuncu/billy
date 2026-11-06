@@ -48,18 +48,22 @@ test("The visible interface is monochrome, borderless and has no gradient",()=>{
   assert.match(read("site/sw.js"),/"\.\/simple\.css"/);
 });
 
-test("Greeting rotation uses 15 playful messages and the signed-in user's first name",()=>{
+test("One new greeting per refresh, without cycling, mixing named and playful copy",()=>{
   const accounts=read("site/accounts.js");
-  assert.match(html,/id="simpleGreetingTitle"/);
-  assert.match(html,/id="simpleGreetingSubtitle"/);
-  const matches=flow.match(/\["[^"\n]*\{name\}[^"\n]*",\s*"[^"\n]*"\]/g)||[];
+  const matches=flow.match(/\["[^"\n]+",\s*"[^"\n]+"\]/g)||[];
   assert.equal(matches.length,15);
-  assert.match(flow,/window\.setInterval\(rotateGreeting,6500\)/);
-  assert.match(flow,/prefers-reduced-motion: reduce/);
+  const named=matches.filter(x=>x.includes("{name}"));
+  assert.ok(named.length>=3 && named.length<15);
+  assert.match(flow,/Look who's back, back again/);
+  assert.match(flow,/localStorage\.getItem/);
+  assert.match(flow,/localStorage\.setItem/);
+  assert.match(flow,/greetingSelected/);
+  assert.doesNotMatch(flow,/setInterval\(rotateGreeting|setTimeout\(rotateGreeting/);
   assert.match(flow,/billy:account-ready/);
   assert.match(accounts,/firstNameFor\(user\)/);
   assert.match(accounts,/firstName:firstNameFor\(user\)/);
 });
+
 test("Profile menu has a user icon, a chevron and working menu actions",()=>{
   const accounts=read("site/accounts.js");
   for(const id of ["profileWrap","profileMenu","profileMyAccount","profileWorkspace",
@@ -85,6 +89,40 @@ test("Card labels occupy separate rows and scan or add file cards use consistent
 test("No em dashes in user-facing BillyDPI site assets",()=>{
   const files=["site/index.html","site/app.js","site/simple.js","site/accounts.js",
     "site/vision-review.js","site/scanner.js","site/workspace.js",
-    "site/manifest.webmanifest","site/simple.css","site/accounts.css","site/brand.css"];
+    "site/manifest.webmanifest","site/simple.css","site/accounts.css","site/brand.css",
+    "site/preloader.css","site/preloader.js"];
   for(const name of files) assert.equal(read(name).includes("\u2014"),false,name);
+});
+
+test("Original logo splash and inline processing loader use the same vector and are wired",()=>{
+  const preloader=read("site/preloader.js"),css=read("site/preloader.css"),scanner=read("site/scanner.js"),accounts=read("site/accounts.js");
+  assert.match(html,/id="billySplash"/);
+  assert.match(html,/id="billyWorkLoader"/);
+  assert.equal((html.match(/class="billy-loader-symbol"/g)||[]).length,2);
+  assert.equal((html.match(/cx="100" cy="68" rx="90" ry="58"/g)||[]).length,2);
+  assert.equal((html.match(/cx="146" cy="206" rx="135" ry="58"/g)||[]).length,2);
+  assert.match(preloader,/window\.BillyLoader = \{startWork,endWork/);
+  assert.match(preloader,/billy:auth-resolved/);
+  assert.match(preloader,/window\.addEventListener\("load"/);
+  assert.match(preloader,/\.classList\.add\("is-revealing"\)/);
+  assert.match(preloader,/\.classList\.add\("is-leaving"\)/);
+  assert.match(css,/@keyframes billy-head-path/);
+  assert.match(css,/@keyframes billy-head-deform/);
+  assert.match(css,/@keyframes billy-base-deform/);
+  assert.match(css,/prefers-reduced-motion:reduce/);
+  assert.match(accounts,/billy:auth-resolved/);
+  assert.match(scanner,/BillyLoader\?\.startWork\("image"/);
+  assert.match(scanner,/BillyLoader\?\.endWork\("image"/);
+  assert.match(scanner,/BillyLoader\?\.startWork\("crop"/);
+  assert.match(app,/BillyLoader\?\.startWork\("ai"/);
+  assert.match(app,/BillyLoader\?\.endWork\("ai"/);
+  assert.match(read("site/sw.js"),/preloader\.js/);
+  assert.match(read("site/sw.js"),/preloader\.css/);
+});
+test("Workspace label and all diagonal card arrows are removed",()=>{
+  assert.doesNotMatch(html,/class="simple-home-label"/);
+  assert.doesNotMatch(html,/class="simple-choice-arrow"/);
+  assert.doesNotMatch(html,/Your workspace is ready\./);
+  assert.doesNotMatch(html,/>Workspace<\/span><\/button>/);
+  assert.match(html,/>Home<\/span><\/button>/);
 });

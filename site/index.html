@@ -18,6 +18,7 @@
   <link rel="stylesheet" href="./accounts.css?v=0.7.0">
   <link rel="stylesheet" href="./document-type.css?v=0.6.0">
   <link rel="stylesheet" href="./simple.css?v=0.9.0">
+  <link rel="stylesheet" href="./preloader.css?v=1.0.0">
   <script src="./perspective.js?v=0.4.1" defer></script>
   <script src="./scanner.js?v=0.4.1" defer></script>
   <script src="./vision-review.js?v=0.6.0" defer></script>
@@ -26,9 +27,25 @@
   <script src="./account-config.js?v=0.6.0" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
   <script src="./accounts.js?v=0.9.0" defer></script>
-  <script src="./simple.js?v=0.9.0" defer></script>
+  <script src="./simple.js?v=1.0.0" defer></script>
+  <script src="./preloader.js?v=1.0.0" defer></script>
 </head>
 <body data-view="capture" data-billy-screen="home" class="auth-locked">
+<div class="billy-splash" id="billySplash" role="status" aria-label="Loading BillyDPI">
+  <div class="billy-splash-lockup">
+    <svg class="billy-loader-symbol" viewBox="0 0 292 274" aria-hidden="true">
+      <g class="billy-bottom-squash"><ellipse cx="146" cy="206" rx="135" ry="58"/></g>
+      <g class="billy-top-flight"><g class="billy-top-squash"><ellipse cx="100" cy="68" rx="90" ry="58"/></g></g>
+    </svg>
+    <span class="billy-splash-name" aria-hidden="true">BillyDPI</span>
+  </div>
+</div>
+<div class="billy-work-loader" id="billyWorkLoader" hidden role="status" aria-label="Processing document">
+  <svg class="billy-loader-symbol" viewBox="0 0 292 274" aria-hidden="true">
+      <g class="billy-bottom-squash"><ellipse cx="146" cy="206" rx="135" ry="58"/></g>
+      <g class="billy-top-flight"><g class="billy-top-squash"><ellipse cx="100" cy="68" rx="90" ry="58"/></g></g>
+    </svg>
+</div>
 <section class="auth-gate" id="authGate" aria-label="BillyDPI account access">
   <div class="auth-layout">
     <div class="auth-brand">
@@ -95,7 +112,7 @@
       <button id="railEngine" class="rail-tool" type="button" aria-label="Engine settings" title="Engine settings">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v2m0 15v2M2.5 12h2m15 0h2M5.3 5.3l1.5 1.5m10.4 10.4 1.5 1.5M18.7 5.3l-1.5 1.5M6.8 17.2l-1.5 1.5"/></svg>
       </button>
-      <span class="rail-version">0.9</span>
+      <span class="rail-version">1.0</span>
     </div>
   </aside>
 
@@ -107,7 +124,6 @@
         </button>
         <div class="mobile-wordmark"><img src="./billydpi-logo.svg" alt="" width="27" height="26"><span>BillyDPI</span></div>
         <div class="location-path"><span>BILLYDPI</span><span class="path-slash">/</span><strong>DOCUMENT STUDIO</strong></div>
-        <p>Workspace</p>
       </div>
       <div class="studio-header-actions">
         <span class="session-badge"><span class="session-dot"></span>LOCAL SESSION</span>
@@ -142,17 +158,16 @@
         <section class="simple-home simple-screen" id="simpleHome" aria-label="Main menu">
           <div class="simple-greeting" aria-live="off">
             <h1 id="simpleGreetingTitle" class="simple-greeting-title">Welcome back.</h1>
-            <p id="simpleGreetingSubtitle" class="simple-greeting-subtitle">Your workspace is ready.</p>
+            <p id="simpleGreetingSubtitle" class="simple-greeting-subtitle">Ready when you are.</p>
           </div>
-          <span class="simple-home-label">Workspace</span>
           <div class="simple-choice-grid">
             <button id="simpleNewDocument" class="simple-choice" type="button">
               <span class="simple-choice-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v16M4 12h16"/></svg></span>
-              <span class="simple-choice-lower"><span><span class="simple-choice-title">New Document</span><span class="simple-choice-caption">Scan or add a file</span></span><span class="simple-choice-arrow"><svg viewBox="0 0 24 24" aria-hidden="true" class="ui-icon"><path d="M6 18 18 6M8 6h10v10"/></svg></span></span>
+              <span class="simple-choice-lower"><span><span class="simple-choice-title">New Document</span><span class="simple-choice-caption">Scan or add a file</span></span></span>
             </button>
             <button id="simpleUploadedDocuments" class="simple-choice" type="button">
               <span class="simple-choice-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h6l2 2h8v11H4z"/><path d="M4 7V5h6"/></svg></span>
-              <span class="simple-choice-lower"><span><span class="simple-choice-title">Uploaded Documents</span><span class="simple-choice-caption">Files from this session</span></span><span class="simple-choice-arrow"><svg viewBox="0 0 24 24" aria-hidden="true" class="ui-icon"><path d="M6 18 18 6M8 6h10v10"/></svg></span></span>
+              <span class="simple-choice-lower"><span><span class="simple-choice-title">Uploaded Documents</span><span class="simple-choice-caption">Files from this session</span></span></span>
             </button>
           </div>
         </section>
@@ -162,11 +177,11 @@
           <div class="simple-choice-grid">
             <button class="simple-choice" id="simpleCapture" type="button">
               <span class="simple-choice-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h4l2-2h6l2 2h4v12H3z"/><circle cx="12" cy="13" r="4"/></svg></span>
-              <span class="simple-choice-lower"><span class="simple-choice-copy"><span class="simple-choice-title">Scan</span><span class="simple-choice-caption">Use your camera</span></span><span class="simple-choice-arrow"><svg viewBox="0 0 24 24" aria-hidden="true" class="ui-icon"><path d="M6 18 18 6M8 6h10v10"/></svg></span></span>
+              <span class="simple-choice-lower"><span class="simple-choice-copy"><span class="simple-choice-title">Scan</span><span class="simple-choice-caption">Use your camera</span></span></span>
             </button>
             <button class="simple-choice" id="simpleAddFiles" type="button">
               <span class="simple-choice-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m-4 4 4-4 4 4"/><path d="M4 16v4h16v-4"/></svg></span>
-              <span class="simple-choice-lower"><span class="simple-choice-copy"><span class="simple-choice-title">Add files</span><span class="simple-choice-caption">PDF or image</span></span><span class="simple-choice-arrow"><svg viewBox="0 0 24 24" aria-hidden="true" class="ui-icon"><path d="M6 18 18 6M8 6h10v10"/></svg></span></span>
+              <span class="simple-choice-lower"><span class="simple-choice-copy"><span class="simple-choice-title">Add files</span><span class="simple-choice-caption">PDF or image</span></span></span>
             </button>
           </div>
           <p class="simple-subline">You can also drop a file anywhere on this screen.</p>
@@ -177,7 +192,7 @@
           <p id="simpleDocumentsIntro" class="simple-subline">No documents have been uploaded to company storage.</p>
           <div id="simpleDocumentsEmpty" class="simple-empty">Company document storage is not connected yet.</div>
           <div id="simpleDocumentsList" class="simple-documents-list" aria-label="Files added in this browser session"></div>
-          <div><button id="simpleUploadedBackToHome" class="simple-secondary-action" type="button"><svg viewBox="0 0 24 24" aria-hidden="true" class="ui-icon"><path d="m14 6-6 6 6 6"/></svg><span>Workspace</span></button></div>
+          <div><button id="simpleUploadedBackToHome" class="simple-secondary-action" type="button"><svg viewBox="0 0 24 24" aria-hidden="true" class="ui-icon"><path d="m14 6-6 6 6 6"/></svg><span>Home</span></button></div>
         </section>
 
         <section class="simple-process simple-screen" id="simpleProcess" aria-label="Process document" hidden>
@@ -295,7 +310,7 @@
 
         <div class="stage-bottom">
           <span><span class="fine-dot"></span> CAMERA &amp; PERSPECTIVE RUN ON DEVICE</span>
-          <span>DOCUMENT ENGINE / v0.9</span>
+          <span>DOCUMENT ENGINE / v1.0</span>
         </div>
       </main>
 

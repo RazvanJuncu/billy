@@ -294,6 +294,7 @@ async function scanInvoice() {
     return;
   }
   state.busy = true;
+  window.BillyLoader?.startWork("ai","Processing document");
   setStage(2);
   updateScanButton();
   showNotification("BillyDPI Vision is extracting structured data. Excel will not be modified.");
@@ -318,6 +319,7 @@ async function scanInvoice() {
     showNotification("Could not scan this document: " + (error.message || "Connection error"), true);
   } finally {
     state.busy = false;
+    window.BillyLoader?.endWork("ai");
     updateScanButton();
     window.dispatchEvent(new CustomEvent("billy:process-complete"));
   }

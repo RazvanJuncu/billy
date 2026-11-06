@@ -131,12 +131,15 @@
     $("scanRetake").hidden = !fromCamera;
     originalFile=file;
     announce("Loading image…");
+    root.BillyLoader?.startWork("image","Preparing photo");
     try {
       imageCanvas=await fileToCanvas(file);
       if ($("scannerOverlay").hidden) return;
       guessCorners();
     } catch(error) {
       announce("Could not open this image. For iPhone HEIC photos, try exporting as JPEG. " + error.message, true);
+    } finally {
+      root.BillyLoader?.endWork("image");
     }
   }
 
@@ -265,12 +268,18 @@
   }
 
   async function applyScan() {
-    await executeBusy(async()=>{
-      const file=await correctedFile();
-      if(!file) return;
-      hideOverlay();
-      onUse(file);
-    });
+    if(editorBusy) return;
+    root.BillyLoader?.startWork("crop","Straightening photo");
+    try {
+      await executeBusy(async()=>{
+        const file=await correctedFile();
+        if(!file) return;
+        hideOverlay();
+        onUse(file);
+      });
+    } finally {
+      root.BillyLoader?.endWork("crop");
+    }
   }
 
   async function saveScan() {

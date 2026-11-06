@@ -22,6 +22,10 @@
     gateMessage.hidden = !text;
   }
   function closePanel() { accountPanel.hidden = true; }
+  function resolveInitialAuth() {
+    document.documentElement.dataset.billyAuthReady = "1";
+    window.dispatchEvent(new Event("billy:auth-resolved"));
+  }
 
   function firstNameFor(account) {
     const metadata = account?.user_metadata || {};
@@ -97,7 +101,7 @@
     if (run !== sequence) return;
     if(error || !result.user){
       user=null;organization=null;memberships=[];
-      accountButton.hidden=true;closeProfileMenu();closePanel();showMode("login");return;
+      accountButton.hidden=true;closeProfileMenu();closePanel();showMode("login");resolveInitialAuth();return;
     }
     user=result.user;
     const {data, error:memError}=await client
@@ -108,7 +112,7 @@
     if(memError){
       status("Workspace database not ready. Apply the BillyDPI Supabase migration: "+fmtError(memError),true);
       gateHeading.textContent="Workspace configuration needed.";
-      login.hidden=true;setup.hidden=true;setGate(true);return;
+      login.hidden=true;setup.hidden=true;setGate(true);resolveInitialAuth();return;
     }
     memberships=(data||[]).filter(item=>item.organizations?.id);
     if(!memberships.length){
@@ -117,7 +121,7 @@
       accountButton.hidden=false;renderProfile(user);
       $("welcomeEmail").textContent=user.email||"";
       status("You can create a workspace or request to join an existing company team. Access is never granted automatically.");
-      setGate(true);return;
+      setGate(true);resolveInitialAuth();return;
     }
     const saved=sessionStorage.getItem("billy-active-organization");
     const selection=memberships.find(m=>m.organization_id===saved)||memberships[0];
@@ -139,6 +143,7 @@
     $("adminJoinSection").hidden=organization.role!=="owner";
     closePanel();
     setGate(false);
+    resolveInitialAuth();
     window.dispatchEvent(new CustomEvent("billy:account-ready",{detail:{
       organizationId:organization.id, role:organization.role,
       firstName:firstNameFor(user)
@@ -227,6 +232,7 @@
       login.hidden=true;setup.hidden=true;
       gateHeading.textContent="BillyDPI Accounts setup.";
       status("The team identity provider is not connected yet. Configure the public Supabase project URL and publishable key in account-config.js and apply the database migration. No documents can be processed while accounts are unavailable.",true);
+      resolveInitialAuth();
       return;
     }
     client=window.supabase.createClient(config.url,config.publishableKey,{
