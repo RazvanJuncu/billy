@@ -94,31 +94,41 @@ test("No em dashes in user-facing BillyDPI site assets",()=>{
   for(const name of files) assert.equal(read(name).includes("\u2014"),false,name);
 });
 
-test("Original logo splash and inline processing loader use the same vector and are wired",()=>{
-  const preloader=read("site/preloader.js"),css=read("site/preloader.css"),scanner=read("site/scanner.js"),accounts=read("site/accounts.js");
+test("Both loaders rotate round circles and morph to the exact BillyDPI mark",()=>{
+  const css=read("site/preloader.css"),preloader=read("site/preloader.js");
+  const logo=read("site/billydpi-logo.svg");
   assert.match(html,/id="billySplash"/);
   assert.match(html,/id="billyWorkLoader"/);
   assert.equal((html.match(/class="billy-loader-symbol"/g)||[]).length,2);
-  assert.equal((html.match(/cx="100" cy="68" rx="90" ry="58"/g)||[]).length,2);
-  assert.equal((html.match(/cx="146" cy="206" rx="135" ry="58"/g)||[]).length,2);
-  assert.match(preloader,/window\.BillyLoader = \{startWork,endWork/);
-  assert.match(preloader,/billy:auth-resolved/);
-  assert.match(preloader,/window\.addEventListener\("load"/);
+  assert.equal((html.match(/class="billy-bottom-circle" cx="146" cy="206" r="95"/g)||[]).length,2);
+  assert.equal((html.match(/class="billy-top-circle" cx="146" cy="18" r="63"/g)||[]).length,2);
+  assert.match(css,/@keyframes billy-circle-orbit/);
+  assert.match(css,/rotate\(360deg\)/);
+  assert.match(css,/transform-origin:146px 206px/);
+  assert.match(css,/translate\(-46px,50px\) scale\(1\.428571429,0\.920634921\)/);
+  assert.match(css,/scale\(1\.421052632,0\.610526316\)/);
+  assert.match(logo,/<ellipse id="billydpi-head" cx="100" cy="68" rx="90" ry="58"/);
+  assert.match(logo,/<ellipse id="billydpi-base" cx="146" cy="206" rx="135" ry="58"/);
+  // Logo proportions are not changed: 2:3 width ratio in the circular state.
+  assert.ok(Math.abs(63/95-2/3)<.005);
+  assert.match(preloader,/animationiteration/);
+  assert.match(preloader,/\.classList\.add\("is-settling"\)/);
   assert.match(preloader,/\.classList\.add\("is-revealing"\)/);
   assert.match(preloader,/\.classList\.add\("is-leaving"\)/);
-  assert.match(css,/@keyframes billy-head-path/);
-  assert.doesNotMatch(css,/billy-head-deform|billy-base-deform|billy-top-squash|billy-bottom-squash/);
-  assert.equal((html.match(/class="billy-top-flight"/g)||[]).length,2);
+  assert.match(preloader,/billy:auth-resolved/);
+  assert.match(preloader,/window\.addEventListener\("load"/);
+  assert.match(preloader,/window\.BillyLoader=\{startWork,endWork/);
   assert.match(css,/prefers-reduced-motion:reduce/);
-  assert.match(accounts,/billy:auth-resolved/);
-  assert.match(scanner,/BillyLoader\?\.startWork\("image"/);
-  assert.match(scanner,/BillyLoader\?\.endWork\("image"/);
-  assert.match(scanner,/BillyLoader\?\.startWork\("crop"/);
+  assert.doesNotMatch(css,/squash|jiggle|billy-head-path|billy-head-deform|billy-base-deform/i);
+  assert.match(read("site/accounts.js"),/billy:auth-resolved/);
+  assert.match(read("site/scanner.js"),/BillyLoader\?\.startWork\("image"/);
+  assert.match(read("site/scanner.js"),/BillyLoader\?\.endWork\("crop"/);
   assert.match(app,/BillyLoader\?\.startWork\("ai"/);
   assert.match(app,/BillyLoader\?\.endWork\("ai"/);
   assert.match(read("site/sw.js"),/preloader\.js/);
   assert.match(read("site/sw.js"),/preloader\.css/);
 });
+
 test("Workspace label and all diagonal card arrows are removed",()=>{
   assert.doesNotMatch(html,/class="simple-home-label"/);
   assert.doesNotMatch(html,/class="simple-choice-arrow"/);
@@ -127,31 +137,3 @@ test("Workspace label and all diagonal card arrows are removed",()=>{
   assert.match(html,/>Home<\/span><\/button>/);
 });
 
-test("Magnetic orbit stays outside the lower oval for the entire flight",()=>{
-  const css=read("site/preloader.css"),html=read("site/index.html"),js=read("site/preloader.js");
-  assert.match(css,/--billy-motion-cycle:2350ms/);
-  assert.match(js,/const cycleMs = 2350/);
-  assert.doesNotMatch(css,/scale\(|squash|deform|jiggle|bounce/i);
-  assert.doesNotMatch(html,/billy-top-squash|billy-bottom-squash/);
-  const segment=css.match(/@keyframes billy-head-path\{([\s\S]*?)\n\}/);
-  assert.ok(segment,"The magnetic orbit must be defined");
-  const frames=[...segment[1].matchAll(/([\d.]+)%\{transform:translate\(([-\d.]+)px,([-\d.]+)px\);/g)]
-    .map(m=>({t:+m[1],x:100+Number(m[2]),y:68+Number(m[3])}));
-  assert.ok(frames.length>=18);
-  assert.equal(frames[0].t,0);
-  assert.equal(frames.at(-1).t,100);
-  assert.deepEqual([frames[0].x,frames[0].y],[100,68]);
-  assert.deepEqual([frames.at(-1).x,frames.at(-1).y],[100,68]);
-  let clearance=Infinity;
-  for(let i=1;i<frames.length;i++){
-    const a=frames[i-1],b=frames[i];
-    assert.ok(b.t>a.t,"Timestamps must increase");
-    for(let j=0;j<=100;j++){
-      const u=j/100,x=a.x+(b.x-a.x)*u,y=a.y+(b.y-a.y)*u;
-      clearance=Math.min(clearance,Math.hypot((x-146)/230,(y-206)/123));
-    }
-  }
-  assert.ok(clearance>1.06,"Upper oval must keep an air gap: "+clearance);
-  assert.match(css,/94%\{transform:translate\(0px,0px\)/);
-  assert.match(css,/100%\{transform:translate\(0px,0px\)/);
-});

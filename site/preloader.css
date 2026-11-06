@@ -1,68 +1,81 @@
-/* BillyDPI magnetic orbit. Two pristine white ellipses, always separated.
-   The upper ellipse flies around the lower, then eases into its floating rest. */
-:root{--billy-motion-cycle:2350ms}
-.billy-loader-symbol{width:100%;height:100%;overflow:visible;display:block;flex:none;fill:#fff}
-.billy-top-flight{animation:billy-head-path var(--billy-motion-cycle) linear infinite;will-change:transform}
-@keyframes billy-head-path{
-  0%{transform:translate(0px,0px);}
-  7%{transform:translate(0px,0px);animation-timing-function:cubic-bezier(.3,0,.55,.9);}
-  13%{transform:translate(0px,-80px);animation-timing-function:cubic-bezier(.38,.1,.65,.85);}
-  18%{transform:translate(46px,-32px);}
-  22.13%{transform:translate(143.58px,-19.06px);}
-  26.25%{transform:translate(226.31px,17.79px);}
-  30.38%{transform:translate(281.59px,72.94px);}
-  34.5%{transform:translate(301px,138px);}
-  38.63%{transform:translate(281.59px,203.06px);}
-  42.75%{transform:translate(226.31px,258.21px);}
-  46.88%{transform:translate(143.58px,295.06px);}
-  51%{transform:translate(46px,308px);}
-  55.13%{transform:translate(-51.58px,295.06px);}
-  59.25%{transform:translate(-134.31px,258.21px);}
-  63.38%{transform:translate(-189.59px,203.06px);}
-  67.5%{transform:translate(-209px,138px);}
-  71.63%{transform:translate(-189.59px,72.94px);}
-  75.75%{transform:translate(-134.31px,17.79px);}
-  79.88%{transform:translate(-51.58px,-19.06px);}
-  84%{transform:translate(46px,-32px);animation-timing-function:cubic-bezier(.25,.55,.36,1);}
-  90%{transform:translate(0px,-19px);animation-timing-function:cubic-bezier(.16,.64,.28,1);}
-  94%{transform:translate(0px,0px);}
-  100%{transform:translate(0px,0px);}
+/* BillyDPI 1.2. Two orbiting circles with logo-faithful proportions.
+   On completion, the circles settle into the exact original two ellipses. */
+:root{--billy-motion-cycle:1450ms;--billy-logo-ink:#fff}
+.billy-loader-symbol{
+  width:100%;height:100%;display:block;flex:none;overflow:visible;fill:var(--billy-logo-ink)
 }
-/* The wordmark appears after a complete cycle, with both shapes at rest. */
+.billy-orbit{
+  transform-box:view-box;transform-origin:146px 206px;
+  animation:billy-circle-orbit var(--billy-motion-cycle) linear infinite;
+}
+.billy-top-circle{
+  transform-box:view-box;transform-origin:146px 18px;
+  transform:translate(0px,0px) scale(1,1);
+}
+.billy-bottom-circle{
+  transform-box:view-box;transform-origin:146px 206px;
+  transform:scale(1,1);
+}
+@keyframes billy-circle-orbit{
+  from{transform:rotate(0deg)}
+  to{transform:rotate(360deg)}
+}
+.billy-splash.is-settling .billy-orbit,
+.billy-work-loader.is-settling .billy-orbit{
+  animation:none!important;transform:rotate(0deg)!important
+}
+.billy-splash.is-settling .billy-top-circle,
+.billy-work-loader.is-settling .billy-top-circle{
+  transform:translate(-46px,50px) scale(1.428571429,0.920634921);
+}
+.billy-splash.is-settling .billy-bottom-circle,
+.billy-work-loader.is-settling .billy-bottom-circle{
+  transform:scale(1.421052632,0.610526316)
+}
+.billy-top-circle,.billy-bottom-circle{
+  transition:transform 350ms cubic-bezier(.2,.7,.25,1)
+}
 .billy-splash{
-  position:fixed;inset:0;z-index:9999;display:grid;place-items:center;
-  background:#050607;opacity:1;visibility:visible;
-  transition:opacity 350ms ease,visibility 350ms ease;
+  position:fixed;inset:0;z-index:9999;
+  background:#050607;display:grid;place-items:center;
+  opacity:1;visibility:visible;
+  transition:opacity 300ms ease,visibility 300ms ease;
 }
 .billy-splash[hidden],.billy-work-loader[hidden]{display:none!important}
 .billy-splash-lockup{
-  display:flex;align-items:center;justify-content:center;transform:translateX(0);
-  transition:transform 500ms cubic-bezier(.22,1,.36,1);
+  display:flex;align-items:center;justify-content:center;
+  transition:transform 250ms cubic-bezier(.22,1,.36,1);
+  transform:translateX(0)
 }
-.billy-splash .billy-loader-symbol{width:86px;height:81px}
+.billy-splash .billy-loader-symbol{width:90px;height:85px}
 .billy-splash-name{
-  max-width:0;overflow:hidden;opacity:0;white-space:nowrap;
+  white-space:nowrap;overflow:hidden;max-width:0;opacity:0;
   font-size:clamp(24px,4vw,36px);font-weight:735;letter-spacing:-.055em;
-  color:#f6f6f6;transform:translateX(12px);
-  transition:opacity 390ms ease,max-width 500ms cubic-bezier(.22,1,.36,1),
-    transform 500ms cubic-bezier(.22,1,.36,1),margin-left 500ms ease;margin-left:0;
+  color:#fff;margin-left:0;transform:translateX(5px);
+  transition:max-width 220ms cubic-bezier(.2,.8,.3,1),
+    opacity 160ms ease,margin-left 220ms ease,transform 220ms ease;
 }
-.billy-splash.is-revealing .billy-splash-lockup{transform:translateX(-14px)}
+.billy-splash.is-revealing .billy-splash-lockup{transform:translateX(-10px)}
 .billy-splash.is-revealing .billy-splash-name{
-  max-width:270px;opacity:1;transform:translateX(0);margin-left:18px;
+  max-width:240px;opacity:1;margin-left:16px;transform:translateX(0)
 }
-.billy-splash.is-revealing .billy-top-flight{animation:none!important;transform:none!important}
 .billy-splash.is-leaving{opacity:0;visibility:hidden;pointer-events:none}
-/* Photo preparation and AI show the symbol, never the wordmark. */
-.billy-work-loader{position:fixed;inset:0;z-index:150;display:grid;place-items:center;background:#050607}
+.billy-work-loader{
+  position:fixed;inset:0;z-index:150;
+  display:grid;place-items:center;background:#050607
+}
 .billy-work-loader .billy-loader-symbol{width:65px;height:61px}
 @media(max-width:600px){
-  .billy-splash .billy-loader-symbol{width:76px;height:71px}
+  .billy-splash .billy-loader-symbol{width:78px;height:73px}
   .billy-splash-name{font-size:27px}
   .billy-work-loader .billy-loader-symbol{width:58px;height:54px}
 }
 @media(prefers-reduced-motion:reduce){
-  .billy-top-flight{animation:none!important;transform:none!important}
-  .billy-splash-lockup,.billy-splash-name{transition:none!important}
+  .billy-orbit{animation:none!important;transform:rotate(0deg)!important}
+  .billy-top-circle{transform:translate(-46px,50px) scale(1.428571429,0.920634921)}
+  .billy-bottom-circle{transform:scale(1.421052632,0.610526316)}
+  .billy-top-circle,.billy-bottom-circle,.billy-splash-lockup,.billy-splash-name{
+    transition:none!important
+  }
   .billy-splash{transition:opacity 100ms ease,visibility 100ms ease}
 }

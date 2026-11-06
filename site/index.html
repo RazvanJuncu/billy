@@ -18,7 +18,7 @@
   <link rel="stylesheet" href="./accounts.css?v=0.7.0">
   <link rel="stylesheet" href="./document-type.css?v=0.6.0">
   <link rel="stylesheet" href="./simple.css?v=0.9.0">
-  <link rel="stylesheet" href="./preloader.css?v=1.1.0">
+  <link rel="stylesheet" href="./preloader.css?v=1.2.0">
   <script src="./perspective.js?v=0.4.1" defer></script>
   <script src="./scanner.js?v=0.4.1" defer></script>
   <script src="./vision-review.js?v=0.6.0" defer></script>
@@ -28,22 +28,22 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
   <script src="./accounts.js?v=0.9.0" defer></script>
   <script src="./simple.js?v=1.0.0" defer></script>
-  <script src="./preloader.js?v=1.1.0" defer></script>
+  <script src="./preloader.js?v=1.2.0" defer></script>
 </head>
 <body data-view="capture" data-billy-screen="home" class="auth-locked">
 <div class="billy-splash" id="billySplash" role="status" aria-label="Loading BillyDPI">
   <div class="billy-splash-lockup">
     <svg class="billy-loader-symbol" viewBox="0 0 292 274" aria-hidden="true">
-      <ellipse cx="146" cy="206" rx="135" ry="58"/>
-      <g class="billy-top-flight"><ellipse cx="100" cy="68" rx="90" ry="58"/></g>
+      <circle class="billy-bottom-circle" cx="146" cy="206" r="95"/>
+      <g class="billy-orbit"><circle class="billy-top-circle" cx="146" cy="18" r="63"/></g>
     </svg>
     <span class="billy-splash-name" aria-hidden="true">BillyDPI</span>
   </div>
 </div>
 <div class="billy-work-loader" id="billyWorkLoader" hidden role="status" aria-label="Processing document">
   <svg class="billy-loader-symbol" viewBox="0 0 292 274" aria-hidden="true">
-      <ellipse cx="146" cy="206" rx="135" ry="58"/>
-      <g class="billy-top-flight"><ellipse cx="100" cy="68" rx="90" ry="58"/></g>
+      <circle class="billy-bottom-circle" cx="146" cy="206" r="95"/>
+      <g class="billy-orbit"><circle class="billy-top-circle" cx="146" cy="18" r="63"/></g>
     </svg>
 </div>
 <section class="auth-gate" id="authGate" aria-label="BillyDPI account access">

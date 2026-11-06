@@ -1,57 +1,88 @@
-/* BillyDPI preloader. No remote dependencies or backend secrets.
-   Site intro finishes at a cycle boundary, so the logo is static when the
-   wordmark appears. Work progress only shows the mark. */
+/* BillyDPI 1.2. Orbit while busy, finish at the top of the next revolution,
+   morph into the original logo, then reveal the brand name on site load.
+   Processing loaders omit the name. */
 (() => {
   "use strict";
-  const splash = document.getElementById("billySplash");
-  const work = document.getElementById("billyWorkLoader");
-  if (!splash || !work) return;
+  const splash=document.getElementById("billySplash");
+  const work=document.getElementById("billyWorkLoader");
+  if(!splash || !work)return;
+  const reducedMotion=window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches??false;
+  const activeWork=new Set();
+  let pageLoaded=document.readyState==="complete";
+  let authReady=document.documentElement.dataset.billyAuthReady==="1";
+  let splashFinishing=false;
+  let cancelWorkFinish=()=>{};
 
-  const cycleMs = 2350;
-  const startedAt = performance.now();
-  const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
-  const activeWork = new Set();
-  let pageLoaded = document.readyState === "complete";
-  let authReady = document.documentElement.dataset.billyAuthReady === "1";
-  let exitScheduled = false;
-
+  // The animationiteration event is fired at exactly 360 degrees.
+  // Do not stop it between frames and let the small circle jump.
+  function settleAtTop(container,afterSettle) {
+    const orbit=container.querySelector(".billy-orbit");
+    if(!orbit) {afterSettle();return ()=>{};}
+    let done=false;
+    let settleTimer=0,watchdog=0;
+    function stopOrbit() {
+      if(done)return;
+      done=true;
+      orbit.removeEventListener("animationiteration",stopOrbit);
+      window.clearTimeout(watchdog);
+      container.classList.add("is-settling");
+      settleTimer=window.setTimeout(afterSettle,reducedMotion?0:390);
+    }
+    if(reducedMotion)stopOrbit();
+    else{
+      orbit.addEventListener("animationiteration",stopOrbit);
+      // Guard against browsers that suppress animation events in background tabs.
+      watchdog=window.setTimeout(stopOrbit,3300);
+    }
+    return ()=>{
+      orbit.removeEventListener("animationiteration",stopOrbit);
+      window.clearTimeout(watchdog);
+      window.clearTimeout(settleTimer);
+      done=true;
+    };
+  }
   function reveal() {
-    if (splash.hidden) return;
+    if(splash.hidden)return;
     splash.classList.add("is-revealing");
-    window.setTimeout(() => {
+    window.setTimeout(()=>{
       splash.classList.add("is-leaving");
       splash.setAttribute("aria-hidden","true");
-      window.setTimeout(() => { splash.hidden = true; }, reducedMotion ? 130 : 370);
-    }, reducedMotion ? 150 : 900);
+      window.setTimeout(()=>{splash.hidden=true},reducedMotion?120:330);
+    },reducedMotion?160:590);
   }
-  function maybeFinish() {
-    if (!pageLoaded || !authReady || exitScheduled) return;
-    exitScheduled = true;
-    if (reducedMotion) { reveal(); return; }
-    const elapsed = performance.now() - startedAt;
-    const restAt = Math.max(1,Math.ceil((elapsed + 35) / cycleMs)) * cycleMs;
-    window.setTimeout(reveal, Math.max(0,restAt - elapsed));
+  function maybeFinishSplash(){
+    if(!pageLoaded||!authReady||splashFinishing)return;
+    splashFinishing=true;
+    settleAtTop(splash,reveal);
   }
+  if(!pageLoaded)window.addEventListener("load",()=>{
+    pageLoaded=true;maybeFinishSplash();
+  },{once:true});
+  window.addEventListener("billy:auth-resolved",()=>{
+    authReady=true;maybeFinishSplash();
+  });
+  // If Supabase never responds, expose its error instead of covering the page.
+  window.setTimeout(()=>{authReady=true;maybeFinishSplash()},8000);
+  maybeFinishSplash();
 
-  if (!pageLoaded) window.addEventListener("load",() => { pageLoaded=true;maybeFinish(); },{once:true});
-  window.addEventListener("billy:auth-resolved",() => {authReady=true;maybeFinish();});
-  // Identity provider may be offline. Let Billy show its own error instead
-  // of making the splash block the page indefinitely.
-  window.setTimeout(() => {authReady=true;maybeFinish();},8000);
-  maybeFinish();
-
-  function startWork(key,label) {
+  function startWork(key,label){
+    if(!activeWork.size){
+      cancelWorkFinish();
+      work.classList.remove("is-settling");
+      work.hidden=false;
+    }
     activeWork.add(key);
-    work.setAttribute("aria-label",label || "Processing document");
-    work.hidden = false;
+    work.setAttribute("aria-label",label||"Processing document");
     document.body.setAttribute("aria-busy","true");
   }
-  function endWork(key) {
+  function endWork(key){
     activeWork.delete(key);
-    if (!activeWork.size) {
-      work.hidden = true;
+    if(activeWork.size||work.hidden)return;
+    cancelWorkFinish=settleAtTop(work,()=>{
+      if(activeWork.size)return;
+      work.hidden=true;
       document.body.removeAttribute("aria-busy");
-    }
+    });
   }
-  window.BillyLoader = {startWork,endWork,isBusy:()=>activeWork.size>0};
+  window.BillyLoader={startWork,endWork,isBusy:()=>activeWork.size>0};
 })();
