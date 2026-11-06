@@ -14,7 +14,7 @@ Billy follows Numveil's proven pattern: identity first, then one or more organiz
 
 ## One-time admin setup (not per employee)
 
-1. Create a **new Supabase project for Billy** (do not reuse Numveil's production database).
+1. **Completed (2026-11-06):** dedicated Billy project `ookafdnvavohfopxfxpf` in organization Numveil, plan Free, region `eu-west-3`. Project URL: `https://ookafdnvavohfopxfxpf.supabase.co`.
 2. In Supabase SQL Editor, execute [migration \`202611061900_billy_accounts.sql\`](supabase/migrations/202611061900_billy_accounts.sql).
 3. In Authentication settings, enable email signup and **email confirmation**, configure the application's site URL and permitted redirect URLs for \`https://razvanjuncu.github.io/billy/\` and local development URLs.
 4. Set the public values in \`site/account-config.js\`: the Supabase project HTTPS URL and its **publishable** API key. These two values are intended to be public in browser apps; **never publish the service_role/secret key**. \`apiUrl\` is the URL of your **authenticated HTTPS Billy API** when deployed, not the Gemini API URL.
@@ -22,7 +22,7 @@ Billy follows Numveil's proven pattern: identity first, then one or more organiz
 6. For local testing start the Python API on \`127.0.0.1:8000\` and static site on \`127.0.0.1:5173\` as described in [VISION.md](VISION.md). The browser automatically uses the local API once the user signs in.
 7. Create your account in Billy, confirm your email, sign in, and create an organization. Share its displayed team ID with colleagues. They sign up, confirm email, enter the team ID, then await your explicit approval in the Account panel.
 
-**Supabase is NOT provisioned or configured merely by adding these files to GitHub.** Until this is done, Billy fails closed behind the accounts configuration screen. No one can process documents through the hosted static site.
+**Supabase project and account database are now provisioned.** The signup/login frontend is connected to the public Supabase endpoint. Email confirmation redirects still require dashboard configuration and an end-to-end sign-in test. No Gemini API/backend has been deployed; document processing remains disabled until a separately authenticated HTTPS backend is configured.
 
 ## Security limitations — do not use company documents yet
 

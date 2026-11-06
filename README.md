@@ -10,7 +10,7 @@ Billy is now a **full-screen document instrument environment**, drawing from Gli
 
 Billy now has a separate **team identity layer**, following the Numveil pattern: email registration/sign-in, password recovery, confirmation, company organizations and owner-approved member requests. Identity and document workspaces are separate.
 
-Authentication relies on **Supabase Auth + PostgreSQL RLS**; the public website deliberately stays locked until the organization provisions a Billy Supabase project and configures its public URL/publishable key. We have **not created or connected a Supabase project**. See [ACCOUNTS.md](ACCOUNTS.md) for one-time admin setup, roles and limitations.
+Authentication relies on **Supabase Auth + PostgreSQL RLS**; the public website now has the project URL and publishable key configured, and requires authenticated Supabase sessions before it opens a team workspace. We have created a separate Supabase project and connected its public configuration, but have **not yet configured Auth redirect URLs or an authenticated cloud backend**. See [ACCOUNTS.md](ACCOUNTS.md) for one-time admin setup, roles and limitations.
 
 A new document type, **Fuel Release**, supports handwritten entries, with `clear`, `uncertain` or `illegible` legibility markers and explicit human correction. No handwriting model has been trained yet. See [FUEL_RELEASE.md](FUEL_RELEASE.md).
 
