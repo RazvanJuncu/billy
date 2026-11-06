@@ -559,3 +559,94 @@ body[data-billy-screen] .account-button:active{transform:scale(.985)}
   .simple-quick-snap{transition:none!important}
   .simple-quick-snap:active{transform:none!important}
 }
+
+
+/* Billy mobile: one primary action, other functions explicitly revealed. */
+.simple-home-expanded{display:contents}
+.simple-reveal-functions{display:none!important}
+.billy-install-guide{
+  align-self:center;display:inline-flex;align-items:center;gap:7px;
+  color:#999b9e;text-decoration:none;font-size:12px;
+  padding:10px 12px;margin:23px auto 0;border-radius:9px;
+}
+.billy-install-guide:hover,.billy-install-guide:focus-visible{color:#f0f0f0;background:#1f2022}
+.profile-menu .profile-install-link{
+  display:flex;align-items:center;gap:12px;text-align:left;padding:0 12px;
+  width:100%;min-height:44px;color:#ececec;border-radius:8px;
+  font-size:12px;font-weight:560;text-decoration:none;
+}
+.profile-menu .profile-install-link:hover,.profile-menu .profile-install-link:focus-visible{background:#313235}
+.profile-menu .profile-install-link .ui-icon{
+  width:17px;height:17px;stroke:currentColor;stroke-width:1.7;
+  fill:none;stroke-linecap:round;stroke-linejoin:round;
+}
+/* No account menu or brand chrome in the default mobile capture mode. */
+html[data-billy-mobile="1"] body:not(.billy-functions-revealed) .studio-header{display:none!important}
+html[data-billy-mobile="1"] .simple-home{
+  position:relative;transform:none!important;width:min(100%,660px)!important;
+  padding:28px 20px max(64px,env(safe-area-inset-bottom))!important;
+  gap:0!important;justify-content:center!important;align-items:center!important;
+  min-height:100%;flex:1;
+}
+html[data-billy-mobile="1"] .simple-home .simple-quick-snap{
+  position:relative;display:flex!important;flex-direction:column;align-items:center;
+  justify-content:center;width:min(100%,350px);min-height:350px!important;
+  gap:8px!important;padding:14px 18px!important;
+  margin:0 auto;background:transparent!important;color:#f2f2f2!important;
+  border:0!important;border-radius:18px!important;
+  transform:none;touch-action:manipulation;text-align:center;
+  transition:opacity 140ms ease,transform 140ms ease;
+}
+html[data-billy-mobile="1"] .simple-quick-snap:hover,
+html[data-billy-mobile="1"] .simple-quick-snap:focus-visible{background:transparent!important;opacity:.86}
+html[data-billy-mobile="1"] .simple-quick-snap:active{transform:scale(.97)!important}
+html[data-billy-mobile="1"] .simple-quick-art{
+  display:block;width:min(60vw,260px);height:auto;aspect-ratio:1;flex:none;
+}
+html[data-billy-mobile="1"] .simple-quick-label{
+  display:block;color:#f2f2f2;font-size:clamp(29px,7vw,38px);
+  line-height:1.15;font-weight:680;letter-spacing:-.055em;
+}
+html[data-billy-mobile="1"] .simple-quick-snap-icon,
+html[data-billy-mobile="1"] .simple-quick-snap-copy,
+html[data-billy-mobile="1"] .simple-quick-snap-arrow{display:none!important}
+html[data-billy-mobile="1"] .simple-reveal-functions{
+  display:block!important;position:absolute;bottom:max(16px,env(safe-area-inset-bottom));
+  left:50%;transform:translateX(-50%);
+  margin:0!important;padding:13px 18px!important;
+  border:0!important;background:transparent!important;
+  color:#85878b!important;font-size:12px;font-weight:580;white-space:nowrap;
+  text-decoration:underline;text-underline-offset:5px;cursor:pointer;
+}
+html[data-billy-mobile="1"] .simple-reveal-functions:hover,
+html[data-billy-mobile="1"] .simple-reveal-functions:focus-visible{color:#e3e3e3!important}
+html[data-billy-mobile="1"] body:not(.billy-functions-revealed) .simple-home-expanded{display:none!important}
+html[data-billy-mobile="1"] body.billy-functions-revealed .simple-home{
+  justify-content:flex-start!important;align-items:stretch!important;
+  padding:20px 20px 80px!important;
+}
+html[data-billy-mobile="1"] body.billy-functions-revealed .simple-home-expanded{display:contents}
+html[data-billy-mobile="1"] body.billy-functions-revealed .simple-greeting{order:0;margin-bottom:16px}
+html[data-billy-mobile="1"] body.billy-functions-revealed .simple-home .simple-quick-snap{
+  order:1;background:#232527!important;min-height:180px!important;width:100%;
+  flex-direction:row;gap:18px!important;justify-content:flex-start;
+  padding:24px!important;text-align:left;
+}
+html[data-billy-mobile="1"] body.billy-functions-revealed .simple-quick-art{width:94px}
+html[data-billy-mobile="1"] body.billy-functions-revealed .simple-quick-label{font-size:clamp(25px,5vw,33px)}
+html[data-billy-mobile="1"] body.billy-functions-revealed .simple-choice-grid{
+  order:2;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;margin-top:12px;
+}
+html[data-billy-mobile="1"] body.billy-functions-revealed .billy-install-guide{order:3;margin-top:16px}
+html[data-billy-mobile="1"] body.billy-functions-revealed .simple-reveal-functions{
+  order:4;position:static;left:auto;transform:none;
+  margin:12px auto 0!important;align-self:center;
+}
+@media(max-width:380px){
+  html[data-billy-mobile="1"] .simple-home .simple-quick-snap{min-height:300px!important}
+  html[data-billy-mobile="1"] .simple-quick-art{width:min(60vw,215px)}
+  html[data-billy-mobile="1"] body.billy-functions-revealed .simple-home .simple-quick-snap{min-height:150px!important}
+}
+@media(prefers-reduced-motion:reduce){
+  html[data-billy-mobile="1"] .simple-home .simple-quick-snap{transition:none!important}
+}
