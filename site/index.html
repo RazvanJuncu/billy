@@ -17,7 +17,7 @@
   <link rel="stylesheet" href="./review.css?v=0.5.0">
   <link rel="stylesheet" href="./accounts.css?v=0.7.0">
   <link rel="stylesheet" href="./document-type.css?v=0.6.0">
-  <link rel="stylesheet" href="./simple.css?v=0.9.0">
+  <link rel="stylesheet" href="./simple.css?v=0.9.1">
   <link rel="stylesheet" href="./preloader.css?v=1.2.0">
   <link rel="stylesheet" href="./snap.css?v=0.1.0">
   <script src="./perspective.js?v=0.4.1" defer></script>
@@ -28,18 +28,14 @@
   <script src="./account-config.js?v=0.6.0" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
   <script src="./accounts.js?v=0.9.0" defer></script>
-  <script src="./simple.js?v=1.1.0" defer></script>
+  <script src="./simple.js?v=1.1.1" defer></script>
   <script src="./preloader.js?v=1.2.0" defer></script>
   <script>
-    // A dedicated installable entry into the same BillyDPI document workflow.
+    // Old crew/snap shortcuts continue into the scanner without creating another app.
     (() => {
       const params = new URLSearchParams(location.search);
       if (params.get("crew") !== "1" && params.get("snap") !== "1") return;
       document.documentElement.dataset.billySnap = "1";
-      document.title = "Billy Crew";
-      document.getElementById("billyManifest").href = "./snap.webmanifest";
-      document.querySelector('meta[name="apple-mobile-web-app-title"]').content = "Billy Crew";
-      document.querySelector('meta[name="description"]').content = "Billy Crew: capture, straighten, review and export documents through Billy.";
     })();
   </script>
 </head>
@@ -100,9 +96,6 @@
         </section>
         <button type="button" id="setupSignOut" class="account-signout">Log out</button>
       </div>
-      <a class="crew-auth-install-link" href="./install.html">
-        <span>Using Billy on your phone?</span><strong>Get Billy Crew <span aria-hidden="true">→</span></strong>
-      </a>
     </div>
   </div>
 </section>
@@ -136,9 +129,9 @@
     <header class="studio-header">
       <div class="studio-location">
         <button id="simpleHomeButton" class="simple-brand-button" type="button" aria-label="BillyDPI home">
-          <img src="./billydpi-logo.svg" alt="" width="30" height="30"><span class="full-brand">BillyDPI</span><span class="snap-brand">Billy Crew</span>
+          <img src="./billydpi-logo.svg" alt="" width="30" height="30"><span class="full-brand">BillyDPI</span><span class="snap-brand">BillyDPI</span>
         </button>
-        <div class="mobile-wordmark"><img src="./billydpi-logo.svg" alt="" width="27" height="26"><span class="full-brand">BillyDPI</span><span class="snap-brand">Billy Crew</span></div>
+        <div class="mobile-wordmark"><img src="./billydpi-logo.svg" alt="" width="27" height="26"><span class="full-brand">BillyDPI</span><span class="snap-brand">BillyDPI</span></div>
         <div class="location-path"><span>BILLYDPI</span><span class="path-slash">/</span><strong>DOCUMENT STUDIO</strong></div>
       </div>
       <div class="studio-header-actions">
@@ -176,6 +169,11 @@
             <h1 id="simpleGreetingTitle" class="simple-greeting-title">Welcome back.</h1>
             <p id="simpleGreetingSubtitle" class="simple-greeting-subtitle">Ready when you are.</p>
           </div>
+          <button id="simpleQuickSnap" class="simple-quick-snap" type="button" aria-label="Quick Snap: open camera">
+            <span class="simple-quick-snap-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 7h4l2-2h6l2 2h4v12H3z"/><circle cx="12" cy="13" r="4"/></svg></span>
+            <span class="simple-quick-snap-copy"><strong>Quick Snap</strong><small>Open camera. Capture. Done.</small></span>
+            <span class="simple-quick-snap-arrow" aria-hidden="true">↗</span>
+          </button>
           <div class="simple-choice-grid">
             <button id="simpleNewDocument" class="simple-choice" type="button">
               <span class="simple-choice-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v16M4 12h16"/></svg></span>
@@ -186,15 +184,10 @@
               <span class="simple-choice-lower"><span><span class="simple-choice-title">Uploaded Documents</span><span class="simple-choice-caption">Files from this session</span></span></span>
             </button>
           </div>
-          <a class="crew-install-cta" href="./install.html" aria-label="Install Billy Crew mobile companion">
-            <span class="crew-install-cta-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M10 18h4"/></svg></span>
-            <span class="crew-install-cta-copy"><strong>Get Billy Crew</strong><small>Scan and submit on your phone</small></span>
-            <span class="crew-install-cta-chevron" aria-hidden="true">→</span>
-          </a>
         </section>
 
         <section class="simple-new simple-screen" id="simpleNew" aria-label="New document" hidden>
-          <div class="snap-launch" aria-label="Billy Crew document capture">
+          <div class="snap-launch" aria-label="Billy quick document capture">
             <img src="./billydpi-logo.svg" alt="" width="64" height="64">
             <h1>Ready to scan.</h1>
             <p>Photograph your document, then continue through Billy's familiar workflow.</p>
@@ -432,7 +425,7 @@
 <div id="scannerOverlay" class="scanner-overlay" role="dialog" aria-modal="true" aria-labelledby="scannerHeading" hidden>
   <div class="scanner-frame">
     <div class="scanner-header">
-      <div><div class="section-index"><span class="full-brand">BILLYDPI</span><span class="snap-brand">BILLY CREW</span> / SCANNER</div><h2 id="scannerHeading">Capture document</h2></div>
+      <div><div class="section-index"><span class="full-brand">BILLYDPI</span><span class="snap-brand">BILLYDPI</span> / SCANNER</div><h2 id="scannerHeading">Capture document</h2></div>
       <button id="scannerClose" class="scanner-close" aria-label="Close scanner" type="button">×</button>
     </div>
     <div id="scanLive" class="scan-live" hidden>
