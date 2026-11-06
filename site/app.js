@@ -4,7 +4,7 @@ const MAX_FILE_BYTES = 20 * 1024 * 1024;
 const ACCEPTED_EXTENSIONS = new Set(["pdf", "png", "jpg", "jpeg", "tif", "tiff", "bmp"]);
 const $ = (id) => document.getElementById(id);
 const state = {
-  api: "http://127.0.0.1:8000",
+  api: "",
   online: false,
   busy: false,
   file: null,
@@ -32,13 +32,29 @@ function apiAddress(value) {
 }
 
 function updateScanButton() {
-  $("scanButton").disabled = !state.file || !state.online || state.busy;
-  $("scanLabel").textContent = state.busy ? "Processing invoice…" : "Scan invoice";
+  $("scanButton").disabled = !state.file || state.busy;
+  $("scanLabel").textContent = state.busy ? "Processing invoice…" :
+    !state.file ? "Select a document first" :
+    state.online ? "Scan invoice" : "Connect OCR to read text";
+  $("ocrHint").textContent = state.online
+    ? "PaddleOCR is connected. You can extract the invoice text."
+    : "Your scan is ready. Reading text requires an OCR server; camera and crop still work.";
+  $("ocrHint").classList.toggle("ready", state.online);
+  $("ocrHint").classList.toggle("need-engine", !state.online);
 }
 
 async function connectEngine() {
   const dot = $("statusDot");
   const label = $("statusText");
+  const input = $("endpoint").value.trim();
+  if (!input) {
+    state.online = false;
+    state.api = "";
+    dot.className = "status-dot offline";
+    label.textContent = "Scanner ready · OCR not connected";
+    updateScanButton();
+    return;
+  }
   state.online = false;
   dot.className = "status-dot";
   label.textContent = "Connecting to OCR engine…";
@@ -65,8 +81,8 @@ async function connectEngine() {
   } catch (error) {
     state.online = false;
     dot.className = "status-dot offline";
-    label.textContent = "OCR engine offline";
-    showNotification("OCR is offline. You can still use the camera, auto-detect paper edges and save a flattened scan on this device. PaddleOCR requires a separate engine.");
+    label.textContent = "Scanner ready · OCR not connected";
+    showNotification("The OCR server is not reachable. On iPhone, localhost is the phone itself. You need a reachable HTTPS PaddleOCR endpoint. Photo capture and crop still work.", true);
   }
   updateScanButton();
 }
@@ -258,7 +274,14 @@ function renderResult() {
 }
 
 async function scanInvoice() {
-  if (!state.file || !state.online || state.busy) return;
+  if (!state.file || state.busy) return;
+  if (!state.online) {
+    $("settings").open = true;
+    $("settings").scrollIntoView({behavior:"smooth",block:"nearest"});
+    $("endpoint").focus({preventScroll:true});
+    showNotification("The invoice photo is ready, but PaddleOCR is not connected. Connect an HTTPS OCR server above to extract its text.");
+    return;
+  }
   state.busy = true;
   updateScanButton();
   showNotification("Billy is reading the invoice. The first scan can take longer while PaddleOCR downloads and loads its models.");
@@ -344,4 +367,11 @@ if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("./sw.js").catch(() => {});
   });
 }
-connectEngine();
+if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+  $("endpoint").value = "http://127.0.0.1:8000";
+  connectEngine();
+} else {
+  $("statusDot").className = "status-dot offline";
+  $("statusText").textContent = "Scanner ready · OCR not connected";
+  updateScanButton();
+}

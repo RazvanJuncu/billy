@@ -7,7 +7,7 @@
 - **Web/PWA:** static HTML/CSS/JavaScript in `site/`, published with GitHub Pages through GitHub Actions. Supports iPhone camera, imported photos, paper edge estimates, draggable crop handles, rotation and perspective flattening via on-device canvas processing. Includes offline service worker and iPhone home-screen icons.
 - **OCR:** FastAPI in `api.py`, invoking `billy/ocr.py` and PaddleOCR PP-StructureV3.
 - **Data:** PDF and image inputs, Markdown and JSON outputs, page-by-page preserved layout where possible.
-- **Privacy:** The GitHub Pages site does **not** upload invoices to GitHub. It submits files only to the OCR endpoint the user explicitly connects to, default `http://127.0.0.1:8000`. The API listens on the loopback interface by default. Do not expose the OCR API on the internet without TLS, authentication and hardening.
+- **Privacy:** The GitHub Pages site does **not** upload invoices to GitHub. It submits files only to the OCR endpoint the user explicitly connects to, `http://127.0.0.1:8000` when running the web UI locally (no default endpoint on the hosted iPhone app). The API listens on the loopback interface by default. Do not expose the OCR API on the internet without TLS, authentication and hardening.
 
 > GitHub Pages cannot run Python. **Taking photos, cropping, perspective flattening, and saving corrected JPEGs work without an OCR backend. Reading invoice text with PaddleOCR requires a separately running Python API.** No simulated OCR output is presented as genuine.
 
@@ -81,3 +81,7 @@ CI tests need FastAPI + HTTPX but no Paddle model download.
 4. Optional AI field interpretation + mathematical validation + RO e-Factura XML import.
 
 **License:** no public license has been selected yet. Do not commit confidential invoices or OCR outputs.
+
+## iPhone OCR connection status
+
+The GitHub Pages app intentionally starts with **Scanner ready · OCR not connected** and no server URL. This is expected: PaddleOCR is a Python backend and cannot run within GitHub Pages. The **Connect OCR to read text** action opens an inline settings area rather than appearing as a dead button. On iPhone, loopback addresses such as 127.0.0.1 do not reach a separate computer. This app does not provide a hosted OCR backend yet.

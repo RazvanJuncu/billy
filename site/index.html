@@ -27,7 +27,7 @@
         <span class="product-name">DOCUMENT STUDIO</span>
       </a>
       <div class="header-right">
-        <span class="version">BETA 0.1</span>
+        <span class="version">BETA 0.2</span>
         <a class="github-link" href="https://github.com/RazvanJuncu/billy" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
       </div>
     </div>
@@ -46,11 +46,11 @@
         <span class="engine-sublabel">PaddleOCR · PP-StructureV3</span>
       </div>
       <details class="settings" id="settings">
-        <summary>Engine settings <span aria-hidden="true">⌄</span></summary>
+        <summary>Connect OCR <span aria-hidden="true">⌄</span></summary>
         <div class="settings-body">
-          <label for="endpoint">OCR API address</label>
-          <div class="settings-control"><input id="endpoint" type="url" spellcheck="false" value="http://127.0.0.1:8000"><button id="connectButton" type="button">Connect</button></div>
-          <p>The default is your computer. No document is uploaded until you click <strong>Scan invoice</strong>. Remote endpoints must use HTTPS.</p>
+          <label for="endpoint">PaddleOCR server URL</label>
+          <div class="settings-control"><input id="endpoint" type="url" spellcheck="false" placeholder="https://your-ocr-server.example" autocomplete="url"><button id="connectButton" type="button">Connect</button></div>
+          <p id="engineHelp">On iPhone, <code>127.0.0.1</code> refers to the phone itself. To extract text with PaddleOCR, Billy needs a separate HTTPS server. Camera scanning and perspective correction work without one. Files are only uploaded after you explicitly start OCR.</p>
         </div>
       </details>
     </div>
@@ -82,9 +82,10 @@
           <button id="replaceButton" class="text-button" type="button">Replace</button>
         </div>
         <div class="panel-actions">
-          <button id="scanButton" class="primary-button" type="button" disabled><span id="scanLabel">Scan invoice</span><span aria-hidden="true">→</span></button>
+          <button id="scanButton" class="primary-button" type="button" disabled><span id="scanLabel">Select a document first</span><span aria-hidden="true">→</span></button>
+          <p class="scan-hint" id="ocrHint">The photo scanner works on your phone. Text recognition requires a connected OCR server.</p>
         </div>
-        <div class="muted-hint">Camera and straightening happen on your device. OCR runs only when you explicitly connect and submit to an engine.</div>
+        <div class="muted-hint">Your document is not sent to GitHub. An OCR upload happens only after you connect an engine and select Scan invoice.</div>
       </div>
 
       <div class="panel result-panel">

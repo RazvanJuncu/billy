@@ -1,5 +1,5 @@
 /* Billy offline scanner shell. OCR remains a separately connected backend. */
-const CACHE = "billy-scanner-v02";
+const CACHE = "billy-scanner-v03";
 const ASSETS = ["./","./index.html","./styles.css","./app.js","./scanner.js","./perspective.js","./manifest.webmanifest","./favicon.svg","./icon-192.png","./icon-512.png"];
 self.addEventListener("install",event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting()));
@@ -17,8 +17,9 @@ self.addEventListener("fetch",event=>{
     }).catch(()=>caches.match("./index.html")));
     return;
   }
-  event.respondWith(caches.match(request).then(hit=>hit||fetch(request).then(response=>{
+  // Network-first keeps new app releases fresh; cached files remain usable offline.
+  event.respondWith(fetch(request).then(response=>{
     if(response.ok){const copy=response.clone();caches.open(CACHE).then(cache=>cache.put(request,copy));}
     return response;
-  })));
+  }).catch(()=>caches.match(request)));
 });
