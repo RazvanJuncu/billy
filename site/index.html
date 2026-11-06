@@ -13,6 +13,7 @@
   <title>Billy — Your invoices, decoded.</title>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./brand.css">
   <script src="./perspective.js" defer></script>
   <script src="./scanner.js" defer></script>
   <script src="./app.js" defer></script>
@@ -27,40 +28,32 @@
         <span class="product-name">DOCUMENT STUDIO</span>
       </a>
       <div class="header-right">
-        <span class="version">BETA 0.2</span>
+        <span class="version">PREVIEW 0.3</span>
         <a class="github-link" href="https://github.com/RazvanJuncu/billy" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
       </div>
     </div>
   </header>
   <main class="shell">
     <section class="intro">
-      <div class="eyebrow"><span class="eyebrow-line"></span> INVOICE PROCESSING WORKSPACE</div>
-      <h1>Your invoices, <span>decoded.</span></h1>
-      <p>Scan with your phone, straighten the page, then turn a paper invoice into clean structured text with PaddleOCR. Camera and perspective correction work on-device.</p>
+      <div class="eyebrow"><span class="eyebrow-line"></span> BILLY / DOCUMENT STUDIO</div>
+      <h1>Paper, <span>decoded.</span></h1>
+      <p>From paper to clarity. Capture a document, straighten it, and extract structured text when your OCR engine is connected.</p>
     </section>
+    <nav class="workflow-steps" aria-label="Document scanning workflow">
+      <div class="workflow-step is-current" data-stage="0" aria-current="step"><span class="step-number">01</span><span class="step-title">Capture</span></div>
+      <div class="workflow-step" data-stage="1"><span class="step-number">02</span><span class="step-title">Straighten</span></div>
+      <div class="workflow-step" data-stage="2"><span class="step-number">03</span><span class="step-title">Extract</span></div>
+      <div class="workflow-step" data-stage="3"><span class="step-number">04</span><span class="step-title">Review</span></div>
+    </nav>
 
-    <div class="statusbar">
-      <div class="engine-line">
-        <span id="statusDot" class="status-dot"></span>
-        <strong id="statusText">Checking OCR engine…</strong>
-        <span class="engine-sublabel">PaddleOCR · PP-StructureV3</span>
-      </div>
-      <details class="settings" id="settings">
-        <summary>Connect OCR <span aria-hidden="true">⌄</span></summary>
-        <div class="settings-body">
-          <label for="endpoint">PaddleOCR server URL</label>
-          <div class="settings-control"><input id="endpoint" type="url" spellcheck="false" placeholder="https://your-ocr-server.example" autocomplete="url"><button id="connectButton" type="button">Connect</button></div>
-          <p id="engineHelp">On iPhone, <code>127.0.0.1</code> refers to the phone itself. To extract text with PaddleOCR, Billy needs a separate HTTPS server. Camera scanning and perspective correction work without one. Files are only uploaded after you explicitly start OCR.</p>
-        </div>
-      </details>
-    </div>
 
     <section class="workspace" aria-label="Invoice reader workspace">
       <div class="panel source-panel">
-        <div class="panel-header"><div><div class="section-index">01 / INPUT</div><h2>Source document</h2></div><span class="small-tag">ORIGINAL</span></div>
+        <div class="panel-header"><div><div class="section-index">YOUR WORKSPACE / 01</div><h2>Capture a document</h2></div><span class="small-tag">INPUT</span></div>
+        <p class="panel-intro">Take a photo or bring in a file. Billy handles the perspective.</p>
         <div class="capture-row">
-          <button class="camera-button" id="scanOpenCamera" type="button"><span aria-hidden="true">◉</span> Open camera</button>
-          <button class="camera-button secondary" id="scanImportPhoto" type="button">Import photo</button>
+          <button class="camera-button" id="scanOpenCamera" type="button"><span class="camera-glyph" aria-hidden="true">◉</span> Capture document</button>
+          <button class="camera-button secondary" id="scanImportPhoto" type="button">Choose photo</button>
           <input type="file" id="nativeGallery" accept="image/*,.heic,.heif" hidden>
           <input type="file" id="nativeCapture" accept="image/*" capture="environment" hidden>
         </div>
@@ -68,7 +61,7 @@
           <input type="file" id="filePicker" accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,.bmp,application/pdf,image/*" hidden>
           <div id="emptySource" class="empty-source">
             <div class="upload-mark">↑</div>
-            <h3>Drop an invoice here</h3>
+            <h3>Choose a PDF or image</h3>
             <p>or <span class="link-accent">browse your files</span></p>
             <div class="filetypes">PDF &nbsp;·&nbsp; JPG &nbsp;·&nbsp; PNG &nbsp;·&nbsp; TIFF &nbsp;·&nbsp; BMP</div>
             <div class="size-hint">Up to 20 MiB per document</div>
@@ -83,13 +76,30 @@
         </div>
         <div class="panel-actions">
           <button id="scanButton" class="primary-button" type="button" disabled><span id="scanLabel">Select a document first</span><span aria-hidden="true">→</span></button>
-          <p class="scan-hint" id="ocrHint">The photo scanner works on your phone. Text recognition requires a connected OCR server.</p>
+          <p class="scan-hint" id="ocrHint">Capture and straighten on your device. Text extraction needs an OCR connection.</p>
         </div>
-        <div class="muted-hint">Your document is not sent to GitHub. An OCR upload happens only after you connect an engine and select Scan invoice.</div>
+        <div class="statusbar">
+      <div class="engine-line">
+        <span id="statusDot" class="status-dot"></span>
+        <span class="engine-copy"><strong id="statusText">Scanner ready · OCR not connected</strong>
+        <span class="engine-sublabel">Optional text extraction</span></span>
+      </div>
+      <details class="settings" id="settings">
+        <summary>OCR settings <span aria-hidden="true">⌄</span></summary>
+        <div class="settings-body">
+          <label for="endpoint">PaddleOCR server URL</label>
+          <div class="settings-control"><input id="endpoint" type="url" spellcheck="false" placeholder="https://your-ocr-server.example" autocomplete="url"><button id="connectButton" type="button">Connect</button></div>
+          <p id="engineHelp">On iPhone, <code>127.0.0.1</code> refers to the phone itself. To extract text with PaddleOCR, Billy needs a separate HTTPS server. Camera scanning and perspective correction work without one. Files are only uploaded after you explicitly start OCR.</p>
+        </div>
+      </details>
+    </div>
+
+        <div id="notification" class="notification" role="status" aria-live="polite" hidden></div>
+        <div class="muted-hint"><span aria-hidden="true">◈</span> Local-first scanning · Documents are never uploaded to GitHub.</div>
       </div>
 
       <div class="panel result-panel">
-        <div class="panel-header"><div><div class="section-index">02 / OUTPUT</div><h2>Extracted document</h2></div><span class="small-tag blue-tag">STRUCTURED</span></div>
+        <div class="panel-header"><div><div class="section-index">YOUR WORKSPACE / 02</div><h2>Review document</h2></div><span class="small-tag blue-tag">OUTPUT</span></div>
         <div class="result-toolbar" id="resultToolbar" hidden>
           <div class="tab-row" role="tablist" aria-label="Result format">
             <button type="button" class="tab active" data-tab="document" role="tab" aria-selected="true">Document</button>
@@ -101,8 +111,8 @@
         <div class="result-body" id="resultBody">
           <div class="output-placeholder" id="outputPlaceholder">
             <div class="document-illustration"><div class="doc-top"></div><div class="doc-line long"></div><div class="doc-line"></div><div class="doc-grid"><i></i><i></i><i></i><i></i><i></i><i></i></div><span class="star">✳</span></div>
-            <h3>Ready when you are.</h3>
-            <p>Your parsed text, reconstructed tables and original OCR JSON will appear here.</p>
+            <h3>From image to information.</h3>
+            <p>Once text extraction is connected, the document and its tables will appear here for review.</p>
           </div>
           <div id="formattedOutput" class="formatted-output" hidden></div>
           <pre id="rawOutput" class="raw-output" hidden></pre>
@@ -114,18 +124,12 @@
       </div>
     </section>
 
-    <div id="notification" class="notification" role="status" aria-live="polite" hidden></div>
-
-    <section class="details-row">
-      <div class="info-card"><span class="info-number">01</span><div><h3>Layout-aware</h3><p>Document structure and tables, not just disconnected OCR text.</p></div></div>
-      <div class="info-card"><span class="info-number">02</span><div><h3>Reviewable</h3><p>The original stays visible. Always verify monetary amounts before use.</p></div></div>
-      <div class="info-card"><span class="info-number">03</span><div><h3>AI-ready</h3><p>Structured JSON provides the foundation for future financial interpretation.</p></div></div>
-    </section>
+    <div class="product-note"><span class="note-icon">↗</span><span>Capture locally. Review before you trust. Keep full control of your documents.</span></div>
   </main>
   <div id="scannerOverlay" class="scanner-overlay" role="dialog" aria-modal="true" aria-labelledby="scannerHeading" hidden>
     <div class="scanner-frame">
       <div class="scanner-header">
-        <div><div class="section-index">BILLY / MOBILE SCANNER</div><h2 id="scannerHeading">Capture document</h2></div>
+        <div><div class="section-index">BILLY / SCANNER</div><h2 id="scannerHeading">Capture document</h2></div>
         <button id="scannerClose" class="scanner-close" aria-label="Close scanner" type="button">×</button>
       </div>
       <div id="scanLive" class="scan-live" hidden>
@@ -149,13 +153,13 @@
         <div class="scan-actions">
           <button id="scanUseOriginal" class="outline-button" type="button">Skip crop</button>
           <button id="scanSave" class="outline-button" type="button">Save image</button>
-          <button id="scanApply" class="primary-button" type="button">Straighten & use →</button>
+          <button id="scanApply" class="primary-button" type="button">Use this scan →</button>
         </div>
         <button id="scanRetake" class="scanner-retake" type="button">Retake photo</button>
       </div>
       <p id="scanMessage" class="scan-message" role="status" aria-live="polite"></p>
     </div>
   </div>
-  <footer class="footer"><span>billy<span class="accent-dot">.</span> / DOCUMENT INTELLIGENCE</span><span>Built with PaddleOCR · <a href="https://github.com/RazvanJuncu/billy" target="_blank" rel="noopener noreferrer">Open repository ↗</a></span></footer>
+  <footer class="footer"><span>billy<span class="accent-dot">.</span> · Paper, decoded.</span><span>PaddleOCR-powered when connected · <a href="https://github.com/RazvanJuncu/billy" target="_blank" rel="noopener noreferrer">Source ↗</a></span></footer>
 </body>
 </html>

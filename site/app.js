@@ -31,14 +31,30 @@ function apiAddress(value) {
   return url.origin + url.pathname.replace(/\/+$/, "");
 }
 
+function setStage(index) {
+  const n = Math.max(0, Math.min(3, Number(index) || 0));
+  document.querySelectorAll(".workflow-step").forEach((node) => {
+    const step = Number(node.dataset.stage);
+    node.classList.toggle("is-current", step === n);
+    node.classList.toggle("is-complete", step < n);
+    if (step === n) node.setAttribute("aria-current", "step");
+    else node.removeAttribute("aria-current");
+  });
+}
+window.addEventListener("billy:scanner-stage", (event) => {
+  if (event.detail && typeof event.detail.stage === "number") setStage(event.detail.stage);
+});
+
 function updateScanButton() {
   $("scanButton").disabled = !state.file || state.busy;
   $("scanLabel").textContent = state.busy ? "Processing invoice…" :
     !state.file ? "Select a document first" :
     state.online ? "Scan invoice" : "Connect OCR to read text";
-  $("ocrHint").textContent = state.online
-    ? "PaddleOCR is connected. You can extract the invoice text."
-    : "Your scan is ready. Reading text requires an OCR server; camera and crop still work.";
+  $("ocrHint").textContent = !state.file
+    ? "Scan and straighten offline. Connect OCR only when you're ready to extract text."
+    : state.online
+    ? "Your document is ready. Extract the text and review the result."
+    : "Document ready. Connect PaddleOCR to read its text; your scan stays on this device.";
   $("ocrHint").classList.toggle("ready", state.online);
   $("ocrHint").classList.toggle("need-engine", !state.online);
 }
@@ -104,6 +120,7 @@ function selectFile(file) {
     return;
   }
   state.file = file;
+  setStage(2);
   state.result = null;
   state.page = 0;
   discardPreview();
@@ -133,6 +150,7 @@ function selectFile(file) {
   $("filesize").textContent = (file.size / 1024 / 1024).toFixed(2) + " MiB";
   $("fileRow").hidden = false;
   $("fixPerspective").hidden = extension === "pdf";
+  document.querySelector(".result-panel")?.classList.remove("has-results");
   $("resultToolbar").hidden = true;
   $("outputFooter").hidden = true;
   $("outputPlaceholder").hidden = false;
@@ -246,6 +264,8 @@ function renderMarkdown(markdown, container) {
 
 function renderResult() {
   if (!state.result) return;
+  setStage(3);
+  document.querySelector(".result-panel")?.classList.add("has-results");
   const pages = state.result.pages || [];
   const page = pages[state.page];
   if (!page) return;
@@ -283,6 +303,7 @@ async function scanInvoice() {
     return;
   }
   state.busy = true;
+  setStage(2);
   updateScanButton();
   showNotification("Billy is reading the invoice. The first scan can take longer while PaddleOCR downloads and loads its models.");
   const currentFile = state.file;
@@ -374,4 +395,5 @@ if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
   $("statusDot").className = "status-dot offline";
   $("statusText").textContent = "Scanner ready · OCR not connected";
   updateScanButton();
+  setStage(0);
 }
