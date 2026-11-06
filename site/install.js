@@ -1,4 +1,4 @@
-/* Billy Crew setup: platform-aware instructions; QR is local and contains no secrets.
+/* Billy installation: same app on desktop and phone; QR contains no secrets.
    The matrix is a pre-generated, error-corrected QR for PUBLIC_INSTALL_URL.
    It must be regenerated whenever the public installation URL changes. */
 (() => {
@@ -50,41 +50,41 @@
   const guides = {
     ios: {
       label:"iPhone / iPad detected",
-      title:"Install on iPhone or iPad",
-      subtitle:"Add Billy Crew from your browser.",
-      help:"iPhone does not support a one-tap web installation prompt. The app can be added to your Home Screen.",
+      title:"Add Billy to iPhone or iPad",
+      subtitle:"Use Safari to add the same Billy to your Home Screen.",
+      help:"On iOS, use the Safari Share menu. If Add to Home Screen is missing, check the additional Share actions.",
       steps:[
-        "Open this installation page in Safari on your iPhone or iPad.",
-        "Open the Safari Share menu, then choose Add to Home Screen.",
-        "Turn on Open as Web App (when offered), then tap Add.",
-        "Launch Billy Crew from your Home Screen and sign in once."
+        "Open this guide in Safari. If you are in another app's browser, use Open in Safari first.",
+        "Tap Open Billy below so Safari shows the Billy homepage.",
+        "Tap Share, then Add to Home Screen. Enable Open as Web App if offered.",
+        "Tap Add. Launch Billy from your Home Screen, sign in, and use Upload New."
       ]
     },
     android: {
-      label:"Android detected",
-      title:"Install on Android",
+      label:"Android / Samsung detected",
+      title:"Install Billy on Android",
       subtitle:"Chrome or Samsung Internet recommended.",
-      help:"If no install prompt appears, open the scanner first using the button below, then save that page as your shortcut.",
+      help:"If a direct install option does not appear here, open the Billy homepage and add it from your browser menu.",
       steps:[
         "Open this page in Chrome or Samsung Internet.",
-        "If an Install Billy Crew button appears, tap it and confirm installation.",
-        "Otherwise, tap Open Billy Crew below, then use the browser menu to Add to Home screen from the scanner page.",
-        "Open Billy Crew from your launcher and sign in once."
+        "If Install Billy is shown below, tap it and confirm.",
+        "Otherwise tap Open Billy, open the browser menu and choose Install app or Add to Home screen.",
+        "Launch Billy from your Home Screen and sign in once."
       ]
     },
     huawei: {
       label:"Huawei detected",
-      title:"Add Billy Crew on Huawei",
-      subtitle:"Huawei Browser supported as a shortcut.",
-      help:"Huawei may add a shortcut instead of a standalone PWA. Save the scanner page, not this installation guide.",
+      title:"Add Billy on Huawei",
+      subtitle:"Huawei Browser can create a Home Screen shortcut.",
+      help:"Depending on your Huawei browser version, you may get a shortcut instead of a standalone web app.",
       steps:[
-        "Open this page in Huawei Browser.",
-        "Tap Open Billy Crew below to open the direct scanner address.",
-        "On the scanner page, open the browser menu and select Add to Home screen (wording varies by version).",
-        "Confirm the shortcut. Your Home Screen icon will then open Billy Crew directly."
+        "Open this guide in Huawei Browser.",
+        "Tap Open Billy to open the main Billy homepage.",
+        "Use the browser menu to choose Add to Home screen (wording may vary).",
+        "Open the Billy icon on your Home Screen. Sign in to your approved team."
       ]
     },
-    desktop: {label:"Desktop computer detected"}
+    desktop: {label:"Desktop detected"}
   };
 
   function presentPlatform(selected) {
@@ -120,7 +120,7 @@
   window.addEventListener("appinstalled",()=>{
     deferredInstallPrompt = null;
     $("installButton").hidden=true;
-    $("feedback").textContent="Billy Crew installed. Open it from your Home Screen.";
+    $("feedback").textContent="Billy installed. Open it from your Home Screen.";
   });
 
   $("installButton").addEventListener("click",async()=>{
@@ -132,7 +132,7 @@
       await prompt.prompt();
       const choice=await prompt.userChoice;
       $("feedback").textContent = choice.outcome === "accepted"
-        ? "Installation confirmed. Find Billy Crew on your device."
+        ? "Installation confirmed. Find Billy on your device."
         : "Installation canceled. You can still follow the browser instructions above.";
     } catch {
       $("feedback").textContent = "The install prompt could not open. Follow the browser instructions above.";
@@ -156,10 +156,9 @@
   makeQR();
   presentPlatform(detectPlatform());
 
-  // iOS may launch the pinned installation page rather than honoring manifest.start_url.
-  // The standalone app must enter the camera workflow, never show installation instructions.
+  // iOS can pin the install guide itself. Always launch the main Billy app instead.
   if (window.matchMedia("(display-mode: standalone)").matches ||
       window.navigator.standalone === true) {
-    location.replace("./?crew=1");
+    location.replace("./");
   }
 })();
