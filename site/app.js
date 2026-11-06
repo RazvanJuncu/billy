@@ -49,12 +49,12 @@ function updateScanButton() {
   $("scanButton").disabled = !state.file || state.busy;
   $("scanLabel").textContent = state.busy ? "Processing invoice…" :
     !state.file ? "Select a document first" :
-    state.online ? "Scan invoice" : "Connect OCR to read text";
+    state.online ? "Extract with Vision AI" : "Connect Vision AI";
   $("ocrHint").textContent = !state.file
-    ? "The scanner is ready. Start with the camera or choose a file."
+    ? "Capture locally or import an invoice."
     : state.online
-    ? "Document ready. Extraction preserves text and tables for your review."
-    : "Document ready. A connected OCR server is required for text recognition.";
+    ? "AI can extract your invoice now. Human review is required."
+    : "Document ready. Connect Vision to read the invoice.";
   $("ocrHint").classList.toggle("ready", state.online);
   $("ocrHint").classList.toggle("need-engine", !state.online);
 }
@@ -67,7 +67,7 @@ async function connectEngine() {
     state.online = false;
     state.api = "";
     dot.className = "status-dot offline";
-    label.textContent = "Scanner ready · OCR not connected";
+    label.textContent = "Scanner ready · Vision AI not connected";
     updateScanButton();
     return;
   }
@@ -81,7 +81,7 @@ async function connectEngine() {
     const timeout = setTimeout(() => controller.abort(), 4500);
     let response;
     try {
-      response = await fetch(address + "/api/health", { signal: controller.signal, cache: "no-store" });
+      response = await fetch(address + "/api/vision/health", { signal: controller.signal, cache: "no-store" });
     } finally {
       clearTimeout(timeout);
     }
@@ -89,16 +89,16 @@ async function connectEngine() {
     const payload = await response.json();
     if (payload.status !== "online") throw new Error("Unexpected response from OCR service");
     state.api = address;
-    state.online = true;
-    dot.className = "status-dot online";
-    label.textContent = payload.model_loaded ? "OCR engine connected · model loaded" : "OCR engine connected · model loads on first scan";
-    $("settings").open = false;
-    showNotification("");
+    state.online = Boolean(payload.configured);
+    dot.className = state.online ? "status-dot online" : "status-dot offline";
+    label.textContent = state.online ? "Vision AI ready · " + payload.model : "Vision server online · API key missing";
+    $("settings").open = !state.online;
+    showNotification(state.online ? "" : "Vision server is running, but GEMINI_API_KEY is not configured on the server.");
   } catch (error) {
     state.online = false;
     dot.className = "status-dot offline";
-    label.textContent = "Scanner ready · OCR not connected";
-    showNotification("The OCR server is not reachable. On iPhone, localhost is the phone itself. You need a reachable HTTPS PaddleOCR endpoint. Photo capture and crop still work.", true);
+    label.textContent = "Scanner ready · Vision AI not connected";
+    showNotification("Vision server not reachable. The camera still works locally; AI needs a secure backend.", true);
   }
   updateScanButton();
 }
@@ -267,31 +267,13 @@ function renderResult() {
   if (!state.result) return;
   setStage(3);
   document.querySelector(".result-panel")?.classList.add("has-results");
-  const pages = state.result.pages || [];
-  const page = pages[state.page];
-  if (!page) return;
   $("outputPlaceholder").hidden = true;
-  $("resultToolbar").hidden = false;
-  $("outputFooter").hidden = false;
-  $("summaryText").textContent = pages.length + (pages.length === 1 ? " page scanned" : " pages scanned");
-  $("pagePicker").replaceChildren();
-  pages.forEach((item, index) => {
-    const option = new Option("Page " + (index + 1), String(index));
-    $("pagePicker").appendChild(option);
-  });
-  $("pagePicker").value = String(state.page);
-  for (const button of document.querySelectorAll("[data-tab]")) {
-    const selected = button.dataset.tab === state.tab;
-    button.classList.toggle("active", selected);
-    button.setAttribute("aria-selected", String(selected));
-  }
-  const formatted = $("formattedOutput");
-  const raw = $("rawOutput");
-  formatted.hidden = state.tab !== "document";
-  raw.hidden = state.tab === "document";
-  if (state.tab === "document") renderMarkdown(page.markdown, formatted);
-  if (state.tab === "markdown") raw.textContent = page.markdown || "";
-  if (state.tab === "json") raw.textContent = JSON.stringify(page.ocr || {}, null, 2);
+  $("resultToolbar").hidden = true;
+  $("outputFooter").hidden = true;
+  $("rawOutput").hidden = true;
+  $("formattedOutput").hidden = false;
+  if (!window.BillyReview) throw new Error("Billy Review is unavailable.");
+  window.BillyReview.render(state.result, state.api);
 }
 
 async function scanInvoice() {
@@ -301,28 +283,28 @@ async function scanInvoice() {
     window.BillyWorkspace?.showView("engine");
     $("settings").scrollIntoView({behavior:"smooth",block:"nearest"});
     $("endpoint").focus({preventScroll:true});
-    showNotification("The invoice photo is ready, but PaddleOCR is not connected. Connect an HTTPS OCR server above to extract its text.");
+    showNotification("Invoice ready. Connect a Vision server in Engine settings to extract the invoice.");
     return;
   }
   state.busy = true;
   setStage(2);
   updateScanButton();
-  showNotification("Billy is reading the invoice. The first scan can take longer while PaddleOCR downloads and loads its models.");
+  showNotification("Billy Vision is extracting structured data. Excel will not be modified.");
   const currentFile = state.file;
   const form = new FormData();
   form.append("file", currentFile, currentFile.name);
   try {
-    const response = await fetch(state.api + "/api/parse", { method: "POST", body: form });
+    const response = await fetch(state.api + "/api/vision/extract", { method: "POST", body: form });
     const responseBody = await response.json();
     if (!response.ok) throw new Error(responseBody.detail || ("HTTP " + response.status));
-    if (!Array.isArray(responseBody.pages) || !responseBody.pages.length) throw new Error("The OCR service returned no pages.");
+    if (!responseBody.invoice || !responseBody.source_sha256) throw new Error("Vision returned no structured invoice.");
     if (state.file !== currentFile) return;
     state.result = responseBody;
     state.page = 0;
     state.tab = "document";
     renderResult();
-    window.dispatchEvent(new CustomEvent("billy:ocr-ready", {detail:{pageCount:responseBody.pages.length}}));
-    showNotification("Scan complete. Please verify dates, amounts and VAT against the original invoice.");
+    window.dispatchEvent(new CustomEvent("billy:ocr-ready", {detail:{model:responseBody.model}}));
+    showNotification("Extraction complete. Review each field against the original before approval.");
   } catch (error) {
     showNotification("Could not scan this document: " + (error.message || "Connection error"), true);
   } finally {
@@ -396,7 +378,7 @@ if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
   connectEngine();
 } else {
   $("statusDot").className = "status-dot offline";
-  $("statusText").textContent = "Scanner ready · OCR not connected";
+  $("statusText").textContent = "Scanner ready · Vision AI not connected";
   updateScanButton();
   setStage(0);
 }

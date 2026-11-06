@@ -14,9 +14,11 @@
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <link rel="stylesheet" href="./styles.css?v=0.4.1">
   <link rel="stylesheet" href="./brand.css?v=0.4.1">
+  <link rel="stylesheet" href="./review.css?v=0.5.0">
   <script src="./perspective.js?v=0.4.1" defer></script>
   <script src="./scanner.js?v=0.4.1" defer></script>
-  <script src="./app.js?v=0.4.1" defer></script>
+  <script src="./vision-review.js?v=0.5.0" defer></script>
+  <script src="./app.js?v=0.5.0" defer></script>
   <script src="./workspace.js?v=0.4.1" defer></script>
 </head>
 <body data-view="capture">
@@ -42,7 +44,7 @@
       <button id="railEngine" class="rail-tool" type="button" aria-label="Engine settings" title="Engine settings">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v2m0 15v2M2.5 12h2m15 0h2M5.3 5.3l1.5 1.5m10.4 10.4 1.5 1.5M18.7 5.3l-1.5 1.5M6.8 17.2l-1.5 1.5"/></svg>
       </button>
-      <span class="rail-version">0.4</span>
+      <span class="rail-version">0.5</span>
     </div>
   </aside>
 
@@ -115,7 +117,7 @@
         </section>
 
         <section class="result-panel panel" id="resultPanel" aria-label="Document text review">
-          <div class="result-panel-head"><strong>EXTRACTED DOCUMENT</strong><span>READ-ONLY PREVIEW</span></div>
+          <div class="result-panel-head"><strong>EXTRACTED DOCUMENT</strong><span>EDIT · VERIFY · APPROVE</span></div>
           <div class="result-toolbar" id="resultToolbar" hidden>
             <div class="tab-row" role="tablist" aria-label="Result format">
               <button type="button" class="tab active" data-tab="document" role="tab" aria-selected="true">Formatted</button>
@@ -129,8 +131,8 @@
               <div class="output-symbol" aria-hidden="true"><svg viewBox="0 0 80 94"><path d="M15 3h32l17 17v70H15z"/><path d="M47 3v17h17M26 35h28M26 46h28M26 57h19M26 69h12"/></svg></div>
               <div class="surface-kicker">NOT PROCESSED</div>
               <h3>No extracted text yet.</h3>
-              <p>Connect the PaddleOCR engine to reconstruct text and tables from your scan. Nothing has been sent to a server.</p>
-              <button id="reviewConnect" type="button" class="quiet-action">Open OCR settings <span>↗</span></button>
+              <p>Connect Billy Vision to extract invoice data for human review. Nothing is sent automatically to Excel.</p>
+              <button id="reviewConnect" type="button" class="quiet-action">Open Vision settings <span>↗</span></button>
             </div>
             <div id="formattedOutput" class="formatted-output" hidden></div>
             <pre id="rawOutput" class="raw-output" hidden></pre>
@@ -146,7 +148,7 @@
 
         <div class="stage-bottom">
           <span><span class="fine-dot"></span> CAMERA &amp; PERSPECTIVE RUN ON DEVICE</span>
-          <span>DOCUMENT ENGINE / v0.4</span>
+          <span>DOCUMENT ENGINE / v0.5</span>
         </div>
       </main>
 
@@ -164,26 +166,26 @@
         </section>
 
         <section class="inspector-section engine-section" aria-label="OCR engine">
-          <div class="inspector-label"><span>DOCUMENT ENGINE</span><span>PADDLE / V3</span></div>
+          <div class="inspector-label"><span>DOCUMENT ENGINE</span><span>GEMINI / FLASH</span></div>
           <div class="statusbar">
             <div class="engine-line">
               <span id="statusDot" class="status-dot offline"></span>
               <div class="engine-copy">
-                <strong id="statusText">Scanner ready · OCR not connected</strong>
-                <span class="engine-sublabel">Optional text extraction</span>
+                <strong id="statusText">Scanner ready · Vision AI not connected</strong>
+                <span class="engine-sublabel">Gemini 3.8 Flash · server-side</span>
               </div>
             </div>
           </div>
           <div class="panel-actions">
             <button id="scanButton" class="primary-button" type="button" disabled><span id="scanLabel">Select a document first</span><span aria-hidden="true">→</span></button>
-            <p class="scan-hint" id="ocrHint">Capture and straighten on this device. Connect OCR when you're ready to extract text.</p>
+            <p class="scan-hint" id="ocrHint">Capture locally. AI extraction and approval require a server.</p>
           </div>
           <details class="settings" id="settings">
-            <summary>Configure OCR engine <span aria-hidden="true">⌄</span></summary>
+            <summary>Connect Vision server <span aria-hidden="true">⌄</span></summary>
             <div class="settings-body">
-              <label for="endpoint">PaddleOCR server URL</label>
+              <label for="endpoint">Billy Vision server URL</label>
               <div class="settings-control"><input id="endpoint" type="url" spellcheck="false" placeholder="https://your-ocr-server.example" autocomplete="url"><button id="connectButton" type="button">Connect</button></div>
-              <p id="engineHelp">On Windows, start the local engine with <code>start-billy.cmd</code> from the GitHub project, then open <code>http://127.0.0.1:5173/</code>. On iPhone, the local Windows engine is not reachable automatically; you will need an authenticated HTTPS service. <a href="https://github.com/RazvanJuncu/billy#start-real-ocr-on-windows-recommended-first" target="_blank" rel="noopener noreferrer">Setup instructions ↗</a></p>
+              <p id="engineHelp">The Gemini API key stays on the backend, never in this app. Billy Vision is local-only for development; company use needs secure HTTPS and corporate authentication. Excel is never written automatically. <a href="https://github.com/RazvanJuncu/billy/blob/main/VISION.md" target="_blank" rel="noopener noreferrer">Setup guide ↗</a></p>
             </div>
           </details>
         </section>

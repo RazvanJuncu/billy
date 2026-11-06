@@ -6,6 +6,35 @@
 
 Billy is now a **full-screen document instrument environment**, drawing from Glide's actual satin-obsidian design: a compact navigation rail, central document viewport, dedicated control inspector, and iPhone bottom dock. No homepage hero, white dashboard cards or fake status indicators. The four stages are Capture → Straighten → Extract → Review. See [`BRANDING.md`](./BRANDING.md) for the tokens and interaction principles.
 
+## Billy Vision v0.5 — first AI integration (development pilot)
+
+Billy Vision uses a server-side Gemini multimodal API, with **Gemini 3.8 Flash** as its configurable initial model. This is a new path separate from the legacy PaddleOCR adapter. The schema-first model returns invoice headers and every line item, then a deterministic decimal validator flags discrepancies. Corrections are human-approved; the approved structured fields and original predictions are stored in a **local SQLite pilot log**, without saving the original image. Approved CSV and JSON may be exported, but **no Excel workbook is modified automatically**.
+
+Do **not** use this development API with confidential company invoices or expose it publicly yet. It lacks enterprise login, server-owned session identity, rate limiting, production document storage and access controls. A company deployment needs corporate authentication, secure HTTPS, audit/retention rules, backups, an approval database and approved Excel connectors.
+
+The GitHub Pages frontend remains a static PWA. It does not embed a Gemini key and it does not provide hosted vision inference. You must run a development API server or deploy a separate authenticated backend for actual extraction. **The AI has not been tested end-to-end against live Gemini or production invoices**; unit tests use synthetic values and mocked upstream responses.
+
+Quick local developer check (Python 3.11 installed):
+
+```powershell
+git clone https://github.com/RazvanJuncu/billy.git
+cd billy
+py -3.11 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements-api.txt
+$env:GEMINI_API_KEY = "YOUR_PERSONAL_TEST_KEY"
+.\.venv\Scripts\python.exe -m uvicorn api:app --host 127.0.0.1 --port 8000
+```
+
+In another PowerShell window, from the repository:
+
+```powershell
+.\.venv\Scripts\python.exe -m http.server 5173 --bind 127.0.0.1 --directory site
+```
+
+Open **http://127.0.0.1:5173/** in your computer browser. Only the server process receives `GEMINI_API_KEY`. **Never paste an API key into the Billy browser UI, commit one, or send one through chat.** Set `BILLY_VISION_MODEL` on the server to choose another supported Gemini ID. Leave the PowerShell server running while testing.
+
+Read [VISION.md](VISION.md) for architecture, field schema, money validation, tests, privacy and the path to enterprise hosting.
+
 ## Architecture
 
 - **Web/PWA:** static HTML/CSS/JavaScript in `site/`, published with GitHub Pages through GitHub Actions. Supports iPhone camera, imported photos, paper edge estimates, draggable crop handles, rotation and perspective flattening via on-device canvas processing. Includes offline service worker and iPhone home-screen icons.
