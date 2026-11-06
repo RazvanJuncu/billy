@@ -1,4 +1,4 @@
-/* Billy Accounts — quiet, secure workspace entry, inspired by Numveil's account layer. */
+/* Billy Accounts  -  quiet, secure workspace entry, inspired by Numveil's account layer. */
 .auth-gate{position:fixed;inset:0;z-index:100;background:#080b0d;display:grid;place-items:center;overflow-y:auto;padding:30px 16px;overscroll-behavior:contain}
 .auth-gate::before{display:none;content:none}
 .auth-layout{position:relative;width:min(455px,100%);margin:auto}

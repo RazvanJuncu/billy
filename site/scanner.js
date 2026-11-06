@@ -1,4 +1,4 @@
-/* Billy Mobile Scanner — camera, crop handles and perspective correction.
+/* Billy Mobile Scanner  -  camera, crop handles and perspective correction.
    All image processing stays on this device until the user explicitly requests OCR. */
 (function (root) {
   "use strict";

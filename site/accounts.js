@@ -1,4 +1,4 @@
-/* Billy Accounts — Supabase Auth + organization-scoped workspace.
+/* Billy Accounts  ·  Supabase Auth + organization-scoped workspace.
    No password storage, ad-hoc tokens or organization privileges in client code. */
 (() => {
   "use strict";
@@ -22,6 +22,39 @@
     gateMessage.hidden = !text;
   }
   function closePanel() { accountPanel.hidden = true; }
+
+  function firstNameFor(account) {
+    const metadata = account?.user_metadata || {};
+    const fullName = [metadata.full_name, metadata.name, metadata.display_name]
+      .find(value => typeof value === "string" && value.trim());
+    const raw = fullName
+      ? fullName.trim().split(/\s+/)[0]
+      : (account?.email || "").split("@")[0].split(/[._-]/)[0].replace(/\d+$/,"");
+    const name = raw?.trim().slice(0,32) || "";
+    return name ? name.charAt(0).toLocaleUpperCase() + name.slice(1) : "";
+  }
+
+  function closeProfileMenu() {
+    $("profileMenu").hidden = true;
+    accountButton.setAttribute("aria-expanded","false");
+  }
+
+  function toggleProfileMenu() {
+    const menu = $("profileMenu");
+    menu.hidden = !menu.hidden;
+    accountButton.setAttribute("aria-expanded",String(!menu.hidden));
+    if (!menu.hidden) $("profileMyAccount").focus();
+  }
+
+  function openAccountSheet(team = false) {
+    closeProfileMenu();
+    accountPanel.hidden = false;
+    if (team) $("accountSwitcher").closest(".account-section")?.scrollIntoView({block:"nearest"});
+  }
+
+  function renderProfile(account) {
+    $("accountButtonName").textContent = account?.email?.split("@")[0] || "Account";
+  }
   function setGate(open) {
     gate.hidden = !open;
     document.body.classList.toggle("auth-locked", open);
@@ -64,7 +97,7 @@
     if (run !== sequence) return;
     if(error || !result.user){
       user=null;organization=null;memberships=[];
-      accountButton.hidden=true;closePanel();showMode("login");return;
+      accountButton.hidden=true;closeProfileMenu();closePanel();showMode("login");return;
     }
     user=result.user;
     const {data, error:memError}=await client
@@ -81,7 +114,7 @@
     if(!memberships.length){
       organization=null;login.hidden=true;setup.hidden=false;
       gateHeading.textContent="Your workspace.";
-      accountButton.hidden=false;accountButton.textContent="Account";
+      accountButton.hidden=false;renderProfile(user);
       $("welcomeEmail").textContent=user.email||"";
       status("You can create a workspace or request to join an existing company team. Access is never granted automatically.");
       setGate(true);return;
@@ -91,7 +124,7 @@
     organization={id:selection.organization_id,name:selection.organizations.name,role:selection.role};
     sessionStorage.setItem("billy-active-organization",organization.id);
     accountButton.hidden=false;
-    accountButton.textContent=user.email?.split("@")[0]||"Account";
+    renderProfile(user);
     $("teamName").textContent=organization.name;
     $("teamRole").textContent=organization.role.toUpperCase();
     $("teamId").value=organization.id;
@@ -106,7 +139,10 @@
     $("adminJoinSection").hidden=organization.role!=="owner";
     closePanel();
     setGate(false);
-    window.dispatchEvent(new CustomEvent("billy:account-ready",{detail:{organizationId:organization.id,role:organization.role}}));
+    window.dispatchEvent(new CustomEvent("billy:account-ready",{detail:{
+      organizationId:organization.id, role:organization.role,
+      firstName:firstNameFor(user)
+    }}));
     if(organization.role==="owner") refreshJoinRequests();
   }
   async function refreshJoinRequests(){
@@ -199,7 +235,7 @@
     client.auth.onAuthStateChange((event,session)=>{
       if(event==="PASSWORD_RECOVERY")setTimeout(()=>showMode("new-password"),0);
       else if(event==="SIGNED_OUT"){
-        user=null;organization=null;memberships=[];sequence++;
+        user=null;organization=null;memberships=[];sequence++;closeProfileMenu();
         setTimeout(()=>showMode("login"),0);
       }else if(event==="SIGNED_IN"||event==="INITIAL_SESSION"||event==="TOKEN_REFRESHED"){
         if(session?.access_token)setTimeout(()=>loadWorkspace(),0);
@@ -212,7 +248,22 @@
   $("accountForgot").addEventListener("click",()=>showMode("forgot"));
   $("createWorkspace").addEventListener("submit",createWorkspace);
   $("joinWorkspace").addEventListener("submit",joinWorkspace);
-  accountButton.addEventListener("click",()=>{accountPanel.hidden=false;});
+  accountButton.addEventListener("click",toggleProfileMenu);
+  $("profileMyAccount").addEventListener("click",()=>openAccountSheet(false));
+  $("profileWorkspace").addEventListener("click",()=>openAccountSheet(true));
+  $("profileSignOut").addEventListener("click",async()=>{
+    closeProfileMenu();
+    if(client){await client.auth.signOut();location.reload();}
+  });
+  document.addEventListener("click",event=>{
+    if(!$("profileWrap").contains(event.target))closeProfileMenu();
+  });
+  document.addEventListener("keydown",event=>{
+    if(event.key==="Escape"){
+      closeProfileMenu();
+      if(!accountPanel.hidden)closePanel();
+    }
+  });
   $("accountClose").addEventListener("click",closePanel);
   $("setupSignOut").addEventListener("click",async()=>{if(client){await client.auth.signOut();location.reload();}});
   $("accountSignOut").addEventListener("click",async()=>{
@@ -228,6 +279,7 @@
   window.BillyAccounts={
     configured:()=>Boolean(client),
     active:()=>Boolean(client&&user&&organization),
+    firstName:()=>firstNameFor(user),
     sessionHeaders:async()=>{
       if(!client||!organization)throw Error("Sign in to an approved team first.");
       const {data,error}=await client.auth.getSession();

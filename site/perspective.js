@@ -1,4 +1,4 @@
-/* Billy Perspective Engine — dependency-free, on-device geometry and pixels.
+/* Billy Perspective Engine  -  dependency-free, on-device geometry and pixels.
    Corners are ordered [top-left, top-right, bottom-right, bottom-left].
    All geometry is normalized to 0..1 unless stated otherwise. */
 (function (root) {

@@ -55,7 +55,7 @@ function render(result,endpoint,authHeaders){
      });
      const td=node("td");const remove=node("button","line-remove","×");remove.type="button";remove.setAttribute("aria-label","Remove line "+(index+1));remove.addEventListener("click",()=>{(documentType==="fuel_release"?draft.handwritten_entries:draft.lines).splice(index,1);dirty();paint();});td.appendChild(remove);tr.appendChild(td);body.appendChild(tr);
    });
-   if(!(documentType==="fuel_release"?draft.handwritten_entries:draft.lines).length){const tr=node("tr");const td=node("td","empty-items","No fields extracted — add them manually if needed.");td.colSpan=lineKeys.length+1;tr.appendChild(td);body.appendChild(tr);}
+   if(!(documentType==="fuel_release"?draft.handwritten_entries:draft.lines).length){const tr=node("tr");const td=node("td","empty-items","No fields found. Add them manually if needed.");td.colSpan=lineKeys.length+1;tr.appendChild(td);body.appendChild(tr);}
  }
  add.addEventListener("click",()=>{const items=documentType==="fuel_release"?draft.handwritten_entries:draft.lines;if(items.length>=100)return;const blank={};lineKeys.forEach(k=>blank[k[0]]=null);if(documentType==="fuel_release"){blank.label="Additional field";blank.legibility="uncertain";}items.push(blank);dirty();paint();});paint();
  const footer=node("section","review-approval");const label=node("label","review-confirm-label");checkbox=document.createElement("input");checkbox.type="checkbox";label.append(checkbox,node("span","","I checked every value and unclear handwritten entry against the original document."));footer.appendChild(label);

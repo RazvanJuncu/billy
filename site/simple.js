@@ -10,6 +10,45 @@
   const sessionFiles = [];
   let activeFile = null;
   let approved = false;
+  let firstName = "";
+  let greetingIndex = -1;
+  const greetings = [
+    ["Welcome back, {name}.", "Your workspace is ready."],
+    ["Good to see you, {name}.", "Let's get something done."],
+    ["Ready to roll, {name}?", "One document at a time."],
+    ["Look who's back, {name}.", "The document desk is open."],
+    ["Back at it, {name}.", "Paperwork, meet your match."],
+    ["New day, new docs, {name}.", "Let's keep it simple."],
+    ["Hey, {name}. Ready?", "BillyDPI is ready too."],
+    ["Smooth scanning ahead, {name}.", "Start wherever you like."],
+    ["Time to tame some paperwork, {name}.", "You've got this."],
+    ["Your desk is clear, {name}.", "For now."],
+    ["Got paperwork, {name}?", "Let's sort it out."],
+    ["Welcome aboard, {name}.", "Everything starts with a scan."],
+    ["Another round, {name}?", "Let's keep things moving."],
+    ["All set, {name}?", "A little less admin today."],
+    ["Here we go again, {name}.", "Make it quick, make it clean."]
+  ];
+
+  function rotateGreeting() {
+    if (!firstName || document.hidden || body.dataset.billyScreen !== "home") return;
+    greetingIndex = (greetingIndex + 1) % greetings.length;
+    const [headline, subline] = greetings[greetingIndex];
+    const title = $("simpleGreetingTitle");
+    const subtitle = $("simpleGreetingSubtitle");
+    const setText = () => {
+      title.textContent = headline.replace("{name}",firstName);
+      subtitle.textContent = subline;
+      title.classList.remove("is-changing");
+      subtitle.classList.remove("is-changing");
+    };
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      setText();return;
+    }
+    title.classList.add("is-changing");
+    subtitle.classList.add("is-changing");
+    window.setTimeout(setText,180);
+  }
 
   function announce(message) {
     $("simpleFlowNotice").textContent = message || "";
@@ -32,6 +71,7 @@
       window.BillyWorkspace?.showView("capture");
     }
     announce("");
+    if (next === "home" && firstName && greetingIndex < 0) rotateGreeting();
     if (next === "uploaded") renderUploaded();
     if (next === "process") updateProcess();
     if (next === "upload") updateUpload();
@@ -160,9 +200,20 @@
     if (rec) rec.status = "Not processed";
     if (body.dataset.billyScreen === "review" || body.dataset.billyScreen === "upload") showScreen("edit");
   });
-  window.addEventListener("billy:account-ready",() => {
+  window.addEventListener("billy:account-ready",event => {
+    const updated = String(event.detail?.firstName || "").trim().slice(0,32);
+    if (updated && updated !== firstName) {
+      firstName = updated;
+      greetingIndex = -1;
+      rotateGreeting();
+    }
     if (body.dataset.billyScreen === "process") updateProcess();
   });
+  // Re-read the name when the user returns to the tab. Avoid stacked timers.
+  document.addEventListener("visibilitychange",()=>{
+    if (!document.hidden && firstName && greetingIndex < 0) rotateGreeting();
+  });
+  window.setInterval(rotateGreeting,6500);
   window.addEventListener("billy:document-approved",() => {
     approved = true;
     const rec = sessionFiles.find(item => item.file === activeFile);
@@ -171,6 +222,11 @@
   });
 
   showScreen("home");
+  const existingName = window.BillyAccounts?.firstName?.();
+  if (existingName && window.BillyAccounts?.active?.()) {
+    firstName = existingName.slice(0,32);
+    rotateGreeting();
+  }
   window.BillySimple = {showScreen, getState:() => ({
     screen:body.dataset.billyScreen, sessionFiles:sessionFiles.length, approved
   })};

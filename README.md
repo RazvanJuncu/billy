@@ -2,7 +2,17 @@
 
 **Your invoices, decoded.** Billy is an installable mobile invoice scanning workbench with an offline-capable camera, perspective correction and a separate local Python OCR service built on [PaddleOCR PP-StructureV3](https://www.paddleocr.ai/latest/en/version3.x/pipeline_usage/PP-StructureV3.html).
 
-## BillyDPI v0.8 — progressive workspace
+## BillyDPI v0.9: personalized, icon-led workspace
+
+The home screen cycles through 15 short, friendly greetings using the signed-in
+user's first name from Supabase metadata, falling back to a cleaned email prefix.
+The profile control contains an account icon, a menu with My account,
+Team workspace and Sign out. Card titles and subtitles are separated into
+proper text rows, and the second document selection step uses compact
+icon-led controls. The design remains flat monochrome without em dashes in UI
+copy. Reduced-motion preferences are respected for greeting transitions.
+
+## BillyDPI v0.8: progressive workspace
 
 The product uses the same monochrome, flat, instrument-first design philosophy as Glide. The screen opens with **two wide choices**: New Document and Uploaded Documents. New Document reveals only **Scan** or **Add files**. After capturing/importing a file the interface progresses through **Edit → Process → Review & Approve → Upload / Export**. Every action reveals the next relevant function; the old sidebar and dense inspector remain hidden.
 

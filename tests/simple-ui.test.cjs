@@ -47,3 +47,44 @@ test("The visible interface is monochrome, borderless and has no gradient",()=>{
   assert.match(read("site/sw.js"),/"\.\/simple\.js"/);
   assert.match(read("site/sw.js"),/"\.\/simple\.css"/);
 });
+
+test("Greeting rotation uses 15 playful messages and the signed-in user's first name",()=>{
+  const accounts=read("site/accounts.js");
+  assert.match(html,/id="simpleGreetingTitle"/);
+  assert.match(html,/id="simpleGreetingSubtitle"/);
+  const matches=flow.match(/\["[^"\n]*\{name\}[^"\n]*",\s*"[^"\n]*"\]/g)||[];
+  assert.equal(matches.length,15);
+  assert.match(flow,/window\.setInterval\(rotateGreeting,6500\)/);
+  assert.match(flow,/prefers-reduced-motion: reduce/);
+  assert.match(flow,/billy:account-ready/);
+  assert.match(accounts,/firstNameFor\(user\)/);
+  assert.match(accounts,/firstName:firstNameFor\(user\)/);
+});
+test("Profile menu has a user icon, a chevron and working menu actions",()=>{
+  const accounts=read("site/accounts.js");
+  for(const id of ["profileWrap","profileMenu","profileMyAccount","profileWorkspace",
+    "profileSignOut","accountButtonName"]){
+    assert.match(html,new RegExp('id="'+id+'"'));
+    assert.match(accounts,new RegExp(id));
+  }
+  assert.match(html,/id="accountButton"[^>]+aria-haspopup="menu"/);
+  assert.match(accounts,/closeProfileMenu\(\)/);
+  assert.match(accounts,/openAccountSheet\(true\)/);
+  assert.match(accounts,/client\.auth\.signOut/);
+  assert.match(css,/\.profile-menu\{/);
+});
+test("Card labels occupy separate rows and scan or add file cards use consistent icons",()=>{
+  assert.match(css,/\.simple-choice-title\{\s*display:block/);
+  assert.match(css,/\.simple-choice-caption\{\s*display:block/);
+  assert.match(css,/\.simple-new \.simple-choice\{\s*display:flex!important;flex-direction:row!important/);
+  assert.match(html,/Use your camera/);
+  assert.match(html,/PDF or image/);
+  assert.match(html,/class="ui-icon"/);
+  assert.match(css,/\.simple-choice:active/);
+});
+test("No em dashes in user-facing BillyDPI site assets",()=>{
+  const files=["site/index.html","site/app.js","site/simple.js","site/accounts.js",
+    "site/vision-review.js","site/scanner.js","site/workspace.js",
+    "site/manifest.webmanifest","site/simple.css","site/accounts.css","site/brand.css"];
+  for(const name of files) assert.equal(read(name).includes("\u2014"),false,name);
+});

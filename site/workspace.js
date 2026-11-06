@@ -1,4 +1,4 @@
-/* Billy Document Studio — functional navigation for the full-screen instrument workspace.
+/* Billy Document Studio  -  functional navigation for the full-screen instrument workspace.
    No server-side state, demo records, or fabricated OCR results are used here. */
 (() => {
   "use strict";

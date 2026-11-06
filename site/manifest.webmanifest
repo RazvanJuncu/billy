@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "BillyDPI — Document Processing Intelligence",
+  "name": "BillyDPI",
   "short_name": "BillyDPI",
-  "description": "Document Processing Intelligence — scan, interpret and approve invoices and handwritten Fuel Releases",
+  "description": "Scan, interpret and approve invoices and handwritten Fuel Releases",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

@@ -1,4 +1,4 @@
-/* BillyDPI v0.8 — flat black & white, action-first. No gradients or visible chrome.
+/* BillyDPI v0.8  -  flat black & white, action-first. No gradients or visible chrome.
    Keeps the original camera, perspective editor, team accounts and AI hooks. */
 :root{
   --black:#050607;
@@ -337,3 +337,183 @@ body[data-billy-screen] .result-body th{border-color:transparent!important}
 
 /* The next action appears only after review approval. */
 .simple-review-next{margin-left:auto;min-height:35px!important}
+
+
+/* BillyDPI 0.9: welcoming workspace, icon-led controls, compact second step.
+   Monochrome only. No visible borders, gradients or gradients disguised as light. */
+body[data-billy-screen] .studio-header{position:relative;z-index:30;overflow:visible!important}
+.profile-wrap{position:relative;z-index:50;display:flex;align-items:center}
+body[data-billy-screen] .account-button{
+  display:inline-flex!important;align-items:center;justify-content:center;gap:10px;
+  padding:0 14px!important;min-height:41px!important;max-width:240px!important;
+  background:#202123!important;border-radius:10px!important;
+  color:#f2f2f2!important;text-transform:none;letter-spacing:0;
+  font-size:12px!important;font-weight:610;
+  transition:background-color 160ms ease, transform 160ms ease;
+}
+body[data-billy-screen] .account-button[hidden]{display:none!important}
+body[data-billy-screen] .account-button:hover,
+body[data-billy-screen] .account-button[aria-expanded="true"]{background:#2d2f31!important}
+body[data-billy-screen] .account-button:active{transform:scale(.985)}
+.ui-icon{width:19px;height:19px;display:block;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.account-button>.ui-icon:first-child{width:18px;height:18px}
+.account-button>.ui-icon:last-child{width:14px;height:14px;color:#aeaeae}
+.account-button-name{max-width:170px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.profile-menu{
+  position:absolute;right:0;top:calc(100% + 10px);width:228px;
+  background:#1d1e20;border:0;border-radius:12px;
+  padding:6px;box-shadow:0 16px 42px rgba(0,0,0,.38);
+}
+.profile-menu[hidden]{display:none!important}
+.profile-menu button{
+  display:flex;align-items:center;gap:12px;text-align:left;
+  padding:0 12px!important;width:100%;min-height:44px;
+  background:transparent!important;color:#ececec!important;
+  border:0!important;border-radius:8px!important;
+  font-size:12px;font-weight:560;
+}
+.profile-menu button:hover,.profile-menu button:focus-visible{background:#313235!important}
+.profile-menu .ui-icon{width:17px;height:17px;stroke-width:1.7}
+.profile-menu button:last-child{color:#d5d5d5!important}
+
+.simple-home{
+  width:min(1100px,calc(100% - 44px));
+  gap:0!important;padding:16px 0 48px;
+  transform:translateY(-18px);
+}
+.simple-greeting{min-height:112px;margin-bottom:20px}
+.simple-greeting-title{
+  color:#f1f1f1;font-size:clamp(28px,3.1vw,43px);
+  letter-spacing:-.055em;line-height:1.12;
+  font-weight:670;margin:0 0 11px;
+  transition:opacity 180ms ease,transform 180ms ease;
+}
+.simple-greeting-subtitle{
+  color:#a6a6a6;font-size:13px;line-height:1.5;margin:0;
+  transition:opacity 180ms ease,transform 180ms ease;
+}
+.simple-greeting-title.is-changing,
+.simple-greeting-subtitle.is-changing{opacity:.12;transform:translateY(4px)}
+.simple-home-label{margin:0 0 14px!important;color:#929292;font-size:11px;letter-spacing:.04em}
+.simple-choice-grid{gap:17px}
+.simple-home .simple-choice{
+  min-height:248px;background:#1a1b1d!important;padding:30px!important;
+}
+.simple-home .simple-choice:nth-child(2){background:#232426!important}
+.simple-choice{
+  transition:background-color 170ms ease,transform 170ms ease!important;
+  touch-action:manipulation;
+}
+.simple-choice:hover,.simple-choice:focus-visible{background:#303133!important;transform:translateY(-2px)}
+.simple-choice:active{background:#38393b!important;transform:scale(.995)}
+.simple-choice-lower{align-items:flex-end!important;gap:18px!important}
+.simple-choice-lower>span:first-child,.simple-choice-copy{display:flex;min-width:0;flex:1;flex-direction:column;align-items:flex-start;gap:7px}
+.simple-choice-title{
+  display:block;font-size:clamp(23px,2vw,28px);
+  letter-spacing:-.042em;line-height:1.14;white-space:normal;
+}
+.simple-choice-caption{
+  display:block;margin:0!important;color:#a9a9a9!important;
+  font-size:12px;line-height:1.45;letter-spacing:0;
+}
+.simple-choice-arrow{display:flex;align-items:center;justify-content:center;flex:none}
+.simple-choice-arrow .ui-icon{width:21px;height:21px;stroke-width:1.7}
+.simple-choice-icon{background:#333436!important;border-radius:10px!important}
+.simple-choice-icon svg{stroke:#f6f6f6}
+
+/* The Scan and Add files step is horizontal, unlike the taller home menu. */
+.simple-new{
+  justify-content:center!important;
+  padding:12px 0 50px!important;
+  gap:23px!important;
+}
+.simple-new .simple-heading{margin:0 0 1px;font-size:clamp(30px,3vw,39px)}
+.simple-new .simple-choice-grid{gap:15px}
+.simple-new .simple-choice{
+  display:flex!important;flex-direction:row!important;
+  align-items:center!important;justify-content:flex-start!important;
+  min-height:139px!important;padding:24px 25px!important;gap:20px!important;
+  border-radius:14px!important;background:#1d1e20!important;
+}
+.simple-new .simple-choice:nth-child(2){background:#232426!important}
+.simple-new .simple-choice:hover,
+.simple-new .simple-choice:focus-visible{background:#303133!important}
+.simple-new .simple-choice:active{background:#38393b!important}
+.simple-new .simple-choice-icon{
+  width:51px;height:51px;flex:none;display:grid;place-items:center;
+  background:#303133!important;
+}
+.simple-new .simple-choice-icon svg{width:26px;height:26px}
+.simple-new .simple-choice-lower{
+  display:flex;align-items:center!important;justify-content:space-between;
+  flex:1;gap:12px!important;min-width:0;
+}
+.simple-new .simple-choice-copy{flex:1;min-width:0;gap:7px}
+.simple-new .simple-choice-title{font-size:22px;white-space:nowrap}
+.simple-new .simple-choice-caption{font-size:12px;color:#a2a2a2!important}
+.simple-new .simple-choice-arrow .ui-icon{width:19px;height:19px}
+.simple-new .simple-subline{font-size:12px;color:#858585;margin:0}
+
+/* Rest of the workflow has one primary action, lightweight secondary controls. */
+.simple-main-action,.simple-secondary-action{
+  display:inline-flex;align-items:center;justify-content:center;
+  gap:10px!important;white-space:nowrap;
+  transition:background-color 160ms ease,transform 160ms ease;
+}
+.simple-main-action:hover:not(:disabled),.simple-secondary-action:hover:not(:disabled){transform:translateY(-1px)}
+.simple-main-action:active:not(:disabled),.simple-secondary-action:active:not(:disabled){transform:scale(.992)}
+.simple-main-action .ui-icon,.simple-secondary-action .ui-icon{width:17px;height:17px}
+.simple-back{display:grid!important;place-items:center!important;padding:0!important}
+.simple-back .ui-icon{width:20px;height:20px}
+.simple-edit-action-row .simple-main-action{min-width:204px}
+.simple-action-row{margin-top:15px;gap:10px}
+.simple-action-row .simple-secondary-action{
+  background:#292a2c!important;color:#e7e7e7!important;
+  min-height:45px;
+}
+.simple-action-row .simple-secondary-action:hover{background:#343537!important}
+.simple-action-row .simple-main-action{min-height:45px}
+.simple-review-next{margin-left:auto;min-height:38px!important}
+.simple-upload-icon .ui-icon{width:29px;height:29px;stroke:#eee}
+.simple-flow-card{background:#18191b!important}
+
+@media(max-width:720px){
+  body[data-billy-screen] .account-button{
+    max-width:174px!important;padding:0 10px!important;gap:7px;
+    min-height:38px!important;
+  }
+  .account-button-name{max-width:114px;font-size:11px}
+  .profile-menu{width:min(228px,calc(100vw - 24px))}
+  .simple-home{width:calc(100% - 32px);transform:translateY(-4px);padding:10px 0 28px;gap:0!important}
+  .simple-greeting{min-height:118px;margin-bottom:17px}
+  .simple-greeting-title{font-size:clamp(25px,7vw,33px);line-height:1.15}
+  .simple-greeting-subtitle{font-size:12px}
+  .simple-home-label{margin-bottom:12px!important}
+  .simple-home .simple-choice{
+    min-height:178px;padding:22px!important;
+  }
+  .simple-choice-grid{gap:12px}
+  .simple-choice-title{font-size:24px}
+  .simple-new{justify-content:flex-start!important;padding:28px 0 35px!important;gap:18px!important}
+  .simple-new .simple-choice-grid{grid-template-columns:1fr;gap:11px}
+  .simple-new .simple-choice{min-height:116px!important;padding:19px!important;gap:15px!important}
+  .simple-new .simple-choice-icon{width:47px;height:47px}
+  .simple-new .simple-choice-icon svg{width:23px;height:23px}
+  .simple-new .simple-choice-title{font-size:21px}
+  .simple-new .simple-choice-caption{font-size:11px}
+  .simple-flow-card{padding:25px 20px}
+  .simple-action-row{flex-direction:column}
+  .simple-action-row button{width:100%}
+}
+@media(max-width:380px){
+  body[data-billy-screen] .account-button{max-width:96px!important}
+  .account-button-name{max-width:54px}
+  .simple-new .simple-choice{padding:15px!important;gap:12px!important}
+  .simple-new .simple-choice-title{font-size:19px}
+}
+@media(prefers-reduced-motion:reduce){
+  .simple-greeting-title,.simple-greeting-subtitle,.simple-choice,
+  .simple-main-action,.simple-secondary-action,.account-button{transition:none!important}
+  .simple-choice:hover,.simple-main-action:hover:not(:disabled),
+  .simple-secondary-action:hover:not(:disabled){transform:none!important}
+}
