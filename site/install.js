@@ -64,11 +64,11 @@
       label:"Android detected",
       title:"Install on Android",
       subtitle:"Chrome or Samsung Internet recommended.",
-      help:"If a direct install prompt is unavailable, open the browser menu and choose Install app or Add to Home screen.",
+      help:"If no install prompt appears, open the scanner first using the button below, then save that page as your shortcut.",
       steps:[
         "Open this page in Chrome or Samsung Internet.",
-        "Tap Install Billy Crew if the button appears, or use the browser menu.",
-        "Confirm Install app or Add to Home screen.",
+        "If an Install Billy Crew button appears, tap it and confirm installation.",
+        "Otherwise, tap Open Billy Crew below, then use the browser menu to Add to Home screen from the scanner page.",
         "Open Billy Crew from your launcher and sign in once."
       ]
     },
@@ -76,12 +76,12 @@
       label:"Huawei detected",
       title:"Add Billy Crew on Huawei",
       subtitle:"Huawei Browser supported as a shortcut.",
-      help:"On some Huawei versions this installs a Home Screen shortcut, rather than a standalone PWA. The document capture workflow is still available.",
+      help:"Huawei may add a shortcut instead of a standalone PWA. Save the scanner page, not this installation guide.",
       steps:[
         "Open this page in Huawei Browser.",
-        "Open the browser menu, then select Add to Home screen (wording varies by version).",
-        "Confirm the shortcut and open Billy Crew from your Home Screen.",
-        "Sign in to your approved BillyDPI team."
+        "Tap Open Billy Crew below to open the direct scanner address.",
+        "On the scanner page, open the browser menu and select Add to Home screen (wording varies by version).",
+        "Confirm the shortcut. Your Home Screen icon will then open Billy Crew directly."
       ]
     },
     desktop: {label:"Desktop computer detected"}
