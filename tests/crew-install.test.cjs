@@ -8,10 +8,10 @@ const installer=read("site/install.html");
 const js=read("site/install.js");
 const manifest=JSON.parse(read("site/snap.webmanifest"));
 const sw=read("site/sw.js");
-test("BillyDPI has a central Get Billy Crew installation entry",()=>{
-  assert.match(html, /class="crew-install-cta" href="\.\/install\.html"/);
-  assert.match(html, /Get Billy Crew/);
-  assert.equal(manifest.name,"Billy Crew");
+test("Billy homepage prioritizes Quick Snap without advertising the legacy companion",()=>{
+  assert.doesNotMatch(html, /class="crew-install-cta" href="\.\/install\.html"/);
+  assert.doesNotMatch(html, /Get Billy Crew/);
+  assert.match(html, /id="simpleQuickSnap"/);
   assert.equal(manifest.start_url,"./?crew=1");
   assert.match(html,/params\.get\("crew"\)/);
 });
