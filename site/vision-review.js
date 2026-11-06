@@ -2,47 +2,56 @@
 (() => {
 "use strict";
 const $ = id => document.getElementById(id);
-const fieldKeys = [["supplier_name","Supplier"],["supplier_tax_id","Supplier tax ID"],["customer_name","Customer"],["invoice_number","Invoice #"],["issue_date","Issue date"],["due_date","Due date"],["currency","Currency"],["subtotal","Subtotal"],["vat_total","VAT total"],["grand_total","Grand total"]];
-const lineKeys = [["description","Description"],["quantity","Quantity"],["unit_price","Unit price"],["net_amount","Net"],["vat_rate","VAT %"],["vat_amount","VAT"]];
+const invoiceFieldKeys = [["supplier_name","Supplier"],["supplier_tax_id","Supplier tax ID"],["customer_name","Customer"],["invoice_number","Invoice #"],["issue_date","Issue date"],["due_date","Due date"],["currency","Currency"],["subtotal","Subtotal"],["vat_total","VAT total"],["grand_total","Grand total"]];
+const invoiceLineKeys = [["description","Description"],["quantity","Quantity"],["unit_price","Unit price"],["net_amount","Net"],["vat_rate","VAT %"],["vat_amount","VAT"]];
+const fuelFieldKeys = [["release_number","Release #"],["supplier_name","Fuel supplier"],["operator_name","Operator"],["airport","Airport"],["aircraft_registration","Registration"],["flight_number","Flight"],["delivery_date","Delivery date"],["fuel_type","Fuel type"],["requested_quantity","Requested fuel"],["delivered_quantity","Delivered fuel"],["quantity_unit","Unit"],["truck_identifier","Truck"],["fueler_name","Fueler"],["receiver_name","Receiver"]];
+const handwritingKeys = [["label","Field"],["transcription","Handwriting"],["legibility","Legibility"]];
+let fieldKeys=invoiceFieldKeys,lineKeys=invoiceLineKeys,documentType="invoice",extractId="",getHeaders=null;
+
 let original=null,draft=null,sha="",api="",approved=false,checkbox=null,approveButton=null,notice=null,exportPanel=null;
 const node=(tag,cls="",content)=>{const e=document.createElement(tag);e.className=cls;if(content!==undefined)e.textContent=content;return e;};
 const textbox=(value,onUpdate,cls="review-input")=>{const e=node("input",cls);e.type="text";e.value=value??"";e.autocomplete="off";e.addEventListener("input",()=>{onUpdate(e.value||null);dirty();});return e;};
 function dirty(){approved=false;if(checkbox)checkbox.checked=false;if(approveButton){approveButton.disabled=true;approveButton.textContent="Approve reviewed invoice";}if(notice)notice.textContent="Changes not approved. Verify the values against the original.";if(exportPanel)exportPanel.hidden=true;}
 function download(text,name,mime){const u=URL.createObjectURL(new Blob([text],{type:mime}));const a=node("a");a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1000);}
 function escapeCell(value){const s=String(value??"");const dangerous=/^\s*[=+@]/.test(s) || (/^\s*-/.test(s) && !/^\s*-\d+(?:[.,]\d+)?\s*$/.test(s));const safe=dangerous?"'"+s:s;return '"'+safe.replaceAll('"','""')+'"';}
-function exportCSV(){if(!approved)return;const columns=[...fieldKeys.map(k=>k[0]),...lineKeys.map(k=>k[0])];const rows=draft.lines.length?draft.lines:[{}];const table=[columns,...rows.map(line=>[...fieldKeys.map(k=>draft[k[0]]),...lineKeys.map(k=>line[k[0]])])];download("\ufeff"+table.map(row=>row.map(escapeCell).join(",")).join("\r\n")+"\r\n","billy-approved.csv","text/csv;charset=utf-8");}
-function exportJSON(){if(approved)download(JSON.stringify({schema_version:"0.5",approved:true,invoice:draft,source_sha256:sha},null,2),"billy-approved.json","application/json");}
-function render(result,endpoint){
- if(!result||!result.invoice||!result.source_sha256)throw Error("Incomplete extraction.");
- original=structuredClone(result.invoice);draft=structuredClone(result.invoice);sha=result.source_sha256;api=endpoint;approved=false;
+function exportCSV(){if(!approved)return;const columns=[...fieldKeys.map(k=>k[0]),...lineKeys.map(k=>k[0])];const items=documentType==="fuel_release"?draft.handwritten_entries:draft.lines;const rows=items.length?items:[{}];const table=[columns,...rows.map(line=>[...fieldKeys.map(k=>draft[k[0]]),...lineKeys.map(k=>line[k[0]])])];download("\ufeff"+table.map(row=>row.map(escapeCell).join(",")).join("\r\n")+"\r\n","billy-approved.csv","text/csv;charset=utf-8");}
+function exportJSON(){if(approved)download(JSON.stringify({schema_version:"0.6",approved:true,document_type:documentType,document:draft,source_sha256:sha},null,2),"billy-approved.json","application/json");}
+function render(result,endpoint,authHeaders){
+ documentType=result?.document_type||"invoice";
+ const source=documentType==="fuel_release"?result?.fuel_release:result?.invoice;
+ if(!source||!result.extraction_id||!result.source_sha256)throw Error("Incomplete extraction.");
+ fieldKeys=documentType==="fuel_release"?fuelFieldKeys:invoiceFieldKeys;
+ lineKeys=documentType==="fuel_release"?handwritingKeys:invoiceLineKeys;
+ original=structuredClone(source);draft=structuredClone(source);sha=result.source_sha256;
+ extractId=result.extraction_id;api=endpoint;getHeaders=authHeaders;approved=false;
  const root=$("formattedOutput");root.replaceChildren();root.hidden=false;root.classList.add("vision-review");
  const title=node("div","review-intro");
- title.append(node("span","review-eyebrow","BILLY / VERIFIED DOCUMENT WORKFLOW"),node("h3","review-title","Review extracted invoice"),node("p","review-note","Edit any field. The model's confidence is not calibrated; verify against the original."));
+ title.append(node("span","review-eyebrow","BILLY / VERIFIED DOCUMENT WORKFLOW"),node("h3","review-title",documentType==="fuel_release"?"Review Fuel Release":"Review extracted invoice"),node("p","review-note","Edit any field. The model's confidence is not calibrated; verify against the original."));
  const metadata=node("div","review-metadata");metadata.append(node("span","",result.model||"Vision AI"),node("span","","No automatic Excel writes"));title.appendChild(metadata);root.appendChild(title);
  const warnings=result.validation_warnings||[];
  const warn=node("div","review-warnings");
  warn.append(node("strong","",warnings.length?warnings.length+" validation checks require review":"No arithmetic discrepancy detected"),node("p","",warnings.join(" · ")||"This does not prove that extraction is correct. Check each field."));root.appendChild(warn);
  const grid=node("div","review-grid");
  fieldKeys.forEach(pair=>{const label=node("label","review-field");label.append(node("span","review-field-name",pair[1]),textbox(draft[pair[0]],v=>{draft[pair[0]]=v;}));grid.appendChild(label);});root.appendChild(grid);
- const heading=node("div","review-list-header");heading.appendChild(node("strong","","Invoice line items"));const add=node("button","review-add-line","+ Add line");add.type="button";heading.appendChild(add);root.appendChild(heading);
+ const heading=node("div","review-list-header");heading.appendChild(node("strong","",documentType==="fuel_release"?"Handwritten fields":"Invoice line items"));const add=node("button","review-add-line","+ Add line");add.type="button";heading.appendChild(add);root.appendChild(heading);
  const scroll=node("div","review-table-scroll");const table=node("table","review-items");const head=node("thead");const hrow=node("tr");lineKeys.forEach(x=>hrow.appendChild(node("th","",x[1])));hrow.appendChild(node("th","",""));head.appendChild(hrow);table.appendChild(head);
  const body=node("tbody");table.appendChild(body);scroll.appendChild(table);root.appendChild(scroll);
  function paint(){
    body.replaceChildren();
-   draft.lines.forEach((line,index)=>{
+   (documentType==="fuel_release"?draft.handwritten_entries:draft.lines).forEach((line,index)=>{
      const tr=node("tr");
-     lineKeys.forEach(pair=>{const td=node("td");td.appendChild(textbox(line[pair[0]],v=>{line[pair[0]]=v;},pair[0]==="description"?"review-input review-description":"review-input review-numeric"));tr.appendChild(td);});
-     const td=node("td");const remove=node("button","line-remove","×");remove.type="button";remove.setAttribute("aria-label","Remove line "+(index+1));remove.addEventListener("click",()=>{draft.lines.splice(index,1);dirty();paint();});td.appendChild(remove);tr.appendChild(td);body.appendChild(tr);
+     lineKeys.forEach(pair=>{const td=node("td");td.appendChild(textbox(line[pair[0]],v=>{line[pair[0]]=v;},pair[0]==="description"||pair[0]==="transcription"?"review-input review-description":"review-input review-numeric"));tr.appendChild(td);});
+     const td=node("td");const remove=node("button","line-remove","×");remove.type="button";remove.setAttribute("aria-label","Remove line "+(index+1));remove.addEventListener("click",()=>{(documentType==="fuel_release"?draft.handwritten_entries:draft.lines).splice(index,1);dirty();paint();});td.appendChild(remove);tr.appendChild(td);body.appendChild(tr);
    });
-   if(!draft.lines.length){const tr=node("tr");const td=node("td","empty-items","No items found — add lines if needed.");td.colSpan=7;tr.appendChild(td);body.appendChild(tr);}
+   if(!(documentType==="fuel_release"?draft.handwritten_entries:draft.lines).length){const tr=node("tr");const td=node("td","empty-items","No fields extracted — add them manually if needed.");td.colSpan=lineKeys.length+1;tr.appendChild(td);body.appendChild(tr);}
  }
- add.addEventListener("click",()=>{if(draft.lines.length>=200)return;const blank={};lineKeys.forEach(k=>blank[k[0]]=null);draft.lines.push(blank);dirty();paint();});paint();
- const footer=node("section","review-approval");const label=node("label","review-confirm-label");checkbox=document.createElement("input");checkbox.type="checkbox";label.append(checkbox,node("span","","I verified the invoice values and approve the corrections."));footer.appendChild(label);
+ add.addEventListener("click",()=>{const items=documentType==="fuel_release"?draft.handwritten_entries:draft.lines;if(items.length>=100)return;const blank={};lineKeys.forEach(k=>blank[k[0]]=null);if(documentType==="fuel_release"){blank.label="Additional field";blank.legibility="uncertain";}items.push(blank);dirty();paint();});paint();
+ const footer=node("section","review-approval");const label=node("label","review-confirm-label");checkbox=document.createElement("input");checkbox.type="checkbox";label.append(checkbox,node("span","","I checked every value and unclear handwritten entry against the original document."));footer.appendChild(label);
  approveButton=node("button","review-approve","Approve reviewed invoice");approveButton.type="button";approveButton.disabled=true;checkbox.addEventListener("change",()=>{approveButton.disabled=!checkbox.checked||approved;});
  approveButton.addEventListener("click",async()=>{
   if(!checkbox.checked||approved)return;approveButton.disabled=true;approveButton.textContent="Saving approval…";
   try{
-   const response=await fetch(api+"/api/vision/approve",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({source_sha256:sha,original,invoice:draft,confirmed:true})});
+   const response=await fetch(api+"/api/vision/approve",{method:"POST",headers:{"Content-Type":"application/json",...await getHeaders()},body:JSON.stringify({extraction_id:extractId,document_type:documentType,document:draft,confirmed:true})});
    const resultBody=await response.json();
    if(!response.ok)throw Error(resultBody.detail||"Approval was not saved");
    approved=true;approveButton.textContent="Approved · record "+resultBody.approval_id;

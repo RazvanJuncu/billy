@@ -6,6 +6,18 @@
 
 Billy is now a **full-screen document instrument environment**, drawing from Glide's actual satin-obsidian design: a compact navigation rail, central document viewport, dedicated control inspector, and iPhone bottom dock. No homepage hero, white dashboard cards or fake status indicators. The four stages are Capture → Straighten → Extract → Review. See [`BRANDING.md`](./BRANDING.md) for the tokens and interaction principles.
 
+## Billy Teams + Fuel Release v0.6 (in development)
+
+Billy now has a separate **team identity layer**, following the Numveil pattern: email registration/sign-in, password recovery, confirmation, company organizations and owner-approved member requests. Identity and document workspaces are separate.
+
+Authentication relies on **Supabase Auth + PostgreSQL RLS**; the public website deliberately stays locked until the organization provisions a Billy Supabase project and configures its public URL/publishable key. We have **not created or connected a Supabase project**. See [ACCOUNTS.md](ACCOUNTS.md) for one-time admin setup, roles and limitations.
+
+A new document type, **Fuel Release**, supports handwritten entries, with `clear`, `uncertain` or `illegible` legibility markers and explicit human correction. No handwriting model has been trained yet. See [FUEL_RELEASE.md](FUEL_RELEASE.md).
+
+The Vision backend now checks Supabase session validity and active team membership **for each extraction and approval**. Human approvals refer to server-issued extraction IDs and are scoped to the originating user and organization. The approvals journal remains **local pilot SQLite**, not the final shared PostgreSQL database.
+
+**Do not upload company-confidential documents to this development build.** A private HTTPS backend, persistent team database, admin setup and formal access/security review are prerequisites for team deployment.
+
 ## Billy Vision v0.5 — first AI integration (development pilot)
 
 Billy Vision uses a server-side Gemini multimodal API, with **Gemini 3.8 Flash** as its configurable initial model. This is a new path separate from the legacy PaddleOCR adapter. The schema-first model returns invoice headers and every line item, then a deterministic decimal validator flags discrepancies. Corrections are human-approved; the approved structured fields and original predictions are stored in a **local SQLite pilot log**, without saving the original image. Approved CSV and JSON may be exported, but **no Excel workbook is modified automatically**.

@@ -51,7 +51,7 @@ function updateScanButton() {
     !state.file ? "Select a document first" :
     state.online ? "Extract with Vision AI" : "Connect Vision AI";
   $("ocrHint").textContent = !state.file
-    ? "Capture locally or import an invoice."
+    ? "Capture an invoice or handwritten Fuel Release."
     : state.online
     ? "AI can extract your invoice now. Human review is required."
     : "Document ready. Connect Vision to read the invoice.";
@@ -81,7 +81,8 @@ async function connectEngine() {
     const timeout = setTimeout(() => controller.abort(), 4500);
     let response;
     try {
-      response = await fetch(address + "/api/vision/health", { signal: controller.signal, cache: "no-store" });
+      const headers = await window.BillyAccounts.sessionHeaders();
+      response = await fetch(address + "/api/vision/health", { signal: controller.signal, cache: "no-store", headers });
     } finally {
       clearTimeout(timeout);
     }
@@ -273,7 +274,7 @@ function renderResult() {
   $("rawOutput").hidden = true;
   $("formattedOutput").hidden = false;
   if (!window.BillyReview) throw new Error("Billy Review is unavailable.");
-  window.BillyReview.render(state.result, state.api);
+  window.BillyReview.render(state.result, state.api, () => window.BillyAccounts.sessionHeaders());
 }
 
 async function scanInvoice() {
@@ -293,11 +294,13 @@ async function scanInvoice() {
   const currentFile = state.file;
   const form = new FormData();
   form.append("file", currentFile, currentFile.name);
+  form.append("document_type", $("documentType").value);
   try {
-    const response = await fetch(state.api + "/api/vision/extract", { method: "POST", body: form });
+    const headers = await window.BillyAccounts.sessionHeaders();
+    const response = await fetch(state.api + "/api/vision/extract", { method: "POST", body: form, headers });
     const responseBody = await response.json();
     if (!response.ok) throw new Error(responseBody.detail || ("HTTP " + response.status));
-    if (!responseBody.invoice || !responseBody.source_sha256) throw new Error("Vision returned no structured invoice.");
+    if (!(responseBody.invoice || responseBody.fuel_release) || !responseBody.extraction_id) throw new Error("Vision returned no reviewable document.");
     if (state.file !== currentFile) return;
     state.result = responseBody;
     state.page = 0;
@@ -348,6 +351,16 @@ $("dropzone").addEventListener("drop", (event) => {
   handlePhotoOrDocument(event.dataTransfer.files[0]);
 });
 $("scanButton").addEventListener("click", scanInvoice);
+$("documentType").addEventListener("change", () => {
+  state.result = null;
+  $("outputPlaceholder").hidden = false;
+  $("formattedOutput").hidden = true;
+  $("rawOutput").hidden = true;
+  document.querySelector(".result-panel")?.classList.remove("has-results");
+  setStage(state.file ? 2 : 0);
+  updateScanButton();
+  showNotification("Document type updated. Extract again to create a new review record.");
+});
 $("connectButton").addEventListener("click", connectEngine);
 $("endpoint").addEventListener("keydown", (event) => {
   if (event.key === "Enter") { event.preventDefault(); connectEngine(); }
@@ -373,12 +386,17 @@ if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("./sw.js").catch(() => {});
   });
 }
-if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
-  $("endpoint").value = "http://127.0.0.1:8000";
-  connectEngine();
-} else {
-  $("statusDot").className = "status-dot offline";
-  $("statusText").textContent = "Scanner ready · Vision AI not connected";
-  updateScanButton();
-  setStage(0);
-}
+$("statusDot").className = "status-dot offline";
+$("statusText").textContent = "Sign in to connect Vision AI";
+updateScanButton();
+setStage(0);
+window.addEventListener("billy:account-ready", () => {
+  const endpoint = window.BILLY_AUTH_CONFIG?.apiUrl ||
+    (["localhost","127.0.0.1"].includes(location.hostname) ? "http://127.0.0.1:8000" : "");
+  if(endpoint) {
+    $("endpoint").value = endpoint;
+    connectEngine();
+  } else {
+    $("statusText").textContent = "Team signed in · Vision server not connected";
+  }
+});

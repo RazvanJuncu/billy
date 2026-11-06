@@ -3,12 +3,18 @@ from unittest.mock import patch, Mock
 from fastapi.testclient import TestClient
 from billy.ocr import DocumentResult, PageResult
 from api import app, get_pipeline
+from billy.accounts import Principal, require_member
 
 client = TestClient(app)
 
 
 class TestAPI(unittest.TestCase):
+    def setUp(self):
+        app.dependency_overrides[require_member] = lambda: Principal(
+            "11111111-1111-4111-8111-111111111111",
+            "22222222-2222-4222-8222-222222222222","operator")
     def tearDown(self):
+        app.dependency_overrides.pop(require_member,None)
         get_pipeline.cache_clear()
 
     def test_health_is_not_model_ready(self):

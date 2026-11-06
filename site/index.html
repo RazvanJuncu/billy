@@ -15,13 +15,59 @@
   <link rel="stylesheet" href="./styles.css?v=0.4.1">
   <link rel="stylesheet" href="./brand.css?v=0.4.1">
   <link rel="stylesheet" href="./review.css?v=0.5.0">
+  <link rel="stylesheet" href="./accounts.css?v=0.6.0">
+  <link rel="stylesheet" href="./document-type.css?v=0.6.0">
   <script src="./perspective.js?v=0.4.1" defer></script>
   <script src="./scanner.js?v=0.4.1" defer></script>
-  <script src="./vision-review.js?v=0.5.0" defer></script>
-  <script src="./app.js?v=0.5.0" defer></script>
+  <script src="./vision-review.js?v=0.6.0" defer></script>
+  <script src="./app.js?v=0.6.0" defer></script>
   <script src="./workspace.js?v=0.4.1" defer></script>
+  <script src="./account-config.js?v=0.6.0" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
+  <script src="./accounts.js?v=0.6.0" defer></script>
 </head>
-<body data-view="capture">
+<body data-view="capture" class="auth-locked">
+<section class="auth-gate" id="authGate" aria-label="Billy account access">
+  <div class="auth-layout">
+    <div class="auth-brand"><span class="auth-brand-word">billy<span>.</span></span><span class="auth-brand-tag">DOCUMENT INTELLIGENCE</span></div>
+    <div class="auth-card">
+      <span class="auth-kicker">ACCOUNT / WORKSPACE</span>
+      <h1 id="gateHeading" class="auth-heading">Welcome back.</h1>
+      <p id="gateMessage" class="auth-message" role="status" aria-live="polite" hidden></p>
+      <form id="accountForm" class="auth-form">
+        <label id="accountName" hidden>Full name <input id="accountNameInput" type="text" autocomplete="name" maxlength="120" placeholder="Your name"></label>
+        <label id="accountEmail">Work email <input id="accountEmailInput" type="email" autocomplete="email" placeholder="you@company.com" required></label>
+        <label id="accountPassword">Password <input id="accountPasswordInput" type="password" autocomplete="current-password" placeholder="Your password" minlength="8"></label>
+        <button type="submit" id="accountSubmit">Log in</button>
+      </form>
+      <div class="auth-links">
+        <button type="button" id="accountSwitch">New here? Create an account</button>
+        <button type="button" id="accountForgot">Forgot password?</button>
+      </div>
+      <div class="workspace-setup" id="workspaceSetup" hidden>
+        <p class="review-note">Signed in as <strong id="welcomeEmail"></strong>. Each user has an individual identity; company documents belong to a shared approved team.</p>
+        <section>
+          <div class="setup-title">Create a team workspace</div>
+          <form id="createWorkspace" class="auth-form">
+            <label>Company / team name<input id="workspaceName" type="text" maxlength="120" minlength="2" placeholder="e.g. Flight Operations" required></label>
+            <button type="submit">Create workspace</button>
+          </form>
+        </section>
+        <div class="setup-separator">OR</div>
+        <section>
+          <div class="setup-title">Request access to your company team</div>
+          <form id="joinWorkspace" class="auth-form">
+            <label>Team ID shared by an owner<input id="workspaceInvite" type="text" autocomplete="off" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" required></label>
+            <button type="submit">Request access</button>
+          </form>
+          <p class="auth-footnote">Requests require explicit approval by a team owner.</p>
+        </section>
+        <button type="button" id="setupSignOut" class="account-signout">Log out</button>
+      </div>
+    </div>
+    <p class="auth-footnote">Secure identity and team membership · Scans are not shared with visitors.</p>
+  </div>
+</section>
 <div class="studio-app" id="studioApp">
   <aside class="studio-rail" aria-label="Tools">
     <div class="studio-rail-brand" aria-label="Billy" title="Billy"><span>b</span><i>.</i></div>
@@ -44,7 +90,7 @@
       <button id="railEngine" class="rail-tool" type="button" aria-label="Engine settings" title="Engine settings">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v2m0 15v2M2.5 12h2m15 0h2M5.3 5.3l1.5 1.5m10.4 10.4 1.5 1.5M18.7 5.3l-1.5 1.5M6.8 17.2l-1.5 1.5"/></svg>
       </button>
-      <span class="rail-version">0.5</span>
+      <span class="rail-version">0.6</span>
     </div>
   </aside>
 
@@ -57,6 +103,7 @@
       </div>
       <div class="studio-header-actions">
         <span class="session-badge"><span class="session-dot"></span>LOCAL SESSION</span>
+        <button id="accountButton" class="account-button" type="button" hidden>Account</button>
         <button id="topNew" class="new-scan-control" type="button" aria-label="New scan"><span>＋</span> New scan</button>
         <a class="repo-control" href="https://github.com/RazvanJuncu/billy" title="GitHub repository" target="_blank" rel="noopener noreferrer" aria-label="Open Billy on GitHub">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 19c-4 1-4-2-6-2m12 5v-3.5c0-1 .2-1.5-.5-2 4-.5 6-2 6-6a5 5 0 0 0-1.4-3.5c.2-1 0-2.1-.5-3.1-1.2 0-2.5.8-3.2 1.5a12 12 0 0 0-6.8 0C6.8 4.7 5.5 3.9 4.3 3.9c-.5 1-.7 2.1-.5 3.1A5 5 0 0 0 2.5 10c0 4 2 5.5 6 6-.7.5-.5 1-.5 2V22"/></svg>
@@ -90,6 +137,13 @@
             <div id="sourcePreview" class="source-preview" hidden></div>
           </div>
           <div class="source-controls">
+            <div class="document-type-control">
+              <label for="documentType">DOCUMENT TYPE</label>
+              <select id="documentType" aria-label="Select document type">
+                <option value="invoice">Invoice</option>
+                <option value="fuel_release">Fuel Release · handwritten</option>
+              </select>
+            </div>
             <div class="capture-row">
               <button class="camera-button" id="scanOpenCamera" type="button">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h4l2-2h6l2 2h4v12H3z"/><circle cx="12" cy="13" r="4"/></svg>
@@ -148,7 +202,7 @@
 
         <div class="stage-bottom">
           <span><span class="fine-dot"></span> CAMERA &amp; PERSPECTIVE RUN ON DEVICE</span>
-          <span>DOCUMENT ENGINE / v0.5</span>
+          <span>DOCUMENT ENGINE / v0.6</span>
         </div>
       </main>
 
@@ -166,13 +220,13 @@
         </section>
 
         <section class="inspector-section engine-section" aria-label="OCR engine">
-          <div class="inspector-label"><span>DOCUMENT ENGINE</span><span>GEMINI / FLASH</span></div>
+          <div class="inspector-label"><span>DOCUMENT ENGINE</span><span>VISION / MULTI-DOC</span></div>
           <div class="statusbar">
             <div class="engine-line">
               <span id="statusDot" class="status-dot offline"></span>
               <div class="engine-copy">
                 <strong id="statusText">Scanner ready · Vision AI not connected</strong>
-                <span class="engine-sublabel">Gemini 3.8 Flash · server-side</span>
+                <span class="engine-sublabel">Team-protected Vision AI · handwritten forms supported</span>
               </div>
             </div>
           </div>
@@ -200,6 +254,29 @@
   </div>
 </div>
 
+<aside id="accountPanel" class="account-panel" aria-label="Account settings" hidden>
+  <div class="account-sheet">
+    <div class="account-sheet-header"><strong>Billy / Account</strong><button type="button" id="accountClose" class="account-close" aria-label="Close account panel">×</button></div>
+    <section class="account-section">
+      <h3>Your account</h3><p id="teamEmail"></p>
+      <div class="account-field"><span>Team</span><select id="accountSwitcher" aria-label="Switch team"></select></div>
+      <p>Access role: <strong id="teamRole"></strong></p>
+    </section>
+    <section class="account-section">
+      <h3>Team access</h3>
+      <p><strong id="teamName"></strong> — share this team ID with colleagues. A request still requires your approval.</p>
+      <label class="account-field">Team ID <input id="teamId" readonly aria-label="Team ID"></label>
+      <div class="account-controls"><button id="copyTeamId" type="button">Copy team ID</button></div>
+    </section>
+    <section class="account-section" id="adminJoinSection" hidden>
+      <h3>Pending access requests</h3>
+      <p>Only the workspace owner can approve colleagues. New users never receive automatic access.</p>
+      <div id="joinQueue">No pending requests.</div>
+      <div class="account-controls"><button id="refreshRequests" type="button">Refresh requests</button></div>
+    </section>
+    <section class="account-section"><button id="accountSignOut" class="account-signout" type="button">Log out</button></section>
+  </div>
+</aside>
 <nav class="mobile-dock" aria-label="Mobile workspace tabs">
   <button id="mobileCaptureTab" class="mobile-tab is-active" type="button" aria-current="page">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h7l4.5 4.5v12.5H7zM14 3.5V8h4.5M10 12h5M10 16h5"/></svg><span>Capture</span>

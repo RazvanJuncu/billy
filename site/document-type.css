@@ -1,0 +1,4 @@
+.document-type-control{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #34424a;border-radius:8px;background:#151d21;padding:9px 11px;margin:0 0 8px}
+.document-type-control label{font-size:9px;color:#899da6;letter-spacing:.12em;font-weight:690}
+.document-type-control select{border:1px solid #45555f;border-radius:6px;background:#222c31;color:#e3eaec;font-size:11px;min-height:33px;max-width:62%;padding:5px 8px}
+@media(max-width:720px){.document-type-control{margin-bottom:2px;padding:7px 9px}.document-type-control select{min-height:32px;font-size:10px}.studio-header-actions{gap:6px}.account-button{max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 8px;font-size:10px}}

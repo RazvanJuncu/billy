@@ -1,6 +1,6 @@
 /* Billy offline scanner shell. OCR remains a separately connected backend. */
-const CACHE = "billy-vision-v05";
-const ASSETS = ["./","./index.html","./styles.css","./brand.css","./review.css","./vision-review.js","./app.js","./workspace.js","./scanner.js","./perspective.js","./manifest.webmanifest","./favicon.svg","./icon-192.png","./icon-512.png"];
+const CACHE = "billy-teams-v06";
+const ASSETS = ["./","./index.html","./styles.css","./brand.css","./review.css","./accounts.css","./document-type.css","./account-config.js","./accounts.js","./vision-review.js","./app.js","./workspace.js","./scanner.js","./perspective.js","./manifest.webmanifest","./favicon.svg","./icon-192.png","./icon-512.png"];
 self.addEventListener("install",event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting()));
 });
