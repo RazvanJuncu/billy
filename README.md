@@ -127,6 +127,18 @@ py -3.11 -m http.server 5173 --directory site
 
 Visit `http://localhost:5173`, choose an image or PDF, ensure the API status is connected, and click **Scan invoice**.
 
+## BillySnap (mobile entry, development)
+
+BillySnap is a **separately installable entry point into the existing BillyDPI document studio**. It does not create a second scanner, review implementation, account provider or cloud upload service.
+
+- Open **https://razvanjuncu.github.io/billy/?snap=1** on a phone. In a supported browser, use **Add to Home Screen / Install app**. BillySnap uses a separate web app manifest ID and app label.
+- The same Supabase team identity is required. After the account and team membership are confirmed, BillySnap opens the existing camera scanner automatically when possible. If camera permission is denied or automatic capture is unsupported, press **Open camera** or **Use native camera**.
+- The scanner screen has **Upload file instead** at the bottom. It uses the same image/PDF import control as BillyDPI. Imported photos use the same corner adjustment; PDFs follow the existing document path.
+- After capturing, continue with the existing **Edit → Process → Review & Approve → Upload / Export** flow. Both entry modes use the same JavaScript, validation, OCR endpoint and account session.
+- Existing Supabase session persistence is used; credentials are **not copied into URLs or stored by BillySnap**. A standalone home-screen web app may require a one-time login even if the browser is already logged in, depending on platform storage isolation.
+- The application still **does not upload to company Excel or persistent corporate document storage**; the final screen transparently offers local CSV/JSON exports. A secure corporate upload backend must be built separately. **Do not upload confidential company records to the development service.**
+- Camera access requires HTTPS, device permissions and compatible browsers. Test on actual iOS Safari PWA, Chrome/Samsung Internet Android and Huawei browsers before deployment to staff.
+
 ## Billy on iPhone
 
 1. Open **https://razvanjuncu.github.io/billy/** in Safari.
