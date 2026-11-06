@@ -4,11 +4,18 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f6f8fc">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Billy">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icon-192.png">
   <meta name="description" content="Billy — invoice scanning, readable and structured.">
   <title>Billy — Your invoices, decoded.</title>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <link rel="stylesheet" href="./styles.css">
+  <script src="./perspective.js" defer></script>
   <script src="./app.js" defer></script>
+  <script src="./scanner.js" defer></script>
 </head>
 <body>
   <header class="topbar">
@@ -29,7 +36,7 @@
     <section class="intro">
       <div class="eyebrow"><span class="eyebrow-line"></span> INVOICE PROCESSING WORKSPACE</div>
       <h1>Your invoices, <span>decoded.</span></h1>
-      <p>Turn a paper invoice into clean, structured text. Upload a document, run PaddleOCR, and inspect every page alongside the original.</p>
+      <p>Scan with your phone, straighten the page, then turn a paper invoice into clean structured text with PaddleOCR. Camera and perspective correction work on-device.</p>
     </section>
 
     <div class="statusbar">
@@ -51,6 +58,12 @@
     <section class="workspace" aria-label="Invoice reader workspace">
       <div class="panel source-panel">
         <div class="panel-header"><div><div class="section-index">01 / INPUT</div><h2>Source document</h2></div><span class="small-tag">ORIGINAL</span></div>
+        <div class="capture-row">
+          <button class="camera-button" id="scanOpenCamera" type="button"><span aria-hidden="true">◉</span> Open camera</button>
+          <button class="camera-button secondary" id="scanImportPhoto" type="button">Import photo</button>
+          <input type="file" id="nativeGallery" accept="image/*,.heic,.heif" hidden>
+          <input type="file" id="nativeCapture" accept="image/*" capture="environment" hidden>
+        </div>
         <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Choose or drop an invoice">
           <input type="file" id="filePicker" accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,.bmp,application/pdf,image/*" hidden>
           <div id="emptySource" class="empty-source">
@@ -65,12 +78,13 @@
         <div class="file-row" id="fileRow" hidden>
           <div class="file-icon">DOC</div>
           <div class="file-details"><strong id="filename"></strong><span id="filesize"></span></div>
+          <button id="fixPerspective" class="text-button" type="button" hidden>Fix corners</button>
           <button id="replaceButton" class="text-button" type="button">Replace</button>
         </div>
         <div class="panel-actions">
           <button id="scanButton" class="primary-button" type="button" disabled><span id="scanLabel">Scan invoice</span><span aria-hidden="true">→</span></button>
         </div>
-        <div class="muted-hint">The OCR engine processes this document at the connected endpoint. It is not sent to GitHub.</div>
+        <div class="muted-hint">Camera and straightening happen on your device. OCR runs only when you explicitly connect and submit to an engine.</div>
       </div>
 
       <div class="panel result-panel">
@@ -107,6 +121,40 @@
       <div class="info-card"><span class="info-number">03</span><div><h3>AI-ready</h3><p>Structured JSON provides the foundation for future financial interpretation.</p></div></div>
     </section>
   </main>
+  <div id="scannerOverlay" class="scanner-overlay" role="dialog" aria-modal="true" aria-labelledby="scannerHeading" hidden>
+    <div class="scanner-frame">
+      <div class="scanner-header">
+        <div><div class="section-index">BILLY / MOBILE SCANNER</div><h2 id="scannerHeading">Capture document</h2></div>
+        <button id="scannerClose" class="scanner-close" aria-label="Close scanner" type="button">×</button>
+      </div>
+      <div id="scanLive" class="scan-live" hidden>
+        <div class="video-frame">
+          <video id="scanVideo" autoplay muted playsinline aria-label="Live camera preview"></video>
+          <div class="camera-frame-guide" aria-hidden="true"></div>
+        </div>
+        <div class="live-controls">
+          <button id="scannerNativeCapture" class="outline-button" type="button">Use native camera</button>
+          <button id="scanCapture" class="camera-shutter" type="button" aria-label="Capture document"><span></span></button>
+          <span class="shutter-spacer"></span>
+        </div>
+      </div>
+      <div id="scanEditor" class="scan-editor" hidden>
+        <div id="scanCanvasWrap" class="scan-canvas-wrap"><canvas id="scanCanvas" aria-label="Document preview. Drag blue crop corners to match the page."></canvas></div>
+        <div class="scan-tool-row">
+          <button id="scanAuto" class="scanner-tool" type="button">Auto-detect</button>
+          <button id="scanReset" class="scanner-tool" type="button">Reset corners</button>
+          <button id="scanRotate" class="scanner-tool" type="button">Rotate 90°</button>
+        </div>
+        <div class="scan-actions">
+          <button id="scanUseOriginal" class="outline-button" type="button">Skip crop</button>
+          <button id="scanSave" class="outline-button" type="button">Save image</button>
+          <button id="scanApply" class="primary-button" type="button">Straighten & use →</button>
+        </div>
+        <button id="scanRetake" class="scanner-retake" type="button">Retake photo</button>
+      </div>
+      <p id="scanMessage" class="scan-message" role="status" aria-live="polite"></p>
+    </div>
+  </div>
   <footer class="footer"><span>billy<span class="accent-dot">.</span> / DOCUMENT INTELLIGENCE</span><span>Built with PaddleOCR · <a href="https://github.com/RazvanJuncu/billy" target="_blank" rel="noopener noreferrer">Open repository ↗</a></span></footer>
 </body>
 </html>
