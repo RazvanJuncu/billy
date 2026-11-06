@@ -17,7 +17,7 @@ test("Billy Crew has a separate installable identity using the same origin and d
   assert.equal(manifest.start_url, "./?crew=1");
   assert.notEqual(manifest.id, JSON.parse(read("site/manifest.webmanifest")).id);
   assert.match(html, /id="billyManifest"/);
-  assert.match(html, /data\.billySnap = "1"/);
+  assert.match(html, /dataset\.billySnap = "1"/);
   assert.match(html, /\.\/snap\.webmanifest/);
   assert.match(styles, /data-billy-snap="1"/);
   assert.match(read("site/sw.js"), /"\.\/snap\.webmanifest"/);
