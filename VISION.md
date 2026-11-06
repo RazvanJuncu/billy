@@ -49,3 +49,7 @@ The existing \`/api/parse\` legacy PaddleOCR path remains for comparison but is 
 3. Calibrate per-field uncertainty on held-out data. There is no achievable guarantee of 100% accuracy.
 4. Implement enterprise backend + sign-in + approved database; only then connect to OneDrive/SharePoint or a secure local-file agent.
 5. Add Excel **dry-run previews**, duplicate detection and rollback/audit before any real writes.
+
+## Pilot-origin safety
+
+The paid Vision endpoints deliberately reject browser requests from the public GitHub Pages origin, even when the local server is running. During this pilot, open the **local** studio at `http://127.0.0.1:5173/`. A production HTTPS backend must replace this with server-side corporate authentication and role-based authorization, not by widening CORS alone.

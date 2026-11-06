@@ -92,13 +92,20 @@ class VisionApproval(BaseModel):
     confirmed: bool
 
 
+VISION_DEV_ORIGINS = {"http://localhost:5173", "http://127.0.0.1:5173"}
+
+
 def allowed_origin(request: Request) -> bool:
+    # Unlike legacy Paddle, paid Vision endpoints are local-pilot-only.
+    # Public GitHub Pages is deliberately blocked until server-side auth exists.
     origin = request.headers.get("origin")
-    return not origin or origin in ALLOWED_WEB_ORIGINS
+    return not origin or origin in VISION_DEV_ORIGINS
 
 
 @app.get("/api/vision/health")
-def vision_health():
+def vision_health(request: Request):
+    if not allowed_origin(request):
+        raise HTTPException(status_code=403, detail="Vision pilot only supports the local studio.")
     return {
         "status": "online",
         "provider": "gemini",

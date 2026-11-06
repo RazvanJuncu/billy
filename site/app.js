@@ -1,7 +1,7 @@
 "use strict";
 
-const MAX_FILE_BYTES = 20 * 1024 * 1024;
-const ACCEPTED_EXTENSIONS = new Set(["pdf", "png", "jpg", "jpeg", "tif", "tiff", "bmp"]);
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
+const ACCEPTED_EXTENSIONS = new Set(["pdf", "png", "jpg", "jpeg", "webp"]);
 const $ = (id) => document.getElementById(id);
 const state = {
   api: "",
@@ -112,11 +112,11 @@ function selectFile(file) {
   if (!file) return;
   const extension = (file.name.split(".").pop() || "").toLowerCase();
   if (!ACCEPTED_EXTENSIONS.has(extension)) {
-    showNotification("Unsupported format. Please choose PDF, PNG, JPG, TIFF or BMP.", true);
+    showNotification("Vision accepts PDF, PNG, JPG or WebP files.", true);
     return;
   }
   if (file.size === 0 || file.size > MAX_FILE_BYTES) {
-    showNotification("Choose a non-empty document no larger than 20 MiB.", true);
+    showNotification("Choose a non-empty document no larger than 10 MiB.", true);
     return;
   }
   state.file = file;
@@ -135,7 +135,7 @@ function selectFile(file) {
     iframe.title = "Original PDF invoice";
     iframe.src = state.previewUrl;
     area.appendChild(iframe);
-  } else if (["jpg", "jpeg", "png", "bmp"].includes(extension)) {
+  } else if (["jpg", "jpeg", "png", "webp"].includes(extension)) {
     const image = document.createElement("img");
     image.alt = "Original invoice";
     image.src = state.previewUrl;
@@ -164,7 +164,7 @@ function selectFile(file) {
 function handlePhotoOrDocument(file) {
   if(!file) return;
   const ext=(file.name.split(".").pop()||"").toLowerCase();
-  if (["jpg","jpeg","png","bmp","tif","tiff","heic","heif"].includes(ext) && window.BillyScanner) {
+  if (["jpg","jpeg","png","webp","bmp","tif","tiff","heic","heif"].includes(ext) && window.BillyScanner) {
     window.BillyScanner.editFile(file);
   } else {
     selectFile(file);

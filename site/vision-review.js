@@ -4,12 +4,12 @@
 const $ = id => document.getElementById(id);
 const fieldKeys = [["supplier_name","Supplier"],["supplier_tax_id","Supplier tax ID"],["customer_name","Customer"],["invoice_number","Invoice #"],["issue_date","Issue date"],["due_date","Due date"],["currency","Currency"],["subtotal","Subtotal"],["vat_total","VAT total"],["grand_total","Grand total"]];
 const lineKeys = [["description","Description"],["quantity","Quantity"],["unit_price","Unit price"],["net_amount","Net"],["vat_rate","VAT %"],["vat_amount","VAT"]];
-let original=null,draft=null,sha="",api="",approved=false,checkbox=null,approveButton=null,notice=null;
+let original=null,draft=null,sha="",api="",approved=false,checkbox=null,approveButton=null,notice=null,exportPanel=null;
 const node=(tag,cls="",content)=>{const e=document.createElement(tag);e.className=cls;if(content!==undefined)e.textContent=content;return e;};
 const textbox=(value,onUpdate,cls="review-input")=>{const e=node("input",cls);e.type="text";e.value=value??"";e.autocomplete="off";e.addEventListener("input",()=>{onUpdate(e.value||null);dirty();});return e;};
-function dirty(){approved=false;if(checkbox)checkbox.checked=false;if(approveButton){approveButton.disabled=true;approveButton.textContent="Approve reviewed invoice";}if(notice)notice.textContent="Changes not approved. Verify the values against the original.";}
+function dirty(){approved=false;if(checkbox)checkbox.checked=false;if(approveButton){approveButton.disabled=true;approveButton.textContent="Approve reviewed invoice";}if(notice)notice.textContent="Changes not approved. Verify the values against the original.";if(exportPanel)exportPanel.hidden=true;}
 function download(text,name,mime){const u=URL.createObjectURL(new Blob([text],{type:mime}));const a=node("a");a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1000);}
-function escapeCell(value){const s=String(value??"");const safe=/^\s*[=+\-@\t\r]/.test(s)?"'"+s:s;return '"'+safe.replaceAll('"','""')+'"';}
+function escapeCell(value){const s=String(value??"");const dangerous=/^\s*[=+@]/.test(s) || (/^\s*-/.test(s) && !/^\s*-\d+(?:[.,]\d+)?\s*$/.test(s));const safe=dangerous?"'"+s:s;return '"'+safe.replaceAll('"','""')+'"';}
 function exportCSV(){if(!approved)return;const columns=[...fieldKeys.map(k=>k[0]),...lineKeys.map(k=>k[0])];const rows=draft.lines.length?draft.lines:[{}];const table=[columns,...rows.map(line=>[...fieldKeys.map(k=>draft[k[0]]),...lineKeys.map(k=>line[k[0]])])];download("\ufeff"+table.map(row=>row.map(escapeCell).join(",")).join("\r\n")+"\r\n","billy-approved.csv","text/csv;charset=utf-8");}
 function exportJSON(){if(approved)download(JSON.stringify({schema_version:"0.5",approved:true,invoice:draft,source_sha256:sha},null,2),"billy-approved.json","application/json");}
 function render(result,endpoint){
@@ -51,7 +51,7 @@ function render(result,endpoint){
   }catch(err){approveButton.textContent="Approve reviewed invoice";approveButton.disabled=!checkbox.checked;notice.textContent="Approval failed: "+(err.message||"Unknown error");}
  });
  footer.appendChild(approveButton);notice=node("p","review-approval-note","Approval saves the corrected invoice to the local pilot log, not Excel.");footer.appendChild(notice);
- const exports=node("div","review-export");exports.hidden=true;
+ const exports=node("div","review-export");exports.hidden=true;exportPanel=exports;
  const csv=node("button","review-export-button","↓ Excel-compatible CSV");csv.type="button";csv.addEventListener("click",exportCSV);
  const json=node("button","review-export-button secondary","↓ Approved JSON");json.type="button";json.addEventListener("click",exportJSON);
  exports.append(csv,json);footer.appendChild(exports);root.appendChild(footer);

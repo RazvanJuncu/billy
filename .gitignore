@@ -14,3 +14,8 @@ samples/private/
 *.log
 .DS_Store
 node_modules/
+.billy/
+*.sqlite
+*.sqlite3
+*.db
+
