@@ -142,7 +142,7 @@
 
   function startSnapCamera() {
     if (!window.BillyAccounts?.active?.()) return;
-    showScreen("new");
+    // Open over the home screen: canceling the camera returns to one button.
     window.BillyScanner?.startCamera?.();
   }
 
