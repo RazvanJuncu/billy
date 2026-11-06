@@ -523,19 +523,19 @@ body[data-billy-screen] .account-button:active{transform:scale(.985)}
 @media (max-width:900px), (any-pointer:coarse) and (max-width:1400px){
   .simple-home .simple-quick-snap{
     display:flex!important;position:relative;flex-direction:column;align-items:flex-start;
-    justify-content:space-between;min-height:245px;width:100%;padding:26px!important;
+    justify-content:space-between;min-height:220px;width:100%;padding:25px!important;
     border:0!important;border-radius:18px!important;text-align:left;cursor:pointer;
-    background:#f0f0f0!important;color:#101112!important;
+    background:#2b2d30!important;color:#f2f2f2!important;
     touch-action:manipulation;transition:background-color 170ms ease,transform 170ms ease;
   }
-  .simple-home .simple-quick-snap:hover,.simple-home .simple-quick-snap:focus-visible{background:#fff!important}
+  .simple-home .simple-quick-snap:hover,.simple-home .simple-quick-snap:focus-visible{background:#35373a!important}
   .simple-home .simple-quick-snap:active{transform:scale(.992)}
   .simple-quick-snap:focus-visible{outline:2px solid #fff;outline-offset:4px}
-  .simple-quick-snap-icon{display:grid;place-items:center;width:56px;height:56px;background:#dedede;border-radius:14px}
-  .simple-quick-snap-icon svg{width:30px;height:30px;fill:none;stroke:#131415;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+  .simple-quick-snap-icon{display:grid;place-items:center;width:52px;height:52px;background:#414348;border-radius:13px}
+  .simple-quick-snap-icon svg{width:27px;height:27px;fill:none;stroke:#f0f0f0;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
   .simple-quick-snap-copy{display:flex;flex-direction:column;gap:7px}
-  .simple-quick-snap-copy strong{font-size:clamp(29px,4vw,39px);font-weight:700;line-height:1.05;letter-spacing:-.05em}
-  .simple-quick-snap-copy small{font-size:13px;color:#56585a}
+  .simple-quick-snap-copy strong{font-size:clamp(28px,4vw,36px);font-weight:700;line-height:1.08;letter-spacing:-.05em}
+  .simple-quick-snap-copy small{font-size:13px;color:#b4b6b9}
   .simple-quick-snap-arrow{position:absolute;right:24px;bottom:22px;font-size:24px;line-height:1}
   .simple-home{transform:none;justify-content:center}
   .simple-home .simple-greeting{min-height:0;margin-bottom:21px}
@@ -550,7 +550,7 @@ body[data-billy-screen] .account-button:active{transform:scale(.985)}
   .simple-home .simple-choice-caption{font-size:11px!important;line-height:1.35}
 }
 @media(max-width:380px){
-  .simple-home .simple-quick-snap{min-height:220px;padding:22px!important}
+  .simple-home .simple-quick-snap{min-height:205px;padding:22px!important}
   .simple-home .simple-choice{padding:13px!important}
   .simple-home .simple-choice-title{font-size:14px!important}
   .simple-home .simple-choice-caption{font-size:10px!important}
