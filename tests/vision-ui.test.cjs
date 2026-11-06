@@ -17,8 +17,9 @@ test("Source, review, approval and exports are wired without client keys",()=>{
   assert.doesNotMatch(html,/GEMINI_API_KEY\s*=\s*[^<]/);
 });
 test("Review does not invent confidence or post to Excel",()=>{
-  assert.match(review,/confidence is not calibrated/);
-  assert.match(review,/Excel not modified/);
+  assert.doesNotMatch(review,/100%\\s*confidence|confidence:\\s*100/i);
+  assert.match(read("billy/vision.py"),/"confidence": None/);
+  assert.match(review,/Company storage and Excel are not connected/);
   assert.match(read("site/sw.js"),/vision-review.js/);
   assert.match(read("site/sw.js"),/review.css/);
 });
