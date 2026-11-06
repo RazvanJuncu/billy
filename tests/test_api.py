@@ -30,7 +30,7 @@ class TestAPI(unittest.TestCase):
 
     def test_valid_file_with_mocked_ocr(self):
         doc = DocumentResult("invoice.pdf", [PageResult(1, "sample", {"test": True})])
-        with patch("api.get_pipeline", return_value=object()), patch("api.extract_document", return_value=doc):
+        with patch("api.get_pipeline", return_value=object()), patch("api.extract_ocr_document", return_value=doc):
             result = client.post("/api/parse", files={"file": ("invoice.pdf", b"fake")})
         self.assertEqual(result.status_code, 200)
         self.assertEqual(result.json()["pages"][0]["markdown"], "sample")
