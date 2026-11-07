@@ -1,0 +1,116 @@
+/* Billy QuickScan multipage composer: deliberately quiet, mobile-first UI. */
+#quickscanSession{
+  position:fixed;inset:0;z-index:30;
+  display:flex;align-items:center;justify-content:center;
+  padding:20px;background:rgba(3,4,5,.96);color:#eee;
+  font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+#quickscanSession[hidden],#quickscanCameraTools[hidden]{display:none!important}
+#quickscanSession *{box-sizing:border-box}
+#quickscanSession button{font:inherit;cursor:pointer}
+#quickscanSession button:disabled{opacity:.38;cursor:not-allowed}
+#quickscanSession button:focus-visible,#quickscanCameraImport:focus-visible{
+  outline:2px solid #d8dde1;outline-offset:3px
+}
+#quickscanSession .quickscan-shell{
+  width:min(610px,100%);height:min(780px,calc(100dvh - 40px));
+  background:#101113;border-radius:19px;
+  display:flex;flex-direction:column;overflow:hidden;
+  box-shadow:0 20px 80px rgba(0,0,0,.4);
+}
+#quickscanSession .quickscan-header{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:23px 24px 12px;flex:none;
+}
+#quickscanSession .quickscan-brand{
+  display:flex;align-items:center;gap:10px;font-size:17px;font-weight:720;letter-spacing:-.035em;
+}
+#quickscanSession .quickscan-brand img{width:27px;height:27px;object-fit:contain}
+#quickscanSession .quickscan-close{
+  border:0;border-radius:8px;background:#25272a;color:#cfd1d3;
+  padding:11px 15px;font-size:12px;font-weight:620;
+}
+#quickscanSession .quickscan-content{
+  padding:17px 24px 24px;flex:1;min-height:0;overflow:auto;
+  scrollbar-width:thin;scrollbar-color:#424447 transparent;
+}
+#quickscanSession .quickscan-intro h1{
+  font-size:clamp(27px,5vw,33px);letter-spacing:-.05em;margin:0 0 8px;
+}
+#quickscanSession .quickscan-intro p{color:#a3a5a8;font-size:13px;margin:0 0 18px}
+#quickscanSession .quickscan-message{
+  font-size:12px;color:#c4c7ca;background:#282a2d;border-radius:9px;
+  padding:12px;line-height:1.5;margin:0 0 18px;
+}
+#quickscanSession .quickscan-message.is-error{color:#ffd0c4;background:#422d2b}
+#quickscanSession .quickscan-empty{
+  padding:27px 12px;text-align:center;color:#a5a6a7;font-size:13px;
+  background:#1b1d20;border-radius:12px;margin:10px 0;
+}
+#quickscanSession .quickscan-pages{
+  display:grid;gap:12px;list-style:none;margin:0;padding:0 0 12px;
+}
+#quickscanSession .quickscan-page{
+  display:grid;grid-template-columns:86px minmax(0,1fr);
+  column-gap:15px;row-gap:8px;
+  background:#1c1e21;border-radius:13px;padding:13px;
+}
+#quickscanSession .quickscan-page-preview{
+  width:86px;height:112px;background:#2e3033;border-radius:7px;overflow:hidden;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  color:#dedede;
+}
+#quickscanSession .quickscan-page-preview img{
+  width:100%;height:100%;object-fit:contain;background:#151718;
+}
+#quickscanSession .quickscan-pdf-mark{
+  font-size:15px;font-weight:770;letter-spacing:.045em;
+}
+#quickscanSession .quickscan-page-preview small{font-size:11px;color:#aaa}
+#quickscanSession .quickscan-page-label{
+  min-width:0;display:flex;flex-direction:column;justify-content:center;gap:7px;
+}
+#quickscanSession .quickscan-page-label strong{font-size:16px;letter-spacing:-.03em}
+#quickscanSession .quickscan-page-label small{
+  font-size:11px;color:#a5a6a8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+#quickscanSession .quickscan-page-controls{
+  grid-column:2;display:flex;align-items:center;gap:7px;flex-wrap:wrap;
+}
+#quickscanSession .quickscan-page-control{
+  min-height:37px;padding:6px 10px;border:0;border-radius:8px;
+  background:#313337;color:#e6e6e6;font-size:11px;font-weight:580;
+}
+#quickscanSession .quickscan-page-control:hover:not(:disabled){background:#414448}
+#quickscanSession .quickscan-actions{
+  display:grid;gap:9px;padding:16px 24px calc(20px + env(safe-area-inset-bottom));
+  flex:none;background:#101113;
+}
+#quickscanSession .quickscan-actions button{
+  min-height:49px;width:100%;border:0;border-radius:11px;font-weight:670;font-size:14px;
+}
+#quickscanSession .quickscan-add-camera{background:#303236;color:#f0f0f0}
+#quickscanSession .quickscan-import{background:#25272a;color:#e8e8e8}
+#quickscanSession .quickscan-finish{background:#d7d9db;color:#111317}
+#quickscanSession .quickscan-actions button:active:not(:disabled){transform:scale(.993)}
+#quickscanSession .quickscan-actions small{
+  text-align:center;color:#939598;line-height:1.4;font-size:10px;
+}
+.quickscan-camera-tools{display:flex;justify-content:center;padding:8px 0 12px}
+#quickscanCameraImport{
+  border:0;border-radius:10px;background:#303235;color:#f1f1f1;
+  min-height:44px;padding:9px 20px;font-size:13px;font-weight:630;
+}
+@media(max-width:720px){
+  #quickscanSession{padding:0;align-items:stretch}
+  #quickscanSession .quickscan-shell{
+    border-radius:0;width:100%;height:100dvh;max-height:none;box-shadow:none;
+    padding-top:env(safe-area-inset-top);
+  }
+  #quickscanSession .quickscan-header{padding:14px 19px 10px}
+  #quickscanSession .quickscan-content{padding:17px 19px 16px}
+  #quickscanSession .quickscan-actions{padding:12px 19px calc(15px + env(safe-area-inset-bottom))}
+}
+@media(prefers-reduced-motion:reduce){
+  #quickscanSession .quickscan-actions button:active:not(:disabled){transform:none}
+}
