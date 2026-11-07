@@ -70,7 +70,10 @@
   };
   function classification(path,doc,type,regions,warnings) {
     const value=valueAt(doc,path);
-    if(!substantive(value))return {level:"red",reason:"Required field is missing. Verify against the original."};
+    if(!substantive(value))return {
+      level:highRisk.has(path)?"red":"yellow",
+      reason:"No value extracted. Verify the source, or choose Not on document if this field is absent."
+    };
     let level="green",reason="No issue flagged by the first AI pass. Still review before final approval.";
     const matches=regions.filter(region=>region.field_path===path);
     if(matches.length){
@@ -81,15 +84,29 @@
         if(severity[risk]>severity[level]){
           level=risk;reason=region.visual_reason||"Source text needs verification.";
         }
+        // A model proposing materially different readings is expressing uncertainty,
+        // even when it calls its primary choice "clear". Do not silently mark green.
+        const normalized=v=>String(v??"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+        const chosen=normalized(value);
+        const alternate=(region.alternate_readings||[]).find(a=>
+          normalized(a)&&normalized(a)!==chosen
+        );
+        if(alternate&&severity.yellow>severity[level]){
+          level="yellow";
+          reason="AI also considered '"+String(alternate).slice(0,90)+"'. Verify the original writing.";
+        }
       }
     }else if(highRisk.has(path)){
       level="yellow";reason="No localized visual evidence is available. Verify this value.";
     }
     for(const warning of warnings) {
       const line=String(warning);
-      const normalized=path.replaceAll("[",".").replaceAll("]","");
       const related=line.includes(path)||line.toLowerCase().includes(path.replaceAll("_"," "))||
-        (path==="meter_start"||path==="meter_finish"||path==="delivered_quantity")&&/meter (mismatch|finish|start)|fuel quantity/i.test(line)||
+        // Meter-specific warnings affect readings and delivered quantity. Missing
+        // unit warnings must NOT incorrectly turn three unrelated fields red.
+        (["meter_start","meter_finish","delivered_quantity"].includes(path)&&
+          /^(?:Meter mismatch|Meter finish is less than start|Meter arithmetic matches|Only one meter reading)/i.test(line))||
+        (path==="quantity_unit"&&/Fuel quantity unit missing or unreadable/i.test(line))||
         (path==="grand_total"&&/total not found/i.test(line));
       if(!related)continue;
       const risk=/mismatch|invalid|missing|unreadable/i.test(line)?"red":"yellow";
