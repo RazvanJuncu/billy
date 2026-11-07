@@ -1,0 +1,52 @@
+const test=require("node:test");
+const assert=require("node:assert/strict");
+const fs=require("node:fs");
+const path=require("node:path");
+const read=p=>fs.readFileSync(path.join(__dirname,"..",p),"utf8");
+const html=read("site/index.html");
+const review=read("site/vision-review.js");
+const regions=read("site/vision-regions.js");
+const css=read("site/vision-regions.css");
+const app=read("site/app.js");
+const backend=read("billy/vision.py");
+const api=read("api.py");
+const feedback=read("billy/records.py");
+const sw=read("site/sw.js");
+
+test("Review renders the original image/PDF and estimated normalized Gemini boxes",()=>{
+  assert.ok(html.indexOf('src="./vision-regions.js')<html.indexOf('src="./vision-review.js'));
+  assert.match(html,/vision-regions.css/);
+  assert.match(regions,/PDFJS_URL/);
+  assert.match(regions,/pdfjsLib\.getDocument|lib\.getDocument/);
+  assert.match(regions,/box_2d/);
+  assert.match(regions,/box_2d\.length !== 4/);
+  assert.match(regions,/review-region-marker/);
+  assert.match(regions,/Math\.min\(pdf.numPages, 30\)/);
+  assert.match(css,/review-region-marker/);
+  assert.match(sw,/"\.\/vision-regions.js"/);
+  assert.match(sw,/"\.\/vision-regions.css"/);
+});
+test("Selected areas open an editable field, not a fabricated percentage",()=>{
+  assert.match(review,/data\.evidencePath=path/);
+  assert.match(review,/BillyRegions\.mount/);
+  assert.match(app,/state\.file\)/);
+  assert.match(regions,/Not calibrated/);
+  assert.match(regions,/prior agreement/);
+  assert.match(regions,/sample_size >= 20/);
+  assert.match(regions,/Apply correction/);
+  assert.match(regions,/dispatchEvent\(new Event/);
+  assert.doesNotMatch(regions,/Math\.random|confidence.*\*100/);
+});
+test("Submission saves once and future prompts use team-scoped feedback",()=>{
+  assert.match(review,/Submit corrections/);
+  assert.match(review,/confirmed:true/);
+  assert.doesNotMatch(review,/checkbox\.checked/);
+  assert.match(api,/feedback_summary\(principal, document_type\)/);
+  assert.match(api,/feedback_guidance=feedback\["review_guidance"\]/);
+  assert.match(feedback,/e\.organization_id=\?/);
+  assert.match(feedback,/a\.organization_id=\?/);
+  assert.match(feedback,/SELECT e\.original_json,a\.reviewed_json/);
+  assert.match(backend,/_EVIDENCE_INSTRUCTIONS/);
+  assert.match(backend,/_schema_with_regions/);
+  assert.match(backend,/confidence": None/);
+});
