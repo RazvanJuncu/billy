@@ -9,6 +9,12 @@
 .ramp-segment{position:relative;flex:1 1 60px;min-width:46px;max-width:130px;height:73px;display:flex;align-items:center;justify-content:center;border:0!important;cursor:pointer;border-radius:10px!important;transition:filter 150ms ease,transform 150ms ease;touch-action:manipulation}
 .ramp-segment-number{font-size:12px;letter-spacing:.03em;font-weight:700;color:#171a1c}
 .ramp-green{background:#57b885!important}
+.ramp-blue{background:#72aff4!important}
+.ramp-segment-check{
+  display:grid;place-items:center;
+  width:32px;height:32px;line-height:1;
+  font-size:24px;font-weight:800;color:#102239;
+}
 .ramp-yellow{background:#ebc66a!important}
 .ramp-red{background:#e67872!important}
 .ramp-segment:hover{filter:brightness(1.12)}
@@ -41,6 +47,7 @@
  .ramp-jar{border-radius:16px;min-height:69px}
  .ramp-segment{height:64px;flex-basis:49px;min-width:40px;max-width:120px}
  .ramp-segment-number{font-size:11px}
+ .ramp-segment-check{width:29px;height:29px;font-size:22px}
  .ramp-field-detail{padding:18px 15px}
  .ramp-confirm,.ramp-secondary{width:100%}
  .ramp-detail-actions{flex-direction:column}
