@@ -46,7 +46,7 @@ test("Review highlights uncertain evidence and browser cache version is advanced
   assert.match(review,/flaggedPaths/);
   assert.match(review,/review-field-alert/);
   assert.match(css,/review-field-alert/);
-  assert.match(html,/vision-review\.js\?v=0\.9\.0/);
+  assert.match(html,/vision-review\.js\?v=0\.9\.1/);
   assert.match(html,/simple\.js\?v=1\.2\.6/);
-  assert.match(read("site/sw.js"),/v32-explicit-document-types/);
+  assert.match(read("site/sw.js"),/v33-ramp-review/);
 });
