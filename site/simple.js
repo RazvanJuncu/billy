@@ -1,6 +1,6 @@
 /* BillyDPI / Progressive workflow, shared on phone, tablet and desktop.
-   Each action reveals only the next functional action. Nothing is uploaded to
-   company storage or Excel until a real server-side connector is configured. */
+   Each action reveals only the next functional action. Gemini extraction and
+   reviewed fields may persist in Billy cloud; original files and Excel do not. */
 (() => {
   "use strict";
   const $ = id => document.getElementById(id);
@@ -88,7 +88,7 @@
     $("simpleExportCsv").disabled = !exportable;
     $("simpleExportJson").disabled = !exportable;
     $("simpleUploadNote").textContent = exportable
-      ? "Corrections saved to team feedback memory. Future scans prioritize frequently corrected fields; Gemini weights are not retrained. Company Excel upload is not connected."
+      ? "Approved fields are saved to your Billy team records when connected to cloud. The original file and company Excel are not updated."
       : "Review and approve the document before exporting.";
   }
 
@@ -105,13 +105,11 @@
     showScreen("edit");
   }
 
-  function renderUploaded() {
+  async function renderUploaded() {
     const list = $("simpleDocumentsList");
     list.replaceChildren();
     $("simpleDocumentsEmpty").hidden = sessionFiles.length > 0;
-    $("simpleDocumentsIntro").textContent = sessionFiles.length
-      ? "Files added in this browser session. They are not uploaded to company storage."
-      : "No documents have been uploaded to company storage.";
+    $("simpleDocumentsIntro").textContent = "Current-session files are only on this device. Cloud records contain extracted/approved fields, not source PDFs or photographs.";
     for (const item of sessionFiles) {
       const button = document.createElement("button");
       button.type = "button";
@@ -128,6 +126,60 @@
         window.BillyApp?.openFile(item.file);
       });
       list.appendChild(button);
+    }
+    const api = window.BILLY_AUTH_CONFIG?.apiUrl;
+    if(!api || !window.BillyAccounts?.active?.())return;
+    const title=document.createElement("strong");
+    title.className="simple-document-name";
+    title.textContent="Team cloud records";
+    list.appendChild(title);
+    try{
+      const headers=await window.BillyAccounts.sessionHeaders();
+      const reply=await fetch(api+"/api/vision/records",{headers,cache:"no-store"});
+      if(!reply.ok)throw Error("Team records could not be loaded");
+      const result=await reply.json();
+      if(body.dataset.billyScreen!=="uploaded")return;
+      const rows=Array.isArray(result.records)?result.records:[];
+      $("simpleDocumentsEmpty").hidden=sessionFiles.length>0 || rows.length>0;
+      if(!rows.length) {
+        const empty=document.createElement("p");
+        empty.textContent="No cloud records yet. Extract and approve a document first.";
+        list.appendChild(empty);
+      }
+      for(const record of rows){
+        if(!record || typeof record.id!=="string")continue;
+        const button=document.createElement("button");
+        button.type="button";
+        button.className="simple-document-item";
+        const name=document.createElement("span");
+        name.className="simple-document-name";
+        const date=new Date(record.created_at);
+        const when=Number.isNaN(date.valueOf())?"":date.toLocaleDateString();
+        name.textContent=(record.document_type==="fuel_release"?"Fuel Release":"Invoice")+" · "+when;
+        const status=document.createElement("span");
+        status.className="simple-document-status";
+        status.textContent=record.state==="approved"?"Approved · download JSON":"Extracted · review not saved";
+        button.append(name,status);
+        if(record.state==="approved" && record.reviewed_data){
+          button.addEventListener("click",()=>{
+            const content=JSON.stringify({approved:true,document_type:record.document_type,
+              document:record.reviewed_data,record_id:record.id},null,2);
+            const url=URL.createObjectURL(new Blob([content],{type:"application/json"}));
+            const link=document.createElement("a");
+            link.href=url;link.download="billy-"+record.id+".json";
+            document.body.appendChild(link);link.click();link.remove();
+            setTimeout(()=>URL.revokeObjectURL(url),1000);
+          });
+        }else{
+          button.disabled=true;
+          button.title="Original source file is not archived. Reopen the original document to review.";
+        }
+        list.appendChild(button);
+      }
+    }catch(error){
+      const info=document.createElement("p");
+      info.textContent="Cloud history unavailable. Check your Gemini connection and team membership.";
+      list.appendChild(info);
     }
   }
 
