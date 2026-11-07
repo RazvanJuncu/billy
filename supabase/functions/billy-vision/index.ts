@@ -339,8 +339,11 @@ Deno.serve(async req=>{
   if(req.headers.get("Origin") && req.headers.get("Origin")!==ORIGIN)return error("Origin not allowed.",403);
   if(req.method==="OPTIONS")return cors(req);
   const path=new URL(req.url).pathname;
-  const suffix=path.split("/functions/v1/billy-vision").pop()||"";
-  if(!["/api/vision/health","/api/vision/extract","/api/vision/approve","/api/vision/records"].includes(suffix))return error("Not found.",404);
+  // Supabase may present the public path, function-local path, or a slug-prefixed path.
+  // Match only known routes regardless of which valid prefix the edge runtime preserves.
+  const routes=["/api/vision/health","/api/vision/extract","/api/vision/approve","/api/vision/records"];
+  const suffix=routes.find(route=>path===route||path.endsWith("/billy-vision"+route));
+  if(!suffix)return error("Not found.",404);
   if(req.method!==(suffix==="/api/vision/extract"||suffix==="/api/vision/approve"?"POST":"GET"))return error("Method not allowed.",405);
   try{
     const principal=await trusted(req);
