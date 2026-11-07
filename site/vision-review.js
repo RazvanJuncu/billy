@@ -46,7 +46,7 @@ function localMeterCheck(doc){
   const parseMeter=value=>{
     const raw=String(value??"").trim();
     if(!/^\d+$/.test(raw)&&!/^\d{1,3}(?:[ ,.]\d{3})+$/.test(raw))return null;
-    const number=Number(raw.replace(/[ ,.] /g,"").replace(/[,.]/g,""));
+    const number=Number(raw.replace(/[ , .]/g,""));
     return Number.isSafeInteger(number)&&number>=0?number:null;
   };
   const start=parseMeter(doc?.meter_start),finish=parseMeter(doc?.meter_finish);
