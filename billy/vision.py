@@ -203,7 +203,7 @@ def _clean_regions(raw: object, document_type: str) -> list[dict]:
             continue
         accepted = path in primary
         if not accepted:
-            match = re.fullmatch(rf"{group}\\[(\\d+)\\]\\.([a-z_]+)", path)
+            match = re.fullmatch(rf"{group}\[(\d+)\]\.([a-z_]+)", path)
             accepted = bool(match and int(match.group(1)) < 200 and match.group(2) in child)
         page, box = item.get("page"), item.get("box_2d")
         if not accepted or type(page) is not int or not 1 <= page <= 30:
