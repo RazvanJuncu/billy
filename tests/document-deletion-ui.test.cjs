@@ -69,7 +69,12 @@ function mount(opts={}){
   };
   const fetch=async(url,config={})=>{
     calls.push({url,method:config.method||"GET"});
-    if(url.endsWith("/api/vision/records"))return {ok:true,json:async()=>({records:recordList})};
+    if(url.includes("/api/vision/records")){
+      const offset=Number(new URL(url).searchParams.get("offset")||"0");
+      const page=recordList.slice(offset,offset+50);
+      const hasMore=offset+50<recordList.length;
+      return {ok:true,json:async()=>({records:page,has_more:hasMore,next_offset:hasMore?offset+50:null})};
+    }
     if(url.endsWith("/api/vision/delete")){
       const id=JSON.parse(config.body).record_id;
       const i=recordList.findIndex(r=>r.id===id);
@@ -121,4 +126,28 @@ test("Cloud Delete is shown only for the author and refreshes records after succ
   for(let i=0;i<30;i++)await new Promise(resolve=>setImmediate(resolve));
   assert.equal(records.length,1);
   assert.ok(app.calls.some(c=>typeof c==="object"&&c.method==="POST"&&c.url.endsWith("/api/vision/delete")));
+});
+
+test("Cloud history offers older-page navigation for documents beyond the newest 50",async()=>{
+  const userId="11111111-1111-4111-8111-111111111111";
+  const records=Array.from({length:55},(_,i)=>({
+    id:String(i).padStart(8,"0")+"-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    created_by:userId,document_type:"invoice",state:"extracted",
+    created_at:new Date(Date.UTC(2026,10,7,0,i)).toISOString()
+  }));
+  const app=mount({cloud:true,userId,records});
+  app.win.BillySimple.showScreen("uploaded");
+  for(let i=0;i<30;i++)await new Promise(resolve=>setImmediate(resolve));
+  let navigation=app.element("simpleDocumentsList").children.find(el=>
+    el.className==="simple-documents-pagination");
+  assert.ok(navigation);
+  assert.equal(navigation.children[0].textContent,"Older records");
+  navigation.children[0].click();
+  for(let i=0;i<30;i++)await new Promise(resolve=>setImmediate(resolve));
+  navigation=app.element("simpleDocumentsList").children.find(el=>
+    el.className==="simple-documents-pagination");
+  assert.ok(navigation);
+  assert.equal(navigation.children[0].textContent,"Newer records");
+  assert.equal(app.element("simpleDocumentsList").children.filter(c=>
+    c.className==="simple-document-row").length,5);
 });
