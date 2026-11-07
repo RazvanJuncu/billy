@@ -184,7 +184,7 @@ def feedback_summary(principal: Principal, document_type: str) -> dict:
     if most_corrected:
         labels = ", ".join(key.replace("_", " ") for key, _ in most_corrected)
         guidance = (
-            "Previous human reviews of this team's documents frequently corrected: "
+            "Human reviewers have previously corrected these field categories: "
             + labels + ". Examine those printed fields especially carefully; "
             "never copy values from previous documents or fill unseen values."
         )
