@@ -289,7 +289,7 @@
       finish.hidden=!readyToApprove();
       recheck.disabled=busy;
       finish.disabled=busy;
-      if(busy)feedback.textContent="Gemini is checking your values against the original image…";
+      if(busy)feedback.textContent="The AI engine is checking your values against the original image…";
       else if(pending===0){
         feedback.textContent=revision>0&&checkedRevision===revision
           ?"Review completed. Blue fields were checked by the operator."
