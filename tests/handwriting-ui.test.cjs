@@ -47,10 +47,11 @@ test("TrOCR training evaluates a document-level holdout and gates deployment",()
   assert.match(worker,/\.training\.lock/);
   assert.match(worker,/min_new/);
 });
-test("Only promoted team checkpoint supplies an optional independent second opinion",()=>{
+test("Pretrained baseline or promoted team checkpoint supplies an optional TrOCR second opinion",()=>{
   assert.match(inference,/BILLY_HANDWRITING_INFERENCE_ENABLED/);
   assert.match(inference,/active_model_path/);
-  assert.match(inference,/local_files_only=True/);
+  assert.match(inference,/local_files_only=local_only/);
+  assert.match(inference,/DEFAULT_PRETRAINED = "microsoft\/trocr-small-handwritten"/);
   assert.match(inference,/MAX_SECOND_OPINIONS = 12/);
   assert.match(inference,/handwriting_disagreement/);
   assert.doesNotMatch(inference,/setattr\(result,/);
