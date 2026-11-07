@@ -390,7 +390,13 @@ $("downloadJson").addEventListener("click", () => {
   if (state.result) downloadFile(JSON.stringify(state.result, null, 2), "billy-output.json", "application/json;charset=utf-8");
 });
 window.addEventListener("beforeunload", discardPreview);
-window.BillyScanner?.init({onUse: selectFile, getSource: () => state.file});
+window.BillyScanner?.init({
+  onUse: file => {
+    // QuickScan collects multiple camera captures before creating one document.
+    if (!window.BillyQuickScan?.acceptPage?.(file)) selectFile(file);
+  },
+  getSource: () => state.file
+});
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     // Revalidate the offline shell on every launch, even when iOS holds an older PWA cache.
