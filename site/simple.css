@@ -827,3 +827,58 @@ body[data-billy-screen] .document-type-control{display:none!important}
 
 /* Healthy AI engine connections need no status paragraph; errors still surface. */
 .simple-process-status[hidden]{display:none!important}
+
+
+/* 2026-11-07: Equal visual affordance for both dashboard actions.
+   Earlier nth-child rules overrode Uploaded Documents' hover state. */
+body[data-billy-screen="home"] #simpleNewDocument,
+body[data-billy-screen="home"] #simpleUploadedDocuments{
+  background:#1a1b1d!important;
+  color:#f3f3f3!important;
+}
+body[data-billy-screen="home"] #simpleNewDocument:hover,
+body[data-billy-screen="home"] #simpleUploadedDocuments:hover,
+body[data-billy-screen="home"] #simpleNewDocument:focus-visible,
+body[data-billy-screen="home"] #simpleUploadedDocuments:focus-visible{
+  background:#303133!important;
+  transform:translateY(-2px);
+}
+body[data-billy-screen="home"] #simpleNewDocument:active,
+body[data-billy-screen="home"] #simpleUploadedDocuments:active{
+  background:#38393b!important;
+  transform:scale(.995);
+}
+
+/* Cloud history can be taller than the viewport. Centering overflowing
+   flex content caused the heading to draw above its own section/header. */
+body[data-billy-screen="uploaded"] #simpleUploaded{
+  flex:0 0 auto!important;
+  min-height:calc(100dvh - 150px);
+  justify-content:flex-start!important;
+  padding-top:24px!important;
+  padding-bottom:max(55px,env(safe-area-inset-bottom))!important;
+  margin-top:0!important;
+}
+body[data-billy-screen="uploaded"] #simpleFlowHeader{
+  flex:0 0 auto!important;
+  position:relative;
+  z-index:2;
+}
+body[data-billy-screen="uploaded"] #simpleFlowTitle{
+  display:none!important; /* Large page heading below already names this screen. */
+}
+@media(max-width:720px){
+  body[data-billy-screen="uploaded"] #simpleUploaded{
+    width:calc(100% - 32px);
+    min-height:calc(100dvh - 128px);
+    padding-top:16px!important;
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  body[data-billy-screen="home"] #simpleNewDocument:hover,
+  body[data-billy-screen="home"] #simpleUploadedDocuments:hover,
+  body[data-billy-screen="home"] #simpleNewDocument:active,
+  body[data-billy-screen="home"] #simpleUploadedDocuments:active{
+    transform:none!important;
+  }
+}
