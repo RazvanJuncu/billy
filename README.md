@@ -2,6 +2,36 @@
 
 **Your invoices, decoded.** Billy is an installable mobile invoice scanning workbench with an offline-capable camera, perspective correction and a separate local Python OCR service built on [PaddleOCR PP-StructureV3](https://www.paddleocr.ai/latest/en/version3.x/pipeline_usage/PP-StructureV3.html).
 
+## Learnable handwriting OCR (local pilot)
+
+Billy now includes a **real, trainable TrOCR handwriting recognizer**, alongside
+Gemini's structured document extraction and the existing PaddleOCR layout
+tools. See [HANDWRITING_TRAINING.md](HANDWRITING_TRAINING.md) for setup, consent,
+test commands, production restrictions and GPU requirements.
+
+When explicitly enabled by the trusted server administrator, the review
+screen offers **Submit & Learn** (one action to approve and queue verified
+corrected text crops) or **Submit only** (approve without training data).
+The server verifies the original SHA-256, authenticated reviewer/team,
+server-stored evidence coordinates, and final approved text before writing
+team-private cropped PNG training examples. Original full documents are not
+persisted by the handwriting collector.
+
+A separate optional worker can fine-tune
+[`microsoft/trocr-base-handwritten`](https://huggingface.co/microsoft/trocr-base-handwritten)
+on those labeled crops. It measures character error rate on a **document-split
+holdout**, blocks numeric regression, and only promotes improved checkpoints.
+An optional second-opinion inference pass re-reads visually ambiguous handwriting
+using the **last promoted team checkpoint**; disagreements appear as alternatives
+rather than overwriting invoice totals, registration numbers or fuel quantities.
+
+**Important:** collection, GPU training and promoted-model inference are OFF
+by default. They require a separate trusted Python server and training host,
+and are NOT deployed or executed by GitHub Pages. This repository does not
+contain a company dataset, trained Billy checkpoint or a completed benchmark.
+TrOCR reads single lines; a separately fine-tuned page-layout model is still
+future work. No claim of 100% accuracy is made.
+
 ## BillyDPI magnetic loader v1.1
 
 The upper oval follows a collision-tested path around the lower oval, then
