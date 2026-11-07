@@ -1,0 +1,64 @@
+const test=require("node:test");
+const assert=require("node:assert/strict");
+const fs=require("node:fs");
+const path=require("node:path");
+const vm=require("node:vm");
+const read=p=>fs.readFileSync(path.join(__dirname,"..",p),"utf8");
+const html=read("site/index.html");
+const css=read("site/ramp-review.css");
+const ramp=read("site/ramp-review.js");
+const review=read("site/vision-review.js");
+const backend=read("supabase/functions/billy-vision/index.ts");
+const sw=read("site/sw.js");
+test("Ramp UI scripts and reverse verifier are valid JavaScript",()=>{
+  assert.doesNotThrow(()=>new vm.Script(ramp,{filename:"ramp-review.js"}));
+  assert.doesNotThrow(()=>new vm.Script(backend,{filename:"billy-vision/index.ts"}));
+  assert.match(html,/ramp-review\.css\?v=/);
+  assert.match(html,/ramp-review\.js\?v=/);
+  assert.ok(html.indexOf("vision-review.js")<html.indexOf("ramp-review.js"));
+  assert.ok(html.indexOf("ramp-review.js")<html.indexOf("app.js"));
+  assert.match(sw,/"\.\/ramp-review\.js"/);
+  assert.match(sw,/"\.\/ramp-review\.css"/);
+});
+test("Segmented color indicators are unlabeled visually yet accessible to screen readers",()=>{
+  assert.match(ramp,/ramp-jar/);
+  assert.match(ramp,/ramp-segment ramp-/);
+  assert.match(ramp,/setAttribute\("aria-label",labelFor\(/);
+  assert.match(ramp,/create\("span","ramp-segment-number"/);
+  assert.match(css,/\.ramp-green\{background:#57b885/);
+  assert.match(css,/\.ramp-yellow\{background:#ebc66a/);
+  assert.match(css,/\.ramp-red\{background:#e67872/);
+  assert.match(ramp,/required field is missing|Required field is missing/);
+});
+test("Only selected fields open for confirmation and original evidence is initially hidden",()=>{
+  assert.match(ramp,/advanced\.hidden=true/);
+  assert.match(ramp,/evidence\.hidden=true/);
+  assert.match(ramp,/ramp-field-detail/);
+  assert.match(ramp,/detail\.hidden=true/);
+  assert.match(ramp,/fieldConfirm\.addEventListener\("click"/);
+  assert.match(ramp,/fieldInput\.focus/);
+  assert.match(ramp,/Show original document and colored regions/);
+  assert.match(ramp,/evidence\.hidden=!evidence\.hidden/);
+});
+test("Reverse AI recheck is image-bound and cannot auto-save or auto-replace operator edits",()=>{
+  assert.match(backend,/async function recheck\(req,principal\)/);
+  assert.match(backend,/await sha256\(bytes\)!==record\.source_sha256/);
+  assert.match(backend,/created_by:"eq\."\+principal\.user_id/);
+  assert.match(backend,/"/api\/vision\/recheck"/);
+  assert.match(backend,/AI did not verify this field/);
+  assert.match(backend,/approval_unlocked:false/);
+  assert.match(ramp,/form\.append\("reviewed_document",JSON\.stringify\(doc\)\)/);
+  assert.match(ramp,/checkedRevision=revision/);
+  assert.match(ramp,/Meter readings or fuel totals are mathematically inconsistent/);
+  assert.match(ramp,/ai_assessment_not_a_calibrated_confidence:true/);
+});
+test("Approve and upload remain gated; no ramp UI writes to company Excel",()=>{
+  assert.match(review,/BillyReview\?\.canApprove/);
+  assert.match(ramp,/window\.BillyReview\.canApprove=readyToApprove/);
+  assert.match(ramp,/readyToApprove\(\)/);
+  assert.match(ramp,/oldButton\.click\(\)/);
+  assert.match(ramp,/rampAudit/);
+  assert.match(review,/ramp_review:window\.BillyReview\?\.rampAudit/);
+  assert.match(css,/\.ramp-primary\[hidden\]\{display:none!important\}/);
+  assert.doesNotMatch(ramp,/\/api\/vision\/approve|excel\.com|xlsx/i);
+});
