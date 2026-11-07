@@ -360,6 +360,34 @@ async function extract(req,principal){
     historical_field_agreement:{},feedback_example_count:0
   });
 }
+function checkedAbsentPaths(candidate,doc,type){
+  if(candidate==null)return [];
+  if(!Array.isArray(candidate)||candidate.length>120)throw Error("Invalid absent-field list.");
+  const unique=new Set();
+  for(const path of candidate){
+    if(typeof path!=="string"||path.length>120||unique.has(path))
+      throw Error("Invalid or duplicate absent-field path.");
+    const nested=path.match(/^(lines|handwritten_entries)\[(\d+)\]\.([a-z_]+)$/);
+    let value;
+    if(nested){
+      const group=type==="invoice"?"lines":"handwritten_entries";
+      const allowed=type==="invoice"?LINE_FIELDS:["transcription"];
+      const index=Number(nested[2]);
+      if(nested[1]!==group||!allowed.includes(nested[3])||
+        !Number.isSafeInteger(index)||index>=doc[group].length)
+        throw Error("Invalid absent-field path.");
+      value=doc[group][index][nested[3]];
+    }else{
+      const allowed=type==="invoice"?INVOICE_FIELDS:FUEL_FIELDS;
+      if(!allowed.includes(path))throw Error("Invalid absent-field path.");
+      value=doc[path];
+    }
+    if(value!==null&&value!==undefined&&String(value).trim()!=="")
+      throw Error("A field marked absent must have an empty value.");
+    unique.add(path);
+  }
+  return [...unique];
+}
 async function recheck(req,principal) {
   if(!providerKey())return error("Gemini is not configured.",503);
   const contentType=req.headers.get("content-type")||"";
@@ -377,6 +405,11 @@ async function recheck(req,principal) {
     if(typeof body!=="string"||body.length>120000)throw Error("Invalid review payload.");
     reviewed=cleanDoc(JSON.parse(body),type);
   }catch{return error("Invalid reviewed document.",400);}
+  let absentPaths;
+  try{
+    const raw=form.get("not_on_document");
+    absentPaths=checkedAbsentPaths(raw?JSON.parse(raw):[],reviewed,type);
+  }catch(e){return error("Invalid not-on-document selection.",400);}
   const owned=await database(principal,"GET","document_records",{
     select:"id,document_type,source_sha256,state",
     id:"eq."+id,organization_id:"eq."+principal.organization_id,
@@ -449,6 +482,7 @@ async function recheck(req,principal) {
   return json({
     schema_version:"0.8",document_type:type,extraction_id:id,
     checks,checked_count:checks.length,unverified_count:checks.filter(c=>c.status!=="match").length,
+    skipped_not_on_document:absentPaths,
     deterministic_warnings:validate(reviewed,type,[]),
     approval_unlocked:false,
     note:"AI results are visual assessments; the operator remains responsible for verification. No values were modified."
@@ -460,8 +494,11 @@ async function approve(req,principal){
   if(!data||data.confirmed!==true||!["invoice","fuel_release"].includes(data.document_type)||
       typeof data.extraction_id!=="string"||
       !/^[0-9a-f]{8}-[0-9a-f-]{27,36}$/i.test(data.extraction_id))return error("Invalid approval request.",400);
-  let checked;
-  try{checked=cleanDoc(data.document,data.document_type);}catch{return error("Approved document has invalid fields.",400);}
+  let checked,absentPaths;
+  try{
+    checked=cleanDoc(data.document,data.document_type);
+    absentPaths=checkedAbsentPaths(data.not_on_document,checked,data.document_type);
+  }catch{return error("Approved document or absent-field selections are invalid.",400);}
   const owned=await database(principal,"GET","document_records",{
     "select":"id,document_type,extracted_data,regions_data,state",
     "id":"eq."+data.extraction_id,"organization_id":"eq."+principal.organization_id,
@@ -480,15 +517,18 @@ async function approve(req,principal){
     "created_by":"eq."+principal.user_id,"state":"eq.extracted"
   },{
     state:"approved",reviewed_data:checked,validation_warnings:warnings,
+    review_metadata:{not_on_document:absentPaths,origin:"operator_confirmation"},
     approved_at:new Date().toISOString(),approved_by:principal.user_id
   });
   if(!Array.isArray(updated)||updated.length!==1)return error("This document was already approved.",409);
   return json({status:"approved",approval_id:source.id,document_type:data.document_type,
-    correction_count:corrections,validation_warnings:warnings,posted_to_excel:false});
+    correction_count:corrections,validation_warnings:warnings,
+    review_metadata:{not_on_document:absentPaths,origin:"operator_confirmation"},
+    posted_to_excel:false});
 }
 async function listRecords(principal) {
   const rows=await database(principal,"GET","document_records",{
-    select:"id,document_type,state,created_at,approved_at,model_name,source_sha256,extracted_data,reviewed_data,regions_data,validation_warnings",
+    select:"id,document_type,state,created_at,approved_at,model_name,source_sha256,extracted_data,reviewed_data,review_metadata,regions_data,validation_warnings",
     organization_id:"eq."+principal.organization_id,order:"created_at.desc",limit:"50"
   });
   return json({records:rows.map(record=>({
