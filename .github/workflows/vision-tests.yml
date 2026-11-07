@@ -1,0 +1,39 @@
+name: Billy Vision unit tests
+on:
+  push:
+    branches: [main]
+    paths:
+      - "api.py"
+      - "billy/**"
+      - "scripts/evaluate_approvals.py"
+      - "tests/test_vision.py"
+      - "tests/test_visual_feedback.py"
+      - "tests/test_evaluate_approvals.py"
+      - "requirements-api.txt"
+      - ".github/workflows/vision-tests.yml"
+  pull_request:
+    paths:
+      - "api.py"
+      - "billy/**"
+      - "tests/test_vision.py"
+      - "tests/test_visual_feedback.py"
+      - "tests/test_evaluate_approvals.py"
+      - ".github/workflows/vision-tests.yml"
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install API test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-api.txt
+      - name: Validate syntax
+        run: python -m compileall -q api.py billy scripts tests/test_vision.py tests/test_visual_feedback.py tests/test_evaluate_approvals.py
+      - name: Run synthetic Vision and feedback tests (no API key)
+        run: python -m unittest discover -s tests -p "test_vision.py" && python -m unittest discover -s tests -p "test_visual_feedback.py" && python -m unittest discover -s tests -p "test_evaluate_approvals.py"
