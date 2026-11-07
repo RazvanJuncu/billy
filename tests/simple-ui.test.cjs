@@ -55,7 +55,7 @@ test("BillyDPI has a responsive Quick Snap action and sequential document workfl
   }
   assert.match(html,/id="simpleDocumentsList"/);
   assert.match(flow,/\$\("simpleDocumentsList"\)/);
-  assert.match(flow,/"new",\s*"uploaded",\s*"edit",\s*"process",\s*"review",\s*"upload"/);
+  assert.match(flow,/"new",\s*"uploaded",\s*"edit",\s*"type",\s*"process",\s*"review",\s*"upload"/);
   assert.match(flow,/billy:document-loaded/);
   assert.match(flow,/billy:ocr-ready/);
   assert.match(flow,/billy:document-approved/);
