@@ -68,16 +68,18 @@ test("The new UI hides permanent rails and control center on desktop and mobile"
   assert.match(css,/body\[data-billy-screen="review"\] \.result-panel/);
   assert.match(css,/@media\(max-width:720px\)/);
 });
-test("UI only shows actionable steps, with honest incomplete backend state",()=>{
+test("UI only shows actionable steps, with persistent Gemini data but no company Excel connector",()=>{
   assert.match(flow,/isOnline\(\)/);
   assert.match(flow,/action.disabled = !ready/);
   assert.match(html,/Upload to company Excel/);
   assert.match(html,/Not connected/);
-  assert.match(flow,/not uploaded to company storage/);
+  assert.match(flow,/Cloud records contain extracted\/approved fields/);
+  assert.match(flow,/api\/vision\/records/);
   assert.match(flow,/sessionFiles/);
   assert.match(app,/window.BillyApp/);
   assert.match(app,/billy:process-complete/);
-  assert.match(review,/Company storage and Excel are not connected/);
+  assert.match(review,/Original file is not archived/);
+  assert.match(review,/company Excel is not updated/);
 });
 test("The visible interface is monochrome, borderless and has no gradient",()=>{
   assert.match(html,/<title>BillyDPI<\/title>/);
