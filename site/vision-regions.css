@@ -1,0 +1,55 @@
+/* Billy / Document evidence: interactive highlights are estimates, not ground truth. */
+.review-visual{padding:15px;background:#191e22;border-radius:14px;margin:16px 0 21px;color:#e8ebee}
+.review-visual-heading strong{display:block;font-size:15px;letter-spacing:-.03em}
+.review-visual-heading p{margin:7px 0 0;font-size:12px;line-height:1.5;color:#b0b8bd}
+.review-evidence-legend{font-size:10px;line-height:1.5;color:#a1aab0;margin:11px 0}
+.review-evidence-pages{display:flex;gap:12px;align-items:center;justify-content:center;margin:12px 0}
+.review-evidence-pages button,.review-evidence-edit-actions button{
+  background:#333b41;border:0;border-radius:8px;color:#e5ebef;
+  padding:8px 12px;min-height:36px;cursor:pointer;font-size:11px;font-weight:650
+}
+.review-evidence-pages button:disabled{opacity:.37;cursor:not-allowed}
+.review-page-count{font-size:11px;font-variant-numeric:tabular-nums;color:#d3dce1}
+.review-preview-scroll{
+  overflow:auto;background:#0b0d0f;border-radius:11px;padding:12px;
+  max-height:min(57vh,630px);text-align:center
+}
+.review-sheet{position:relative;display:inline-block;max-width:100%;vertical-align:top}
+.review-sheet-image img,.review-sheet-image canvas{
+  display:block;max-width:100%;height:auto;width:auto;max-height:700px;
+  margin:0 auto;background:#fff
+}
+.review-sheet-markers{position:absolute;inset:0;pointer-events:none}
+.review-region-marker{
+  display:block;position:absolute;pointer-events:auto;
+  border:2px solid #d4e6ef;background:rgba(212,230,239,.12);
+  border-radius:3px;padding:0;cursor:pointer;
+  transition:background-color .14s ease;min-width:5px;min-height:5px;
+}
+.review-region-marker:hover,.review-region-marker:focus-visible,
+.review-region-marker.is-selected{background:rgba(238,226,164,.26);border-color:#f6db80;z-index:2}
+.review-preview-status{min-height:15px;color:#9caeb6;font-size:11px;line-height:1.5}
+.review-region-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:12px}
+.review-region-row{
+  display:flex;flex-direction:column;align-items:flex-start;gap:4px;
+  border:0;border-radius:8px;padding:10px 11px;cursor:pointer;
+  text-align:left;color:#dce5ea;background:#282e33;min-width:0
+}
+.review-region-row span{font-size:11px;font-weight:650;line-height:1.3}
+.review-region-row small{font-size:10px;color:#aab6be;line-height:1.4}
+.review-region-row:hover,.review-region-row:focus-visible{background:#353d43}
+.review-no-regions{grid-column:1/-1;color:#9daab2;font-size:11px;line-height:1.5;margin:4px}
+.review-evidence-editor{background:#282f34;border-radius:11px;padding:13px;margin-top:13px}
+.review-evidence-field-name{font-size:11px;color:#dee8ee;display:flex;flex-direction:column;gap:9px}
+.review-evidence-edit{width:100%;border:1px solid #657783;border-radius:8px;background:#14191d;color:#fff;padding:11px;font-size:14px;min-height:44px}
+.review-evidence-edit-actions{display:flex;gap:9px;margin-top:10px}
+.review-evidence-edit-actions button:first-child{background:#dbe5e9;color:#172126}
+@media(max-width:720px){
+  .review-visual{padding:12px;border-radius:10px}
+  .review-preview-scroll{padding:8px;max-height:47vh}
+  .review-region-list{grid-template-columns:1fr}
+  .review-region-row{min-height:43px}
+  .review-evidence-pages button{min-height:41px}
+  .review-region-marker{border-width:1.5px}
+}
+@media(prefers-reduced-motion:reduce){.review-region-marker{transition:none}}
