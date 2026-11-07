@@ -197,6 +197,10 @@
     showScreen("new");
   });
   bind("simpleUploadedBackToHome", () => showScreen("home"));
+  if (document.documentElement.dataset.billyMobile === "1") {
+    const label = $("simpleNewFromUpload").querySelector("span");
+    if (label) label.textContent = "Scan another";
+  }
 
   const addArea = $("simpleNew");
   addArea.addEventListener("dragover",event => {
