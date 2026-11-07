@@ -16,6 +16,8 @@
   let scanMode = "editor";
   let editorBusy = false;
   let captureFromCamera = false;
+  let enhanceText = false;
+  const TEXT_FILTER = "grayscale(0.32) contrast(1.2) brightness(1.02)";
 
   function announce(text, error=false) {
     $("scanMessage").textContent = text;
@@ -130,6 +132,10 @@
     captureFromCamera=fromCamera;
     $("scanRetake").hidden = !fromCamera;
     originalFile=file;
+    // Each photo starts from an unmodified original, never with a destructive filter.
+    enhanceText = false;
+    $("scanEnhance").checked = false;
+    $("scanCanvas").style.filter = "";
     announce("Loading image…");
     root.BillyLoader?.startWork("image","Preparing photo");
     try {
@@ -237,7 +243,15 @@
     const outputImage=outputContext.createImageData(out.width,out.height);
     outputImage.data.set(corrected.data);
     outputContext.putImageData(outputImage,0,0);
-    return out;
+    if (!enhanceText) return out;
+    // Non-destructive derivative: the source canvas remains available for retry.
+    // Mild enhancement only; aggressive thresholding can erase pale handwriting.
+    const derivative = document.createElement("canvas");
+    derivative.width = out.width; derivative.height = out.height;
+    const derivativeContext = derivative.getContext("2d");
+    derivativeContext.filter = TEXT_FILTER;
+    derivativeContext.drawImage(out,0,0);
+    return derivative;
   }
 
   async function correctedFile() {
@@ -246,7 +260,7 @@
     const canvas=correctedCanvas();
     const blob=await canvasToBlob(canvas);
     const stem=(originalFile?.name||"document").replace(/\.[^.]+$/,"").replace(/[^a-zA-Z0-9_-]+/g,"-").slice(0,60)||"document";
-    return new File([blob],stem+"-billy-scan.jpg",{type:"image/jpeg",lastModified:Date.now()});
+    return new File([blob],stem+(enhanceText?"-billy-enhanced.jpg":"-billy-scan.jpg"),{type:"image/jpeg",lastModified:Date.now()});
   }
 
   async function executeBusy(task) {
@@ -357,6 +371,14 @@
     $("scanAuto").addEventListener("click",guessCorners);
     $("scanReset").addEventListener("click",()=>{corners=P.defaultCorners();detected=false;announce("Drag the white handles to the document's four corners.");drawEditor();});
     $("scanRotate").addEventListener("click",rotateImage);
+    $("scanEnhance").addEventListener("change",event=>{
+      enhanceText = Boolean(event.target.checked);
+      // Only the preview and the derived export are filtered. Original is preserved.
+      $("scanCanvas").style.filter = enhanceText ? TEXT_FILTER : "";
+      announce(enhanceText
+        ? "Mild contrast enhancement enabled. Check faint ink before using this scan."
+        : "Original appearance restored. No pixels were overwritten.");
+    });
     $("scanApply").addEventListener("click",applyScan);
     $("scanSave").addEventListener("click",saveScan);
     $("scanUseOriginal").addEventListener("click",useOriginal);
