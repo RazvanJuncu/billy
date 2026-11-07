@@ -324,3 +324,65 @@ test("Recheck treats omitted AI field checks as unclear, never green",async()=>{
   assert.equal(result.checked_count,result.unverified_count);
   assert.ok(result.checks.every(x=>x.status==="unclear"));
 });
+
+test("Not-on-document fields stay empty, are skipped during recheck, and persist as operator metadata",async()=>{
+  const {handler,call,stored,calls}=mockBackend({recheckChecks:[
+    {field_path:"supplier_name",status:"match",reason:"Visible on invoice"},
+    {field_path:"invoice_number",status:"match",reason:"Visible on invoice"}
+  ]});
+  const bytes=new Uint8Array([255,216,5,6,7,8]);
+  const initial=new FormData();
+  initial.append("file",new File([bytes],"doc.jpg",{type:"image/jpeg"}));
+  initial.append("document_type","invoice");
+  const extraction=await handler(call("/api/vision/extract","POST",{body:initial}));
+  assert.equal(extraction.status,200);
+  const data=await extraction.json();
+  const doc={...data.invoice,grand_total:null};
+  const absent=["grand_total"];
+  const form=new FormData();
+  form.append("file",new File([bytes],"doc.jpg",{type:"image/jpeg"}));
+  form.append("document_type","invoice");
+  form.append("extraction_id",data.extraction_id);
+  form.append("reviewed_document",JSON.stringify(doc));
+  form.append("not_on_document",JSON.stringify(absent));
+  const response=await handler(call("/api/vision/recheck","POST",{body:form}));
+  assert.equal(response.status,200);
+  const checked=await response.json();
+  assert.deepEqual(Array.from(checked.skipped_not_on_document),absent);
+  assert.ok(!checked.checks.some(c=>c.field_path==="grand_total"));
+  // Recheck must not silently repopulate the value or change the original extraction.
+  assert.equal(stored.get(data.extraction_id).extracted_data.grand_total,"119.00");
+  const approval=await handler(call("/api/vision/approve","POST",{
+    headers:{...authHeaders,"Content-Type":"application/json"},
+    body:JSON.stringify({extraction_id:data.extraction_id,document_type:"invoice",document:doc,confirmed:true,not_on_document:absent})
+  }));
+  assert.equal(approval.status,200);
+  const saved=stored.get(data.extraction_id);
+  assert.equal(saved.reviewed_data.grand_total,null);
+  assert.deepEqual(Array.from(saved.review_metadata.not_on_document),absent);
+  assert.equal(saved.review_metadata.origin,"operator_confirmation");
+  const history=await handler(call("/api/vision/records"));
+  assert.equal(history.status,200);
+  const record=(await history.json()).records[0];
+  assert.deepEqual(Array.from(record.review_metadata.not_on_document),absent);
+  assert.equal(calls.filter(c=>c.url.includes("generativelanguage.googleapis.com")).length,2);
+});
+
+test("The backend rejects attempts to mark populated or unknown fields absent",async()=>{
+  const {handler,call}=mockBackend();
+  const bytes=new Uint8Array([255,216,5,6,7,8]);
+  const initial=new FormData();
+  initial.append("file",new File([bytes],"doc.jpg",{type:"image/jpeg"}));
+  initial.append("document_type","invoice");
+  const extraction=await handler(call("/api/vision/extract","POST",{body:initial}));
+  assert.equal(extraction.status,200);
+  const data=await extraction.json();
+  for(const absent of [["grand_total"],["not_a_real_field"]]){
+    const approval=await handler(call("/api/vision/approve","POST",{
+      headers:{...authHeaders,"Content-Type":"application/json"},
+      body:JSON.stringify({extraction_id:data.extraction_id,document_type:"invoice",
+        document:data.invoice,confirmed:true,not_on_document:absent})
+    }));
+    assert.equal(approval.status,400);
+  }
+});
