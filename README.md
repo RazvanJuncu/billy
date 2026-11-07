@@ -2,6 +2,18 @@
 
 **Your invoices, decoded.** Billy is an installable mobile invoice scanning workbench with an offline-capable camera, perspective correction and a separate local Python OCR service built on [PaddleOCR PP-StructureV3](https://www.paddleocr.ai/latest/en/version3.x/pipeline_usage/PP-StructureV3.html).
 
+## Portable Billy Worker (PC today, company server later)
+
+Billy remains a web/PWA application. An **optional separate local
+handwriting engine** is now runnable with the same source code on an
+authorized Windows PC or an on-prem Linux server, including a CPU-oriented
+Docker package. See [WORKER_DEPLOYMENT.md](WORKER_DEPLOYMENT.md).
+
+**Scope:** this is a portable manual TrOCR CLI, not yet the automatic
+remote-job worker. Secure Pending cloud queues, private job downloads,
+worker identity and retry/heartbeats are future integration work.
+No employee's browser automatically downloads documents to run TrOCR.
+
 ## Learnable handwriting OCR (local pilot)
 
 Billy now includes a **real, trainable TrOCR handwriting recognizer**, alongside
