@@ -146,12 +146,11 @@
     const compact=create("section","ramp-ui");
     root.append(compact,evidence,advanced);
     const intro=create("div","ramp-header");
-    intro.append(create("span","ramp-kicker","BILLY / RAMP REVIEW"),
+    intro.append(
       create("h3","ramp-heading","Document check"),
-      create("p","ramp-intro","Yellow/red = needs attention. Blue ✓ = checked by operator. Green = no flagged issue, not proof of accuracy."));
+      create("p","ramp-intro","Yellow/red = needs attention. Blue ✓ = checked by operator. Green = no flagged issue, not proof of accuracy.")
+    );
     compact.append(intro);
-    const count=create("p","ramp-count","");
-    compact.append(count);
     const jar=create("div","ramp-jar");
     jar.setAttribute("role","group");
     jar.setAttribute("aria-label","Document fields. Select a yellow or red segment to verify it.");
@@ -188,10 +187,6 @@
     compact.append(extra);
     const intelligence=create("section","ramp-intelligence");
     const intelTitle=create("strong","ramp-intelligence-heading","Billy Intelligence");
-    const exampleCount=Number(result.intelligence?.examples_used)||0;
-    const intelInfo=create("p","ramp-intelligence-note",
-      exampleCount+" previous team correction example(s) used for this scan. " +
-      "The current image always takes priority.");
     const intelLabel=create("label","ramp-intelligence-consent");
     const intelCheckbox=create("input","ramp-intelligence-check");
     intelCheckbox.type="checkbox";
@@ -199,10 +194,7 @@
     const intelText=create("span","",
       "Learn from my corrections (team-only text examples; no image archive).");
     intelLabel.append(intelCheckbox,intelText);
-    const intelPrivacy=create("p","ramp-intelligence-privacy",
-      "Opt in only for documents your team is allowed to retain. Corrected text may " +
-      "include identifiers and is reused only in this team's future Gemini requests.");
-    intelligence.append(intelTitle,intelInfo,intelLabel,intelPrivacy);
+    intelligence.append(intelTitle,intelLabel);
     compact.append(intelligence);
     window.BillyReview.intelligenceOptIn=()=>intelCheckbox.checked;
     const localInput=path=>[...advanced.querySelectorAll("[data-evidence-path]")]
@@ -287,8 +279,6 @@
         jar.append(button);
       }
       const totals=riskCounts();
-      count.textContent=totals.green+" clear · "+totals.blue+" operator checked · "+
-        totals.yellow+" to check · "+totals.red+" critical";
       const pending=totals.red+totals.yellow;
       const needsReview=[...state].filter(([path,value])=>
         (value.level==="red"||value.level==="yellow")&&!humanReviewed.has(path));
