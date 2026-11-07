@@ -108,3 +108,88 @@ def save_approval(extraction_id: uuid.UUID, doc_type: str, reviewed: dict, princ
         "document_type":doc_type,"correction_count":corrections,
         "validation_warnings":warnings,"posted_to_excel":False,
     }
+
+
+# Privacy-preserving feedback memory for the LOCAL pilot only.
+# Corrections are scoped by the authenticated organization, never by an untrusted
+# client-supplied team ID. No document values are returned in summaries/prompts.
+_FEEDBACK_KEYS = {
+    "invoice": (
+        "supplier_name", "supplier_tax_id", "customer_name", "invoice_number",
+        "issue_date", "due_date", "currency", "subtotal", "vat_total", "grand_total",
+    ),
+    "fuel_release": (
+        "release_number", "supplier_name", "operator_name", "airport",
+        "aircraft_registration", "flight_number", "delivery_date", "fuel_type",
+        "requested_quantity", "delivered_quantity", "quantity_unit",
+        "truck_identifier", "fueler_name", "receiver_name",
+    ),
+}
+
+
+def _review_normalize(value: object) -> str | None:
+    if value is None:
+        return None
+    return " ".join(str(value).split()).casefold()
+
+
+def feedback_summary(principal: Principal, document_type: str) -> dict:
+    """Historical reviewer agreement, not calibrated per-document probability.
+
+    No user IDs, source documents or field values leave this function.
+    """
+    keys = _FEEDBACK_KEYS.get(document_type)
+    if not keys:
+        return {"samples": 0, "fields": {}, "review_guidance": ""}
+    path = database_path()
+    if not path.exists():
+        return {"samples": 0, "fields": {}, "review_guidance": ""}
+    with sqlite3.connect(path, timeout=10) as connection:
+        init(connection)
+        rows = connection.execute(
+            "SELECT e.original_json,a.reviewed_json "
+            "FROM team_approvals a JOIN extractions e ON e.id=a.extraction_id "
+            "WHERE e.organization_id=? AND a.organization_id=? "
+            "AND e.document_type=? ORDER BY a.id DESC LIMIT 200",
+            (principal.organization_id, principal.organization_id, document_type),
+        ).fetchall()
+    fields = {key: {"reviewed": 0, "agreed": 0, "corrected": 0} for key in keys}
+    for before_json, after_json in rows:
+        try:
+            before, after = json.loads(before_json), json.loads(after_json)
+        except (ValueError, TypeError):
+            continue
+        if not isinstance(before, dict) or not isinstance(after, dict):
+            continue
+        for key in keys:
+            if key not in after:
+                continue
+            prior, corrected = _review_normalize(before.get(key)), _review_normalize(after[key])
+            if prior is None and corrected is None:
+                continue  # An empty field says nothing about transcription accuracy.
+            entry = fields[key]
+            entry["reviewed"] += 1
+            if prior == corrected:
+                entry["agreed"] += 1
+            else:
+                entry["corrected"] += 1
+
+    # Only aggregate a limited, fixed field vocabulary into subsequent prompts.
+    # No invoice numbers, names, phone numbers or other original values are injected.
+    most_corrected = sorted(
+        [(key, v["corrected"]) for key, v in fields.items() if v["corrected"]],
+        key=lambda item: (-item[1], item[0]),
+    )[:5]
+    guidance = ""
+    if most_corrected:
+        labels = ", ".join(key.replace("_", " ") for key, _ in most_corrected)
+        guidance = (
+            "Previous human reviews of this team's documents frequently corrected: "
+            + labels + ". Examine those printed fields especially carefully; "
+            "never copy values from previous documents or fill unseen values."
+        )
+    return {
+        "samples": len(rows),
+        "fields": fields,
+        "review_guidance": guidance,
+    }
