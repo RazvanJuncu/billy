@@ -86,7 +86,8 @@ test("Operator-confirmed fields turn blue with centered check and stay distinct 
   assert.match(ramp,/if\(item\.level==="blue"\)\{/);
   assert.match(ramp,/create\("span","ramp-segment-check","✓"\)/);
   assert.match(ramp,/icon\.setAttribute\("aria-hidden","true"\)/);
-  assert.match(ramp,/count\.textContent=totals\.green\+" clear · "\+totals\.blue\+" operator checked/);
+  assert.doesNotMatch(ramp,/count\.textContent/);
+  assert.match(ramp,/const totals=riskCounts\(\)/);
   assert.match(ramp,/state\.set\(path,\{level:"blue",reason:"Operator confirmed absent/);
   assert.match(ramp,/state\.set\(path,\{level:"blue",reason:"Operator accepted unclear/);
   assert.match(ramp,/state\.set\(path,\{level:"blue",reason:checkedRevision===revision/);
@@ -108,7 +109,7 @@ test("Blue is visually reviewed, but modified fields still require AI recheck be
 
 test("Billy Intelligence is explicitly opt-in and shown without replacing ramp review",()=>{
   assert.match(ramp,/Billy Intelligence/);
-  assert.match(ramp,/previous team correction example\(s\) used for this scan/);
+  assert.doesNotMatch(ramp,/previous team correction example\(s\) used for this scan/);
   assert.match(ramp,/intelCheckbox\.checked=false/);
   assert.match(ramp,/window\.BillyReview\.intelligenceOptIn=\(\)=>intelCheckbox\.checked/);
   assert.match(ramp,/window\.BillyReview\.intelligenceOptIn=null/);
