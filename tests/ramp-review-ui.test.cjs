@@ -79,3 +79,29 @@ test("Absent-field button clears the value, skips AI lookup and retains human au
   assert.match(backend,/skipped_not_on_document:absentPaths/);
   assert.match(backend,/review_metadata:\{not_on_document:absentPaths/);
 });
+
+test("Operator-confirmed fields turn blue with centered check and stay distinct from initial AI green",()=>{
+  assert.match(css,/\.ramp-blue\{background:#72aff4!important\}/);
+  assert.match(css,/\.ramp-segment-check\{/);
+  assert.match(ramp,/if\(item\.level==="blue"\)\{/);
+  assert.match(ramp,/create\("span","ramp-segment-check","✓"\)/);
+  assert.match(ramp,/icon\.setAttribute\("aria-hidden","true"\)/);
+  assert.match(ramp,/count\.textContent=totals\.green\+" clear · "\+totals\.blue\+" operator checked/);
+  assert.match(ramp,/state\.set\(path,\{level:"blue",reason:"Operator confirmed absent/);
+  assert.match(ramp,/state\.set\(path,\{level:"blue",reason:"Operator accepted unclear/);
+  assert.match(ramp,/state\.set\(path,\{level:"blue",reason:checkedRevision===revision/);
+  assert.match(ramp,/humanReviewed\.has\(path\)\?"blue":"green"/);
+  assert.match(ramp,/state\.set\(path,\{level:"red",reason:item\.reason/);
+});
+
+test("Blue is visually reviewed, but modified fields still require AI recheck before approval",()=>{
+  assert.match(ramp,/const count=\{green:0,blue:0,yellow:0,red:0\}/);
+  assert.match(ramp,/entry\.level==="green"\|\|entry\.level==="blue"/);
+  assert.match(ramp,/const readyToApprove=\(\)=>!busy&&allResolved\(\)&&/);
+  assert.match(ramp,/revision===0\|\|checkedRevision===revision/);
+  assert.match(ramp,/const changed=value!==String\(before\?\?""\)/);
+  assert.match(ramp,/revision\+\+;\s*checkedRevision=-1/);
+  assert.match(ramp,/recheck\.hidden=needsReview\.length>0/);
+  assert.match(ramp,/\(value\.level==="red"\|\|value\.level==="yellow"\)&&!humanReviewed\.has\(path\)/);
+  assert.match(ramp,/statusText=allResolved\(\)/);
+});
