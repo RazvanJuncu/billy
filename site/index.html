@@ -18,6 +18,7 @@
   <link rel="stylesheet" href="./accounts.css?v=0.7.0">
   <link rel="stylesheet" href="./document-type.css?v=0.6.0">
   <link rel="stylesheet" href="./simple.css?v=1.0.4">
+  <link rel="stylesheet" href="./quickscan.css?v=1">
   <link rel="stylesheet" href="./preloader.css?v=1.2.0">
   <link rel="stylesheet" href="./snap.css?v=0.1.0">
   <script src="./perspective.js?v=0.4.1" defer></script>
@@ -28,6 +29,8 @@
   <script src="./account-config.js?v=0.6.0" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
   <script src="./accounts.js?v=0.9.0" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js" defer></script>
+  <script src="./quickscan.js?v=1" defer></script>
   <script src="./simple.js?v=1.2.0" defer></script>
   <script src="./preloader.js?v=1.2.0" defer></script>
   <script>
@@ -436,6 +439,31 @@
   </button>
 </nav>
 
+<section id="quickscanSession" class="quickscan-session" role="dialog" aria-modal="true" aria-labelledby="quickscanHeading" hidden>
+  <div class="quickscan-shell">
+    <header class="quickscan-header">
+      <div class="quickscan-brand"><img src="./billydpi-logo.svg" alt="" width="27" height="27"><span>QuickScan</span></div>
+      <button type="button" id="quickscanCancel" class="quickscan-close" aria-label="Cancel document">Close</button>
+    </header>
+    <div class="quickscan-content">
+      <div class="quickscan-intro">
+        <h1 id="quickscanHeading">Your document</h1>
+        <p id="quickscanCount" aria-live="polite">0 pages captured</p>
+      </div>
+      <p id="quickscanMessage" class="quickscan-message" role="status" aria-live="polite" hidden></p>
+      <p id="quickscanEmpty" class="quickscan-empty">Take a photo, or import a PDF from Files.</p>
+      <ol id="quickscanPages" class="quickscan-pages" aria-label="Document pages in order"></ol>
+    </div>
+    <footer class="quickscan-actions">
+      <button type="button" id="quickscanAddCamera" class="quickscan-add-camera">+ Add another page</button>
+      <button type="button" id="quickscanImportButton" class="quickscan-import">Import PDF / photo</button>
+      <input type="file" id="quickscanImportInput" accept=".pdf,application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" hidden>
+      <button type="button" id="quickscanFinish" class="quickscan-finish" disabled>Finish &amp; Process</button>
+      <small>Up to 30 pages · 10 MiB per document · Pages stay on this device until you process.</small>
+    </footer>
+  </div>
+</section>
+
 <div id="scannerOverlay" class="scanner-overlay" role="dialog" aria-modal="true" aria-labelledby="scannerHeading" hidden>
   <div class="scanner-frame">
     <div class="scanner-header">
@@ -453,6 +481,7 @@
         <span class="shutter-spacer"></span>
       </div>
       <div class="snap-camera-upload"><button type="button" id="snapCameraUpload">Upload file instead</button></div>
+      <div id="quickscanCameraTools" class="quickscan-camera-tools" hidden><button type="button" id="quickscanCameraImport">Import PDF / photo instead</button></div>
     </div>
     <div id="scanEditor" class="scan-editor" hidden>
       <div id="scanCanvasWrap" class="scan-canvas-wrap"><canvas id="scanCanvas" aria-label="Document preview. Drag blue crop corners to match the page."></canvas></div>
