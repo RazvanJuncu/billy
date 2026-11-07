@@ -620,7 +620,7 @@ async function approve(req,principal){
 }
 async function listRecords(principal) {
   const rows=await database(principal,"GET","document_records",{
-    select:"id,document_type,state,created_at,approved_at,model_name,source_sha256,extracted_data,reviewed_data,review_metadata,regions_data,validation_warnings",
+    select:"id,created_by,document_type,state,created_at,approved_at,model_name,source_sha256,extracted_data,reviewed_data,review_metadata,regions_data,validation_warnings",
     organization_id:"eq."+principal.organization_id,order:"created_at.desc",limit:"50"
   });
   return json({records:rows.map(record=>({
@@ -629,16 +629,39 @@ async function listRecords(principal) {
   }))});
 }
 
+// Deleting pilot records is explicit, permanent, and restricted to the creator.
+// Database ON DELETE CASCADE removes only Intelligence examples attached to this record.
+async function deleteRecord(req,principal){
+  let id;
+  try{
+    const raw=await req.text();
+    if(raw.length>2000)throw Error("Too large.");
+    const body=JSON.parse(raw);
+    if(!body||typeof body!=="object"||Array.isArray(body)||Object.keys(body).some(key=>key!=="record_id"))
+      throw Error("Invalid request.");
+    id=body.record_id;
+  }catch{return error("Invalid delete request.",400);}
+  if(typeof id!=="string"||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))
+    return error("Invalid document ID.",400);
+  const removed=await database(principal,"DELETE","document_records",{
+    id:"eq."+id,organization_id:"eq."+principal.organization_id,
+    created_by:"eq."+principal.user_id
+  });
+  if(!Array.isArray(removed)||removed.length!==1)
+    return error("Document not found or you are not its creator.",404);
+  return json({deleted:true,record_id:id,intelligence_examples_removed_with_record:true});
+}
+
 Deno.serve(async req=>{
   if(req.headers.get("Origin") && req.headers.get("Origin")!==ORIGIN)return error("Origin not allowed.",403);
   if(req.method==="OPTIONS")return cors(req);
   const path=new URL(req.url).pathname;
   // Supabase may present the public path, function-local path, or a slug-prefixed path.
   // Match only known routes regardless of which valid prefix the edge runtime preserves.
-  const routes=["/api/vision/health","/api/vision/extract","/api/vision/recheck","/api/vision/approve","/api/vision/records"];
+  const routes=["/api/vision/health","/api/vision/extract","/api/vision/recheck","/api/vision/approve","/api/vision/records","/api/vision/delete"];
   const suffix=routes.find(route=>path===route||path.endsWith("/billy-vision"+route));
   if(!suffix)return error("Not found.",404);
-  if(req.method!==(suffix==="/api/vision/extract"||suffix==="/api/vision/recheck"||suffix==="/api/vision/approve"?"POST":"GET"))return error("Method not allowed.",405);
+  if(req.method!==(suffix==="/api/vision/extract"||suffix==="/api/vision/recheck"||suffix==="/api/vision/approve"||suffix==="/api/vision/delete"?"POST":"GET"))return error("Method not allowed.",405);
   try{
     const principal=await trusted(req);
     if(!principal)return error("Sign in to an approved Billy team first.",401);
@@ -651,6 +674,7 @@ Deno.serve(async req=>{
     if(suffix==="/api/vision/extract")return await extract(req,principal);
     if(suffix==="/api/vision/recheck")return await recheck(req,principal);
     if(suffix==="/api/vision/approve")return await approve(req,principal);
+    if(suffix==="/api/vision/delete")return await deleteRecord(req,principal);
     return await listRecords(principal);
   }catch(e){
     console.error("Billy Vision backend error:",e instanceof Error?e.message:"unknown");
