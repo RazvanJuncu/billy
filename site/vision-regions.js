@@ -47,6 +47,7 @@
     let pageNumber = 1;
     let totalPages = 1;
     let selectedPath = null;
+    let renderTicket = 0;
     const supported = Array.isArray(regions) ? regions.filter(safeRegion).slice(0,180) : [];
     const pdfInput = file && (file.type === "application/pdf" || /\.pdf$/i.test(file.name || ""));
 
@@ -83,10 +84,11 @@
     const editor = element("div","review-evidence-editor");
     editor.hidden = true;
     const editorName = element("label","review-evidence-field-name");
+    const editorTitle = element("span","review-evidence-input-title","Select a region");
     const correction = element("input","review-evidence-edit");
     correction.type = "text";
     correction.autocomplete = "off";
-    editorName.appendChild(correction);
+    editorName.append(editorTitle,correction);
     const actions = element("div","review-evidence-edit-actions");
     const apply = element("button","","Apply correction");
     const cancel = element("button","","Cancel");
@@ -118,9 +120,7 @@
         return;
       }
       selectedPath = region.field_path;
-      editorName.firstChild && editorName.firstChild.nodeType === Node.TEXT_NODE &&
-        editorName.removeChild(editorName.firstChild);
-      editorName.prepend(document.createTextNode(readable(region.field_path) + " · " + historyLabel(region.field_path)));
+      editorTitle.textContent = readable(region.field_path) + " · " + historyLabel(region.field_path);
       correction.value = input.value || "";
       editor.hidden = false;
       markers.querySelectorAll(".review-region-marker").forEach(marker => {
@@ -172,6 +172,7 @@
     }
 
     async function renderPage() {
+      const ticket = ++renderTicket;
       clearSheet();
       updateNav();
       status.textContent = "Preparing document preview…";
@@ -183,14 +184,14 @@
         if (pdfInput) {
           if (!pdf) {
             const lib = await loadPdfjs();
-            if (stale) return;
+            if (stale || ticket !== renderTicket) return;
             const data = new Uint8Array(await file.arrayBuffer());
             pdf = await lib.getDocument({data, isEvalSupported:false, enableScripting:false}).promise;
             totalPages = Math.min(pdf.numPages, 30);
             updateNav();
           }
           const page = await pdf.getPage(pageNumber);
-          if (stale) return;
+          if (stale || ticket !== renderTicket) return;
           const natural = page.getViewport({scale:1});
           const viewport = page.getViewport({scale:Math.min(1.6, 760 / natural.width)});
           const canvas = element("canvas");
@@ -199,7 +200,7 @@
           const context = canvas.getContext("2d",{alpha:false});
           if (!context) throw Error("Canvas unavailable.");
           await page.render({canvasContext:context,viewport}).promise;
-          if (stale) return;
+          if (stale || ticket !== renderTicket) return;
           imageSlot.replaceChildren(canvas);
         } else {
           if (!sourceUrl) sourceUrl = URL.createObjectURL(file);
@@ -207,7 +208,7 @@
           img.alt = "Original scanned document";
           img.src = sourceUrl;
           await img.decode();
-          if (stale) return;
+          if (stale || ticket !== renderTicket) return;
           imageSlot.replaceChildren(img);
         }
         status.textContent = "";
@@ -242,6 +243,7 @@
     renderPage();
     teardown = () => {
       stale = true;
+      renderTicket++;
       if (sourceUrl) URL.revokeObjectURL(sourceUrl);
       if (pdf) pdf.destroy();
       panel.remove();
