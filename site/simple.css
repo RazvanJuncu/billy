@@ -742,12 +742,10 @@ body[data-billy-screen] .document-type-control{display:none!important}
   padding:25px 0 50px;justify-content:flex-start;
 }
 .simple-type-wrap{width:100%;max-width:790px;margin:0 auto}
-.simple-type-kicker{color:#8f9296;font-size:11px;letter-spacing:.11em;font-weight:650;margin:0 0 16px}
 .simple-type .simple-heading{
   color:#f2f2f2;font-size:clamp(26px,4.2vw,39px);
-  letter-spacing:-.045em;line-height:1.14;margin:0 0 12px;
+  letter-spacing:-.045em;line-height:1.14;margin:0 0 24px;
 }
-.simple-type-help{color:#adb0b4;font-size:14px;line-height:1.55;max-width:540px;margin:0 0 24px}
 .simple-type-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 .simple-type-card{
   display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;
@@ -770,7 +768,6 @@ body[data-billy-screen] .document-type-control{display:none!important}
 .simple-type-copy{display:flex;flex-direction:column;gap:8px;max-width:290px}
 .simple-type-copy strong{font-size:clamp(23px,3vw,29px);line-height:1.14;font-weight:670;letter-spacing:-.045em}
 .simple-type-copy small{font-size:12px;line-height:1.5;color:#b4b6bb}
-.simple-type-arrow{position:absolute;right:25px;bottom:25px;font-size:25px;color:#dadada}
 .simple-type-footnote{color:#888b8f;font-size:12px;line-height:1.5;margin:21px 0 0}
 .simple-selected-type{
   display:flex;align-items:center;gap:12px;flex-wrap:wrap;
@@ -788,14 +785,12 @@ body[data-billy-screen] .document-type-control{display:none!important}
 @media(max-width:720px){
   .simple-type{width:calc(100% - 32px);padding:23px 0 44px}
   .simple-type .simple-heading{font-size:clamp(27px,7.5vw,34px)}
-  .simple-type-help{font-size:13px;margin-bottom:20px}
   .simple-type-grid{grid-template-columns:1fr;gap:12px}
   .simple-type-card{min-height:168px;padding:21px!important;gap:15px}
   .simple-type-icon{width:43px;height:43px}
   .simple-type-icon svg{width:24px;height:24px}
   .simple-type-copy strong{font-size:25px}
   .simple-type-copy small{font-size:12px;max-width:280px}
-  .simple-type-arrow{right:21px;bottom:20px}
   .simple-selected-type{gap:8px;padding:12px;margin-bottom:20px}
   .simple-selected-type span{flex-basis:100%}
 }
@@ -829,3 +824,6 @@ body[data-billy-screen] .document-type-control{display:none!important}
 .simple-documents-pagination{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;margin-top:13px}
 .simple-documents-pagination button{min-height:45px}
 @media(max-width:720px){.simple-documents-pagination button{flex:1}}
+
+/* Healthy Gemini connections need no status paragraph; errors still surface. */
+.simple-process-status[hidden]{display:none!important}
