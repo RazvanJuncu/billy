@@ -43,7 +43,7 @@
     if (typeof region.trocr_reading === "string" && region.trocr_reading.trim()) {
       const geminiText = String(region.transcription || "(unreadable)").slice(0,120);
       const localText = region.trocr_reading.slice(0,120);
-      parts.push("Gemini: " + geminiText + " · TrOCR: " + localText);
+      parts.push("AI engine: " + geminiText + " · TrOCR: " + localText);
       parts.push(region.handwriting_disagreement ? "Different readings — verify!" :
         "Models agree — still verify");
     }
@@ -85,17 +85,17 @@
       const count = Number(secondOpinion.comparisons) || 0;
       const disagreements = Number(secondOpinion.disagreements) || 0;
       const label = secondOpinion.source === "fine_tuned" ? "fine-tuned TrOCR" : "pretrained TrOCR";
-      modelNote.textContent = "Gemini + local " + label + ": " + count +
+      modelNote.textContent = "AI engine + local " + label + ": " + count +
         " handwriting region(s) checked · " + disagreements +
         " disagreement(s). Compare both readings before approval.";
     } else if (secondOpinion?.status === "no_eligible_regions") {
-      modelNote.textContent = "Gemini finished. No uncertain, localized handwriting needed TrOCR checking.";
+      modelNote.textContent = "The AI engine finished. No uncertain, localized handwriting needed TrOCR checking.";
     } else if (secondOpinion?.status === "unavailable") {
-      modelNote.textContent = "Gemini finished. Local TrOCR was unavailable; review fields carefully.";
+      modelNote.textContent = "The AI engine finished. Local TrOCR was unavailable; review fields carefully.";
     } else if (secondOpinion?.status === "no_readings") {
-      modelNote.textContent = "Gemini finished. Local TrOCR found no usable handwriting reading.";
+      modelNote.textContent = "The AI engine finished. Local TrOCR found no usable handwriting reading.";
     } else {
-      modelNote.textContent = "Gemini extraction · local handwriting verification not enabled.";
+      modelNote.textContent = "AI engine extraction · local handwriting verification not enabled.";
     }
     panel.appendChild(modelNote);
 
