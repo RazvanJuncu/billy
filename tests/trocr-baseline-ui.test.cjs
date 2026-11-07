@@ -11,7 +11,7 @@ const api=read("api.py");
 const docs=read("SETUP_WINDOWS.md");
 
 test("Gemini + local pretrained TrOCR readings are visibly compared without overwriting data",()=>{
-  assert.match(regions,/Gemini: /);
+  assert.match(regions,/AI engine: /);
   assert.match(regions,/TrOCR: /);
   assert.match(regions,/Different readings/);
   assert.match(regions,/Models agree/);
