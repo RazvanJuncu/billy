@@ -8,7 +8,7 @@ production mobile backend or train a model by themselves.
 1. **Billy PWA**: UI in browser/iPhone; camera, contrast, document review.
 2. **Billy Python API**: FastAPI on a trusted machine; calls **Gemini 3.8 Flash**
    via Google's HTTPS API. It needs a Gemini API key stored on the server only.
-3. **TrOCR**: a Microsoft pretrained handwriting checkpoint (`microsoft/trocr-base-handwritten`,
+3. **TrOCR**: a Microsoft pretrained handwriting checkpoint (`microsoft/trocr-small-handwritten` initially,
    MIT license) executed locally using PyTorch/Transformers. Only this component
    is fine-tuned on actual handwriting crops in the current architecture.
 4. **PaddleOCR PP-StructureV3**: a separate optional local layout/OCR pipeline.
@@ -79,14 +79,48 @@ On the same trusted machine or a dedicated GPU workstation:
 # https://pytorch.org/get-started/locally/
 python -m pip install -r requirements-handwriting-train.txt
 
-# First run downloads TrOCR checkpoint files from Hugging Face.
-python -c "from transformers import TrOCRProcessor, VisionEncoderDecoderModel; x='microsoft/trocr-base-handwritten'; p=TrOCRProcessor.from_pretrained(x); m=VisionEncoderDecoderModel.from_pretrained(x); print('TrOCR loaded:', m.__class__.__name__)"
+# TrOCR Small is the default CPU-friendly baseline; first run downloads it.
+python -m scripts.smoke_trocr
+# Optional: read a single redacted HANDWRITTEN LINE from your own test image.
+python -m scripts.smoke_trocr --image "samples\\redacted-handwriting-line.png"
 python -c "import torch; print('CUDA available:', torch.cuda.is_available())"
 ```
 
 Using CPU can verify that TrOCR loads, but full fine-tuning will be impractical
 for many normal PCs. On GPU machines, choose the correct PyTorch/CUDA build
 using the official selector. Avoid assuming a particular CUDA version.
+
+## Combine Gemini and local TrOCR WITHOUT fine-tuning
+
+First verify the local smoke test above passes. Then set these environment
+variables **in the same PowerShell terminal that starts the Billy FastAPI**
+and restart `uvicorn`:
+
+```powershell
+$env:GEMINI_API_KEY = "YOUR_PRIVATE_KEY"
+$env:BILLY_VISION_MODEL = "gemini-3.8-flash"
+$env:BILLY_HANDWRITING_INFERENCE_ENABLED = "1"
+$env:BILLY_TROCR_PRETRAINED_MODEL = "microsoft/trocr-small-handwritten"
+python -m uvicorn api:app --host 127.0.0.1 --port 8000
+```
+
+Gemini reads every document and extracts structured fields/locations. The
+**local pre-trained TrOCR Small model** checks only Gemini regions marked
+uncertain, visually handwritten or mixed; if a region is marked printed or
+clear, it does not run. In the Review screen you'll see the Gemini text,
+TrOCR text and any disagreement. **It never automatically overwrites the
+invoice fields.** The TrOCR model is downloaded on demand and cached locally;
+the very first eligible scan may take longer to start.
+
+A local server does **not** make the public GitHub Pages iPhone app magically
+reach your computer. For local tests use the Windows browser on the same PC.
+For phone usage you need a properly authenticated HTTPS backend, either on
+a trusted host or through a secured private deployment. Do not publicly
+expose `uvicorn` or an insecure tunnel.
+
+The training/correction capture toggle is **not necessary** for a pretrained
+baseline trial; leave `BILLY_HANDWRITING_CAPTURE_ENABLED` unset unless
+you have explicit permission to use documents for training.
 
 ## Enable approved handwriting feedback, locally
 
