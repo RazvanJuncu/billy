@@ -88,7 +88,7 @@
     $("simpleExportCsv").disabled = !exportable;
     $("simpleExportJson").disabled = !exportable;
     $("simpleUploadNote").textContent = exportable
-      ? "Approved and saved in the pilot review log. Company Excel upload is not connected yet."
+      ? "Corrections saved to team feedback memory. Future scans prioritize frequently corrected fields; Gemini weights are not retrained. Company Excel upload is not connected."
       : "Review and approve the document before exporting.";
   }
 
