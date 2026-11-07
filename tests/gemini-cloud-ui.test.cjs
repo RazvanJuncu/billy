@@ -34,7 +34,7 @@ function mockBackend(opts={}) {
   const stored=new Map(), calls=[];
   let handler;
   const googleResponse=()=>new Response(JSON.stringify({
-    candidates:[{content:{parts:[{text:JSON.stringify({...doc,regions})}]}}],
+    candidates:[{content:{parts:[{text:JSON.stringify({...opts.fuelDoc||doc,regions:opts.regions||regions})}]}}],
     usageMetadata:{promptTokenCount:1000,candidatesTokenCount:120,totalTokenCount:1120}
   }),{status:200,headers:{"Content-Type":"application/json"}});
   const mockFetch=async (input, init={})=>{
@@ -175,4 +175,74 @@ test("Untrusted origins cannot call Gemini",async()=>{
     headers:{...authHeaders,Origin:"https://evil.example"}
   }));
   assert.equal(response.status,403);
+});
+
+test("Fuel Release meter arithmetic is independent of OCR certainty and preserves the raw label",async()=>{
+  const fuelDoc={
+    release_number:"29097",supplier_name:"THE PENNSYLVANIA STATE UNIVERSITY",
+    operator_name:"NET JETS",airport:"KUNV",aircraft_registration:"N776QS",
+    flight_number:null,delivery_date:"04-13-24",fuel_type:"JET A",
+    requested_quantity:null,delivered_quantity:"1417",quantity_unit:"GAL",
+    truck_identifier:null,fueler_name:null,receiver_name:null,
+    meter_start:"4301809",meter_finish:"4303226",
+    handwritten_entries:[{
+      label:"AIRCRAFT TYPE",transcription:"NET JETS",legibility:"clear",
+      interpreted_as:"operator_name"
+    }],notes:["Meter readings faint in the source."]
+  };
+  const fuelRegions=[{
+    field_path:"meter_start",page:1,box_2d:[200,100,230,300],
+    transcription:"4301809",visual_clarity:"slight_uncertainty",script_type:"printed",
+    alternate_readings:[],visual_reason:"Faint dot-matrix digits"
+  }];
+  const {handler,call,stored}=mockBackend({fuelDoc,regions:fuelRegions});
+  const form=new FormData();
+  form.append("file",new File([new Uint8Array([255,216,5,6])],"fuel.jpg",{type:"image/jpeg"}));
+  form.append("document_type","fuel_release");
+  const extraction=await handler(call("/api/vision/extract","POST",{body:form}));
+  assert.equal(extraction.status,200);
+  const prediction=await extraction.json();
+  assert.equal(prediction.fuel_release.meter_start,"4301809");
+  assert.equal(prediction.fuel_release.meter_finish,"4303226");
+  assert.deepEqual(JSON.parse(JSON.stringify(prediction.fuel_release.handwritten_entries[0])),{
+    label:"AIRCRAFT TYPE",transcription:"NET JETS",legibility:"clear",
+    interpreted_as:"operator_name"
+  });
+  assert.ok(prediction.validation_warnings.some(w=>w.includes("Meter arithmetic matches (1417)")));
+  assert.ok(prediction.validation_warnings.some(w=>w.includes("Needs verification: meter_start")));
+  const source=stored.get(prediction.extraction_id);
+  assert.equal(source.extracted_data.meter_finish,"4303226");
+  const reviewed={...prediction.fuel_release,meter_finish:"4303225"};
+  const approval=await handler(call("/api/vision/approve","POST",{
+    headers:{...authHeaders,"Content-Type":"application/json"},
+    body:JSON.stringify({extraction_id:prediction.extraction_id,document_type:"fuel_release",document:reviewed,confirmed:true})
+  }));
+  assert.equal(approval.status,200);
+  assert.ok((await approval.json()).validation_warnings.some(w=>w.includes("Meter mismatch")));
+  assert.equal(source.extracted_data.meter_finish,"4303226");
+  assert.equal(source.reviewed_data.meter_finish,"4303225");
+  const records=await handler(call("/api/vision/records"));
+  const record=(await records.json()).records[0];
+  assert.equal(record.extracted_data.meter_finish,"4303226");
+  assert.equal(record.reviewed_data.meter_finish,"4303225");
+  assert.ok(record.original_validation_warnings.some(w=>w.includes("Meter arithmetic matches")));
+});
+
+test("Meter mismatch, suspicious digits, and unclear regions are flagged",()=>{
+  // Execute helper functions in the real Edge Function code, not a second JS implementation.
+  const sandbox={Deno:{serve:()=>{}},Response,URL,console};
+  vm.runInNewContext(code,sandbox);
+  const valid=()=>({
+    release_number:"",supplier_name:"",operator_name:"",airport:"",aircraft_registration:"N776QS",
+    flight_number:null,delivery_date:"04-13-24",fuel_type:"JET A",
+    requested_quantity:null,delivered_quantity:"1416",quantity_unit:"GAL",
+    truck_identifier:null,fueler_name:null,receiver_name:null,meter_start:"4301809",meter_finish:"4303226",
+    handwritten_entries:[],notes:[]
+  });
+  const one=valid();
+  assert.ok(vm.runInNewContext("validate",sandbox)(one,"fuel_release",[])
+    .some(w=>w.includes("Meter mismatch")));
+  one.meter_start="43O1809";
+  assert.ok(vm.runInNewContext("validate",sandbox)(one,"fuel_release",[])
+    .some(w=>w.includes("invalid or ambiguous digits")));
 });
