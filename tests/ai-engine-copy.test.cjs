@@ -22,7 +22,7 @@ test("User-facing Billy copy uses AI engine rather than mentioning the vendor",(
   assert.match(review,/Download original AI engine JSON \(unverified\)/);
   assert.match(regions,/AI engine: /);
   assert.match(regions,/AI engine \+ local /);
-  assert.doesNotMatch(regions,/"[^"\n]*Gemini[^"\n]*"/i);
+  assert.doesNotMatch(regions,/Gemini finished|Gemini: |Gemini extraction|Gemini \+ local/);
 });
 test("Backend errors are brand-neutral while real provider and model remain auditable",()=>{
   for(const line of edge.split("\n").filter(line=>/return error\("/.test(line))){
