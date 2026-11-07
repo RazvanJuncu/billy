@@ -25,7 +25,8 @@ from billy.vision import (
 from billy.accounts import Principal, require_member
 from billy.records import record_extraction, save_approval, feedback_summary
 from billy.handwriting_data import capture_enabled, collect_verified_crops
-from billy.handwriting_inference import inference_enabled, second_opinion
+from billy.handwriting_inference import inference_enabled, second_opinion, active_model_path
+from billy.handwriting_data import approved_examples
 
 ALLOWED_WEB_ORIGINS = {
     "https://razvanjuncu.github.io",
@@ -205,3 +206,24 @@ async def add_handwriting_examples(
     except (sqlite3.DatabaseError, OSError):
         log.exception("Could not store approved handwriting example")
         raise HTTPException(status_code=500, detail="Could not queue training examples.") from None
+
+
+@app.get("/api/handwriting/status")
+def handwriting_training_status(principal: Principal = Depends(require_member)):
+    """Safe training progress: no document labels, crops or other tenant data."""
+    samples = approved_examples(principal.organization_id)
+    active = None
+    try:
+        checkpoint = active_model_path(principal.organization_id)
+        active = checkpoint[1] if checkpoint else None
+    except (ValueError, OSError):
+        active = None
+    return {
+        "capture_enabled": capture_enabled(),
+        "autotrain_enabled": os.getenv("BILLY_HANDWRITING_AUTOTRAIN_ENABLED") == "1",
+        "second_opinion_enabled": inference_enabled(),
+        "training_samples": len(samples),
+        "source_documents": len({row["source_sha256"] for row in samples}),
+        "active_model_version": active,
+        "model_trained_in_this_request": False,
+    }
