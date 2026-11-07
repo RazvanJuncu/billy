@@ -41,8 +41,8 @@ test("Document classification uses a clear title and arrow-free choice cards",()
 test("Connected processing and completed extraction are quiet while errors remain visible",()=>{
   assert.doesNotMatch(simple,/Gemini connected\. Ready to process\./);
   assert.match(simple,/\$\("simpleProcessStatus"\)\.hidden = ready/);
-  assert.match(simple,/Gemini connection failed:/);
-  assert.match(simple,/Connecting to Billy Gemini cloud/);
+  assert.match(simple,/AI engine connection failed:/);
+  assert.match(simple,/Connecting to the AI engine/);
   assert.match(simpleCss,/\.simple-process-status\[hidden\]\{display:none!important\}/);
   assert.doesNotMatch(app,/Check the extracted values against the original before approval/);
   assert.match(app,/showNotification\("Could not scan this document:/);
