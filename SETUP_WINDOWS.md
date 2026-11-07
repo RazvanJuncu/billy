@@ -43,7 +43,7 @@ with your own values (not committed anywhere):
 
 ```powershell
 $env:GEMINI_API_KEY = "YOUR_PRIVATE_KEY"
-$env:GEMINI_MODEL = "gemini-3.8-flash"
+$env:BILLY_VISION_MODEL = "gemini-3.8-flash"
 $env:SUPABASE_URL = "https://YOUR_PROJECT.supabase.co"
 $env:SUPABASE_PUBLISHABLE_KEY = "YOUR_PUBLISHABLE_KEY"
 python -m uvicorn api:app --host 127.0.0.1 --port 8000
