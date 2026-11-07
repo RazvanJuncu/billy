@@ -151,7 +151,10 @@ function render(result,endpoint,authHeaders,sourceFile=null){
      const response=await fetch(api+"/api/vision/approve",{
        method:"POST",
        headers:{"Content-Type":"application/json",...await getHeaders()},
-       body:JSON.stringify({extraction_id:extractId,document_type:documentType,document:draft,confirmed:true})
+       body:JSON.stringify({
+         extraction_id:extractId,document_type:documentType,document:draft,confirmed:true,
+         not_on_document:window.BillyReview?.rampAudit?.()?.not_on_document||[]
+       })
      });
      const resultBody=await response.json();
      if(!response.ok)throw Error(resultBody.detail||"Approval was not saved");
