@@ -11,6 +11,28 @@
   let active = false;
   let busy = false;
   let nextId = 1;
+  let pdfToolsRequest = null;
+
+  // A first photo must never wait for a third-party PDF bundle to download.
+  function loadPdfTools() {
+    if (window.PDFLib?.PDFDocument) return Promise.resolve(window.PDFLib.PDFDocument);
+    if (!pdfToolsRequest) {
+      pdfToolsRequest = new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = "https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js";
+        script.async = true;
+        script.onload = () => window.PDFLib?.PDFDocument
+          ? resolve(window.PDFLib.PDFDocument)
+          : reject(Error("The PDF library did not initialize."));
+        script.onerror = () => reject(Error("PDF tools are unavailable. Check your connection."));
+        document.head.appendChild(script);
+      }).catch(error => {
+        pdfToolsRequest = null; // Allow another attempt after connectivity returns.
+        throw error;
+      });
+    }
+    return pdfToolsRequest;
+  }
 
   const isPdf = file => file?.type === "application/pdf" || /\.pdf$/i.test(file?.name || "");
   const isImage = file => /^image\//i.test(file?.type || "") ||
@@ -164,7 +186,7 @@
   async function addPdf(file) {
     if (!file.size || file.size > MAX_DOCUMENT_BYTES)
       throw Error("Choose a PDF no larger than 10 MiB.");
-    const API = window.PDFLib?.PDFDocument;
+    const API = await loadPdfTools().catch(() => null);
     if (!API) {
       if (pages.length) throw Error("PDF assembly needs an internet connection to load the PDF tools.");
       // A complete imported PDF can still be passed through Billy unchanged.
@@ -255,8 +277,7 @@
   }
 
   async function assemble(compact = false) {
-    const API = window.PDFLib?.PDFDocument;
-    if (!API) throw Error("PDF tools could not load. Connect to the internet and retry.");
+    const API = await loadPdfTools();
     const output = await API.create();
     for (const item of pages) {
       if (item.kind === "pdf-direct") throw Error("Reconnect to combine an imported PDF with other pages.");
