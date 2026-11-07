@@ -54,7 +54,7 @@
     root.dispatchEvent(new CustomEvent("billy:scanner-stage", {detail: {stage: mode === "editor" ? 1 : 0}}));
     $("scanLive").hidden = mode !== "camera";
     $("scanEditor").hidden = mode !== "editor";
-    $("scannerHeading").textContent = mode === "camera" ? "Capture document" : "Adjust the document";
+    $("scannerHeading").textContent = mode === "camera" ? "Capture document" : "Adjust Corners";
     if (mode === "editor") root.requestAnimationFrame(drawEditor);
   }
 
