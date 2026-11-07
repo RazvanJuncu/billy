@@ -285,6 +285,7 @@
   window.BillyAccounts={
     configured:()=>Boolean(client),
     active:()=>Boolean(client&&user&&organization),
+    userId:()=>user?.id||null,
     firstName:()=>firstNameFor(user),
     sessionHeaders:async()=>{
       if(!client||!organization)throw Error("Sign in to an approved team first.");
