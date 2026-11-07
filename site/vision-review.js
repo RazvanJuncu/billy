@@ -76,7 +76,7 @@ function render(result,endpoint,authHeaders,sourceFile=null){
  const title=node("div","review-intro");
  title.append(node("span","review-eyebrow","BILLYDPI / VERIFIED DOCUMENT WORKFLOW"),node("h3","review-title",documentType==="fuel_release"?"Review Fuel Release":"Review extracted invoice"),node("p","review-note","Verify and correct the extracted fields."));
  root.appendChild(title);
- const rawButton=node("button","review-export-button secondary review-raw-export","Download original Gemini JSON (unverified)");
+ const rawButton=node("button","review-export-button secondary review-raw-export","Download original AI engine JSON (unverified)");
  rawButton.type="button";rawButton.addEventListener("click",exportRawJSON);
  root.appendChild(rawButton);
  const flaggedPaths=new Set((result.regions||[]).filter(region=>region?.visual_clarity!=="clear").map(region=>region.field_path));
