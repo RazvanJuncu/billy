@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Validate browser source
-        run: node --check site/app.js && node --check site/accounts.js && node --check site/simple.js && node --check site/quickscan.js && node --check site/preloader.js && node --check site/vision-regions.js && node --check site/vision-review.js && node --check site/workspace.js && node --check site/scanner.js && node --check site/perspective.js && node --check site/sw.js && node --test tests/perspective.test.cjs tests/brand.test.cjs tests/vision-ui.test.cjs tests/accounts-ui.test.cjs tests/snap-ui.test.cjs tests/crew-install.test.cjs tests/simple-ui.test.cjs tests/quickscan-ui.test.cjs tests/vision-regions-ui.test.cjs tests/scan-enhance.test.cjs
+        run: node --check site/app.js && node --check site/accounts.js && node --check site/simple.js && node --check site/quickscan.js && node --check site/preloader.js && node --check site/vision-regions.js && node --check site/vision-review.js && node --check site/workspace.js && node --check site/scanner.js && node --check site/perspective.js && node --check site/sw.js && node --test tests/perspective.test.cjs tests/brand.test.cjs tests/vision-ui.test.cjs tests/accounts-ui.test.cjs tests/snap-ui.test.cjs tests/crew-install.test.cjs tests/simple-ui.test.cjs tests/quickscan-ui.test.cjs tests/vision-regions-ui.test.cjs tests/scan-enhance.test.cjs tests/handwriting-ui.test.cjs
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
         with:
