@@ -290,7 +290,7 @@
       if(!client||!organization)throw Error("Sign in to an approved team first.");
       const {data,error}=await client.auth.getSession();
       if(error||!data.session?.access_token)throw Error("Session expired; sign in again.");
-      return {"Authorization":"Bearer "+data.session.access_token,"X-Billy-Organization":organization.id};
+      return {"Authorization":"Bearer "+data.session.access_token,"X-Billy-Organization":organization.id,"apikey":config.publishableKey};
     },
   };
   initialize();
