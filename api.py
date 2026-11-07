@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import asyncio
 import threading
 import os
 import json
@@ -24,6 +25,7 @@ from billy.vision import (
 from billy.accounts import Principal, require_member
 from billy.records import record_extraction, save_approval, feedback_summary
 from billy.handwriting_data import capture_enabled, collect_verified_crops
+from billy.handwriting_inference import inference_enabled, second_opinion
 
 ALLOWED_WEB_ORIGINS = {
     "https://razvanjuncu.github.io",
@@ -129,6 +131,19 @@ async def vision_extract(
             filename, content, document_type,
             feedback_guidance=feedback["review_guidance"],
         )
+        if inference_enabled():
+            # Optional second opinion from the last validated TrOCR checkpoint.
+            # Never auto-overwrite a field: disagreement is presented to reviewer.
+            try:
+                result["handwriting_second_opinion"] = await asyncio.to_thread(
+                    second_opinion, content, filename,
+                    result.get("regions", []), principal.organization_id,
+                )
+            except Exception:
+                log.exception("Optional handwriting second opinion unavailable")
+                result["handwriting_second_opinion"] = {
+                    "model_version": None, "comparisons": 0,
+                }
         result["extraction_id"] = record_extraction(result, principal)
         # These are prior human-review agreement rates, NOT per-box probabilities.
         result["historical_field_agreement"] = {
