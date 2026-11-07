@@ -25,7 +25,7 @@ from billy.vision import (
 from billy.accounts import Principal, require_member
 from billy.records import record_extraction, save_approval, feedback_summary
 from billy.handwriting_data import capture_enabled, collect_verified_crops
-from billy.handwriting_inference import inference_enabled, second_opinion, active_model_path
+from billy.handwriting_inference import inference_enabled, second_opinion, active_model_path, inference_status
 from billy.handwriting_data import approved_examples
 
 ALLOWED_WEB_ORIGINS = {
@@ -108,6 +108,7 @@ def vision_health(principal: Principal = Depends(require_member)):
         "configured": configured(),
         "requires_review": True,
         "excel_write_enabled": False,
+        "handwriting": inference_status(principal.organization_id),
         "document_types": ["invoice", "fuel_release"],
         "organization_id": principal.organization_id,
     }
@@ -143,8 +144,14 @@ async def vision_extract(
             except Exception:
                 log.exception("Optional handwriting second opinion unavailable")
                 result["handwriting_second_opinion"] = {
-                    "model_version": None, "comparisons": 0,
+                    "status": "unavailable", "model_version": None, "comparisons": 0,
+                    "disagreements": 0,
                 }
+        if not inference_enabled():
+            result["handwriting_second_opinion"] = {
+                "status": "disabled", "model_version": None,
+                "comparisons": 0, "disagreements": 0,
+            }
         result["extraction_id"] = record_extraction(result, principal)
         # These are prior human-review agreement rates, NOT per-box probabilities.
         result["historical_field_agreement"] = {
@@ -222,6 +229,7 @@ def handwriting_training_status(principal: Principal = Depends(require_member)):
         "capture_enabled": capture_enabled(),
         "autotrain_enabled": os.getenv("BILLY_HANDWRITING_AUTOTRAIN_ENABLED") == "1",
         "second_opinion_enabled": inference_enabled(),
+        "handwriting": inference_status(principal.organization_id),
         "training_samples": len(samples),
         "source_documents": len({row["source_sha256"] for row in samples}),
         "active_model_version": active,
