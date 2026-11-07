@@ -212,6 +212,12 @@ def collect_verified_crops(
             if not isinstance(region, dict):
                 skipped += 1
                 continue
+            # Do not fine-tune a handwriting model on printed-only or
+            # unclassified text. The source classifier may still be wrong,
+            # so a held-out evaluation gate remains mandatory.
+            if region.get("script_type") not in {"handwritten", "mixed"}:
+                skipped += 1
+                continue
             path, page, box = region.get("field_path"), region.get("page"), region.get("box_2d")
             if not isinstance(path, str) or not isinstance(page, int) or not isinstance(box, list) or len(box) != 4:
                 skipped += 1
