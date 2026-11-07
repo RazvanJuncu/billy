@@ -5,8 +5,8 @@
   "use strict";
   const $ = id => document.getElementById(id);
   const body = document.body;
-  const screens = ["home", "new", "uploaded", "edit", "process", "review", "upload"];
-  const names = {new:"New Document",uploaded:"Uploaded Documents",edit:"Edit Document",process:"Process Document",review:"Review Document",upload:"Upload Document"};
+  const screens = ["home", "new", "uploaded", "edit", "type", "process", "review", "upload"];
+  const names = {new:"New Document",uploaded:"Uploaded Documents",edit:"Edit Document",type:"Document Type",process:"Process Document",review:"Review Document",upload:"Upload Document"};
   const sessionFiles = [];
   let activeFile = null;
   let approved = false;
@@ -52,8 +52,26 @@
     $("simpleFlowNotice").hidden = !message;
   }
 
+  function selectedDocumentType() {
+    const value = $("documentType").value;
+    return value === "invoice" || value === "fuel_release" ? value : null;
+  }
+
+  function chooseDocumentType(type) {
+    if (!activeFile || !["invoice","fuel_release"].includes(type)) return;
+    const select = $("documentType");
+    select.value = type;
+    // Keep the original extraction engine's document-type value authoritative.
+    select.dispatchEvent(new Event("change",{bubbles:true}));
+    const rec = sessionFiles.find(item => item.file === activeFile);
+    if (rec) rec.documentType = type;
+    showScreen("process");
+  }
+
   function showScreen(name) {
-    const next = screens.includes(name) ? name : "home";
+    let next = screens.includes(name) ? name : "home";
+    if (next === "process" && !selectedDocumentType()) next = activeFile ? "type" : "new";
+    if (next === "type" && !activeFile) next = "new";
     body.dataset.billyScreen = next;
     for (const section of screens) {
       const el = $("simple" + section.charAt(0).toUpperCase() + section.slice(1));
@@ -63,6 +81,13 @@
     $("simpleFlowTitle").textContent = names[next] || "";
     $("simpleReviewToUpload").hidden = !(next === "review" && approved);
     if (next === "edit") window.BillyWorkspace?.showView("capture");
+    if (next === "type") {
+      window.BillyWorkspace?.showView("capture");
+      const selected = selectedDocumentType();
+      for (const card of document.querySelectorAll(".simple-type-card")) {
+        card.setAttribute("aria-pressed",String(card.dataset.documentType === selected));
+      }
+    }
     if (next === "review") window.BillyWorkspace?.showView("review");
     if (next === "process" || next === "upload" || next === "new" || next === "uploaded" || next === "home") {
       window.BillyWorkspace?.showView("capture");
@@ -82,7 +107,9 @@
     const state = window.BillyApp?.visionStatus?.() || {};
     const ready = Boolean(window.BillyApp?.isOnline());
     const action = $("simpleRunProcess");
-    action.disabled = !ready;
+    const type = selectedDocumentType();
+    action.disabled = !ready || !type;
+    $("simpleSelectedType").textContent = type === "fuel_release" ? "Fuel Release" : type === "invoice" ? "Invoice" : "Not selected";
     $("simpleRetryVision").hidden = ready || Boolean(state.connecting);
     $("simpleProcessStatus").textContent = ready
       ? "Gemini connected. Ready to process."
@@ -105,12 +132,15 @@
   function recordFile(file) {
     activeFile = file;
     approved = false;
+    // Every new document must be classified explicitly; never inherit Invoice or the last choice.
+    $("documentType").value = "";
     let record = sessionFiles.find(record => record.file === file);
     if (!record) {
-      record = {file, status:"Not processed", documentType:$("documentType").value};
+      record = {file, status:"Not processed", documentType:null};
       sessionFiles.unshift(record);
     } else {
       record.status = "Not processed";
+      record.documentType = null;
     }
     showScreen("edit");
   }
@@ -207,7 +237,8 @@
   function goBack() {
     const now = body.dataset.billyScreen;
     if (now === "edit") showScreen("new");
-    else if (now === "process") showScreen("edit");
+    else if (now === "process") showScreen("type");
+    else if (now === "type") showScreen("edit");
     else if (now === "review") showScreen("process");
     else if (now === "upload") showScreen("review");
     else showScreen("home");
@@ -250,12 +281,16 @@
   bind("simpleUploadedDocuments", () => showScreen("uploaded"));
   bind("simpleCapture", () => $("scanOpenCamera").click());
   bind("simpleAddFiles", () => $("filePicker").click());
-  bind("simpleContinue", () => showScreen("process"));
+  bind("simpleContinue", () => showScreen("type"));
+  bind("simpleChooseInvoice", () => chooseDocumentType("invoice"));
+  bind("simpleChooseFuelRelease", () => chooseDocumentType("fuel_release"));
+  bind("simpleChangeType", () => showScreen("type"));
   bind("simpleRetryVision", () => {
     if(window.BillyAccounts?.active?.()) window.BillyApp?.connectVision?.();
     updateProcess();
   });
   bind("simpleRunProcess", () => {
+    if (!activeFile || !selectedDocumentType()) { showScreen("type"); return; }
     if (!window.BillyApp?.isOnline()) { updateProcess(); return; }
     $("simpleRunProcess").disabled = true;
     $("scanButton").click();
@@ -327,6 +362,6 @@
     chooseGreeting(String(window.BillyAccounts.firstName?.() || "").trim().slice(0,32));
   }
   window.BillySimple = {showScreen, getState:() => ({
-    screen:body.dataset.billyScreen, sessionFiles:sessionFiles.length, approved
+    screen:body.dataset.billyScreen, sessionFiles:sessionFiles.length, approved, documentType:selectedDocumentType()
   })};
 })();
