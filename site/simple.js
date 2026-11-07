@@ -164,7 +164,7 @@
     return button;
   }
 
-  async function renderUploaded() {
+  async function renderUploaded(offset=0) {
     const list = $("simpleDocumentsList");
     list.replaceChildren();
     $("simpleDocumentsEmpty").hidden = sessionFiles.length > 0;
@@ -188,7 +188,7 @@
         if(!window.confirm("Remove '"+item.file.name+"' from this browser session?\nThe original file on your device will not be deleted."))return;
         const index=sessionFiles.indexOf(item);
         if(index>=0)sessionFiles.splice(index,1);
-        if(body.dataset.billyScreen==="uploaded")renderUploaded();
+        if(body.dataset.billyScreen==="uploaded")renderUploaded(offset);
       });
       list.appendChild(makeDocumentRow(button,remove));
     }
@@ -200,13 +200,13 @@
     list.appendChild(title);
     try{
       const headers=await window.BillyAccounts.sessionHeaders();
-      const reply=await fetch(api+"/api/vision/records",{headers,cache:"no-store"});
+      const reply=await fetch(api+"/api/vision/records?offset="+offset,{headers,cache:"no-store"});
       if(!reply.ok)throw Error("Team records could not be loaded");
       const result=await reply.json();
       if(body.dataset.billyScreen!=="uploaded")return;
       const rows=Array.isArray(result.records)?result.records:[];
       $("simpleDocumentsEmpty").hidden=sessionFiles.length>0 || rows.length>0;
-      if(!rows.length) {
+      if(!rows.length && offset===0) {
         const empty=document.createElement("p");
         empty.textContent="No cloud records yet. Extract and approve a document first.";
         list.appendChild(empty);
@@ -270,7 +270,7 @@
               const outcome=await response.json();
               if(!response.ok||outcome.deleted!==true)
                 throw Error(outcome.detail||"Could not delete this record.");
-              if(body.dataset.billyScreen==="uploaded")await renderUploaded();
+              if(body.dataset.billyScreen==="uploaded")await renderUploaded(offset);
             }catch(error){
               remove.disabled=false;remove.textContent="Delete";
               const info=$("simpleDocumentsIntro");
@@ -282,6 +282,24 @@
           list.appendChild(button);
         }
       }
+      // Cloud history is paginated in groups of 50 so older test records stay reachable.
+      const navigation=document.createElement("div");
+      navigation.className="simple-documents-pagination";
+      if(offset>0){
+        const newer=document.createElement("button");
+        newer.type="button";newer.className="simple-secondary-action";
+        newer.textContent="Newer records";
+        newer.addEventListener("click",()=>renderUploaded(Math.max(0,offset-50)));
+        navigation.appendChild(newer);
+      }
+      if(result.has_more&&Number.isInteger(result.next_offset)&&result.next_offset>offset){
+        const older=document.createElement("button");
+        older.type="button";older.className="simple-secondary-action";
+        older.textContent="Older records";
+        older.addEventListener("click",()=>renderUploaded(result.next_offset));
+        navigation.appendChild(older);
+      }
+      if(navigation.children.length)list.appendChild(navigation);
     }catch(error){
       const info=document.createElement("p");
       info.textContent="Cloud history unavailable. Check your Gemini connection and team membership.";
