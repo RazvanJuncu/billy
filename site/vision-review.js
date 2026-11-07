@@ -39,6 +39,7 @@ function exportJSON(){
     review_validation_warnings:approvalResult?.validation_warnings||[],
     evidence_regions:auditMeta?.regions||[],
     ramp_review:window.BillyReview?.rampAudit?.()||null,
+    intelligence:approvalResult?.intelligence||null,
     model:auditMeta?.model||null,approval_id:approvalResult?.approval_id||null,
     source_sha256:sha
   },null,2),"billy-approved.json","application/json");
@@ -153,7 +154,8 @@ function render(result,endpoint,authHeaders,sourceFile=null){
        headers:{"Content-Type":"application/json",...await getHeaders()},
        body:JSON.stringify({
          extraction_id:extractId,document_type:documentType,document:draft,confirmed:true,
-         not_on_document:window.BillyReview?.rampAudit?.()?.not_on_document||[]
+         not_on_document:window.BillyReview?.rampAudit?.()?.not_on_document||[],
+         intelligence_opt_in:window.BillyReview?.intelligenceOptIn?.()===true
        })
      });
      const resultBody=await response.json();
@@ -182,12 +184,22 @@ function render(result,endpoint,authHeaders,sourceFile=null){
        }
      }
      approveButton.textContent="Submitted · record "+resultBody.approval_id;
-     notice.textContent=cloudReview ? "Approved values saved to your team cloud records. Original file is not archived; company Excel is not updated. Export keeps the original Gemini result separately." : trainingMessage+" Company Excel is not connected.";
+     const saved=resultBody.intelligence;
+     const intelligenceInfo=saved?.status==="saved"
+       ?" Billy Intelligence learned "+saved.examples_saved+" confirmed correction(s)."
+       :saved?.status==="save_failed"
+         ?" The review was saved, but Billy Intelligence could not save examples."
+         :saved?.status==="no_eligible_corrections"
+           ?" No corrected text was eligible for Billy Intelligence."
+           :"";
+     notice.textContent=cloudReview
+       ?"Approved values saved in your team's private records. No original image archived; Excel is not connected."+intelligenceInfo
+       :trainingMessage+" Company Excel is not connected."+intelligenceInfo;
      exports.hidden=false;
      root.querySelectorAll(".review-grid input, .review-items input, .review-items select, .review-add-line, .line-remove").forEach(el=>{el.disabled=true;});
      if(skipTraining)skipTraining.disabled=true;
      window.dispatchEvent(new CustomEvent("billy:document-approved",{
-       detail:{approvalId:resultBody.approval_id,documentType}
+       detail:{approvalId:resultBody.approval_id,documentType,intelligence:saved||null}
      }));
    }catch(error){
      approveButton.textContent=trainingEligible?"Submit & Learn":"Submit corrections";
