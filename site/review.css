@@ -45,3 +45,11 @@
 }
 .review-submit-without-training:focus-visible{outline:2px solid #bcd2da;outline-offset:2px}
 .review-submit-without-training:disabled{opacity:.45;cursor:not-allowed}
+
+/* Evidence quality and audit trail. Arithmetic consistency never clears OCR uncertainty. */
+.review-field-alert{font-size:10px;line-height:1.45;color:#f2c483}
+.review-meter-check{border:1px solid #796449;border-radius:7px;padding:11px 12px;margin:14px 0 0;background:#28241e;color:#f0d0a0;font-size:11px;line-height:1.5}
+.review-raw-export{width:100%;margin:0 0 16px;text-align:center}
+.review-warnings{border-color:#70563d;background:#29231f}
+.review-warnings strong{color:#f1d3ac}
+.review-warnings p{color:#e5c7a3}
