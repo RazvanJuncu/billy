@@ -66,3 +66,12 @@
   background:#44494e!important;outline-offset:2px;
 }
 @media(max-width:720px){.ramp-not-present{width:100%}}
+
+/* Intelligence is opt-in, visually secondary to the ramp review gate. */
+.ramp-intelligence{margin:19px 0 0;padding:16px 17px;background:#1e2124;border:1px solid #34383d;border-radius:12px}
+.ramp-intelligence-heading{display:block;font-weight:690;color:#e7e9ec;font-size:14px;margin-bottom:5px}
+.ramp-intelligence-note{font-size:12px;line-height:1.55;color:#b7bbc1;margin:0 0 12px}
+.ramp-intelligence-consent{display:flex;align-items:flex-start;gap:11px;font-size:13px;line-height:1.45;color:#e6e8e9;cursor:pointer}
+.ramp-intelligence-check{width:19px;height:19px;flex-shrink:0;accent-color:#7aabff;margin:0;cursor:pointer}
+.ramp-intelligence-privacy{font-size:11px;line-height:1.55;color:#979ba3;margin:10px 0 0 30px}
+@media(max-width:720px){.ramp-intelligence{padding:15px 13px}}
