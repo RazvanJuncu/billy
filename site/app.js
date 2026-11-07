@@ -124,19 +124,19 @@ async function connectEngine() {
     if (payload.status !== "online") throw new Error("Unexpected response from OCR service");
     state.api = address;
     state.online = Boolean(payload.configured);
-    if (!state.online) state.connectionError = "Gemini API key not detected by Billy cloud backend.";
+    if (!state.online) state.connectionError = "AI engine credentials are missing from the cloud backend.";
     dot.className = state.online ? "status-dot online" : "status-dot offline";
-    label.textContent = state.online ? "Vision configured · " + payload.model : "Vision server online · API key missing";
+    label.textContent = state.online ? "AI engine connected" : "Vision server online · API key missing";
     $("settings").open = !state.online;
-    showNotification(state.online ? "" : "Vision server is running, but GEMINI_API_KEY is not configured on the server.");
+    showNotification(state.online ? "" : "The AI engine server is running, but its credentials are not configured.");
   } catch (error) {
     state.online = false;
     state.connectionError = error?.name === "AbortError"
-      ? "Gemini connection timed out. Retry."
+      ? "AI engine connection timed out. Retry."
       : String(error?.message || "Could not reach Billy Vision.");
     dot.className = "status-dot offline";
-    label.textContent = "Gemini disconnected · " + state.connectionError;
-    showNotification("Gemini connection: " + state.connectionError, true);
+    label.textContent = "AI engine disconnected · " + state.connectionError;
+    showNotification("AI engine connection: " + state.connectionError, true);
   } finally {
     state.connecting = false;
   }
@@ -466,7 +466,7 @@ window.BillyApp = {
   visionStatus: () => ({online: state.online, connecting: state.connecting, error: state.connectionError}),
   connectVision: () => {
     if (!window.BillyAccounts?.active?.()) {
-      state.connectionError = "Sign in to a Billy organization before connecting Gemini.";
+      state.connectionError = "Sign in to a Billy organization before connecting the AI engine.";
       window.dispatchEvent(new CustomEvent("billy:engine-updated"));
       return;
     }
