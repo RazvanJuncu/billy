@@ -210,6 +210,7 @@
               schema_version:"0.7",approved:true,document_type:record.document_type,
               document:reviewed,original_extraction:initial,changes_from_original:changes,
               original_validation_warnings:record.original_validation_warnings||[],
+              review_metadata:record.review_metadata||{},
               review_validation_warnings:record.validation_warnings||[],
               evidence_regions:record.regions_data||[],
               model:record.model_name||null,record_id:record.id,
