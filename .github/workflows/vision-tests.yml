@@ -6,11 +6,13 @@ on:
       - "api.py"
       - "billy/**"
       - "scripts/evaluate_approvals.py"
+      - "scripts/evaluate_trocr_baseline.py"
       - "tests/test_vision.py"
       - "tests/test_visual_feedback.py"
       - "tests/test_evaluate_approvals.py"
       - "tests/test_handwriting_learning.py"
       - "tests/test_handwriting_baseline.py"
+      - "tests/test_trocr_baseline_evaluation.py"
       - "requirements-api.txt"
       - "requirements-handwriting-capture.txt"
       - "requirements-handwriting-train.txt"
@@ -24,6 +26,8 @@ on:
       - "tests/test_evaluate_approvals.py"
       - "tests/test_handwriting_learning.py"
       - "tests/test_handwriting_baseline.py"
+      - "tests/test_trocr_baseline_evaluation.py"
+      - "scripts/evaluate_trocr_baseline.py"
       - ".github/workflows/vision-tests.yml"
 permissions:
   contents: read
@@ -42,4 +46,4 @@ jobs:
       - name: Validate syntax
         run: python -m compileall -q api.py billy scripts tests/test_vision.py tests/test_visual_feedback.py tests/test_evaluate_approvals.py tests/test_handwriting_learning.py tests/test_handwriting_baseline.py
       - name: Run synthetic Vision and feedback tests (no API key)
-        run: python -m unittest discover -s tests -p "test_vision.py" && python -m unittest discover -s tests -p "test_visual_feedback.py" && python -m unittest discover -s tests -p "test_evaluate_approvals.py" && python -m unittest discover -s tests -p "test_handwriting_learning.py" && python -m unittest discover -s tests -p "test_handwriting_baseline.py"
+        run: python -m unittest discover -s tests -p "test_vision.py" && python -m unittest discover -s tests -p "test_visual_feedback.py" && python -m unittest discover -s tests -p "test_evaluate_approvals.py" && python -m unittest discover -s tests -p "test_handwriting_learning.py" && python -m unittest discover -s tests -p "test_handwriting_baseline.py" && python -m unittest discover -s tests -p "test_trocr_baseline_evaluation.py"
