@@ -253,6 +253,10 @@
       detail.scrollIntoView?.({block:"nearest",behavior:"smooth"});
     }
     fieldCancel.addEventListener("click",()=>{selected=null;detail.hidden=true;paint();});
+    fieldInput.addEventListener("keydown",event=>{
+      if(event.key==="Enter"){event.preventDefault();fieldConfirm.click();}
+      if(event.key==="Escape"){event.preventDefault();fieldCancel.click();}
+    });
     fieldConfirm.addEventListener("click",()=>{
       if(!selected)return;
       const path=selected;
@@ -278,6 +282,7 @@
       if(pending.length){feedback.textContent="Confirm each highlighted field before rechecking.";return;}
       busy=true;paint();recheck.disabled=true;
       const currentRevision=revision;
+      let statusText="";
       try{
         const form=new FormData();
         form.append("file",sourceFile,sourceFile.name);
@@ -321,12 +326,12 @@
             state.set(path,{level:"green",reason:"Accepted by operator despite unclear AI evidence."});
           }
         }
-        feedback.textContent=allGreen()
+        statusText=allGreen()
           ?"Recheck completed. Ready for operator approval."
           :"AI found remaining doubtful fields. Open the highlighted segments.";
       }catch(error){
-        feedback.textContent="Recheck failed: "+(error.message||"Unexpected error")+". Nothing was approved.";
-      }finally{busy=false;paint();}
+        statusText="Recheck failed: "+(error.message||"Unexpected error")+". Nothing was approved.";
+      }finally{busy=false;paint();if(statusText)feedback.textContent=statusText;}
     }
     recheck.addEventListener("click",recheckWithAI);
     finish.addEventListener("click",()=>{
@@ -341,6 +346,10 @@
     toggleEvidence.addEventListener("click",()=>{
       evidence.hidden=!evidence.hidden;
       toggleEvidence.textContent=evidence.hidden?"Show original document and colored regions":"Hide original document";
+    });
+    window.addEventListener("billy:approval-failed",event=>{
+      const message=String(event.detail?.message||"Approval failed.");
+      paint();feedback.textContent=message;
     });
     paint();
   }
