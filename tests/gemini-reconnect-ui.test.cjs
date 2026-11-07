@@ -23,6 +23,6 @@ test("Process Document retries automatically, with a manual visible fallback",()
 });
 test("PWA uses refreshed assets after an earlier disconnected session",()=>{
  assert.match(html,/app\.js\?v=0\.6\.5/);
- assert.match(html,/simple\.js\?v=1\.2\.4/);
- assert.match(sw,/v30-gemini-reconnect/);
+ assert.match(html,/simple\.js\?v=1\.2\.5/);
+ assert.match(sw,/v31-fuel-release-audit/);
 });
