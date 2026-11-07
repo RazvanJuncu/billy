@@ -71,7 +71,7 @@ In another PowerShell window, from the repository:
 
 Open **http://127.0.0.1:5173/** in your computer browser. Only the server process receives `GEMINI_API_KEY`. **Never paste an API key into the Billy browser UI, commit one, or send one through chat.** Set `BILLY_VISION_MODEL` on the server to choose another supported Gemini ID. Leave the PowerShell server running while testing.
 
-Read [VISION.md](VISION.md) for architecture, field schema, money validation, tests, privacy and the path to enterprise hosting.
+Read [VISION.md](VISION.md) for architecture, field schema, money validation, tests, privacy and the path to enterprise hosting. For the first measured human-correction evaluation (not model fine-tuning), see [AI_VALIDATION.md](AI_VALIDATION.md) and run `python scripts/evaluate_approvals.py --database .billy/approved.sqlite3` after collecting authorized, redacted review examples.
 
 ## Architecture
 
