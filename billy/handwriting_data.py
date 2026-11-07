@@ -90,23 +90,36 @@ def _render_page(content: bytes, mime: str, page_number: int):
     from PIL import Image, ImageOps, UnidentifiedImageError
     Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS
     if mime == "application/pdf":
+        # PDFium is permissively licensed (Apache-2.0/BSD-3-Clause); avoid the
+        # AGPL/commercial-license dependency of PyMuPDF in a business product.
         try:
-            import fitz  # PyMuPDF; optional in the API, required to save PDF crops
+            import pypdfium2 as pdfium
         except ImportError as exc:
-            raise RuntimeError("Install requirements-handwriting.txt to collect PDF crops.") from exc
-        with fitz.open(stream=content, filetype="pdf") as pdf:
-            if pdf.needs_pass:
-                raise ValueError("Password-protected PDFs are not supported.")
-            if not 1 <= len(pdf) <= MAX_PDF_PAGES or page_number > len(pdf):
+            raise RuntimeError(
+                "Install requirements-handwriting-capture.txt for PDF crop collection."
+            ) from exc
+        try:
+            pdf = pdfium.PdfDocument(content)
+        except Exception as exc:
+            raise ValueError("Cannot open this PDF; encrypted or damaged PDFs are unsupported.") from exc
+        try:
+            if not 1 <= len(pdf) <= MAX_PDF_PAGES or not 1 <= page_number <= len(pdf):
                 raise ValueError("Invalid PDF page number.")
-            page = pdf.load_page(page_number - 1)
-            # Pixel limit avoids runaway memory use from unusual page sizes.
-            scaled_width, scaled_height = page.rect.width * 2, page.rect.height * 2
-            if scaled_width * scaled_height > MAX_IMAGE_PIXELS:
-                raise ValueError("PDF page too large to rasterize safely.")
-            pix = page.get_pixmap(matrix=fitz.Matrix(2, 2), alpha=False)
-            image = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-            return image
+            page = pdf[page_number - 1]
+            try:
+                width, height = page.get_size()
+                if width * height * 4 > MAX_IMAGE_PIXELS:
+                    raise ValueError("PDF page too large to rasterize safely.")
+                bitmap = page.render(scale=2)
+                try:
+                    # Copy off the PDFium-owned native buffer before closing it.
+                    return bitmap.to_pil().convert("RGB").copy()
+                finally:
+                    bitmap.close()
+            finally:
+                page.close()
+        finally:
+            pdf.close()
     if page_number != 1:
         raise ValueError("Image inputs only have one page.")
     try:
