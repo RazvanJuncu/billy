@@ -69,18 +69,28 @@
     }
     announce("");
     if (next === "uploaded") renderUploaded();
-    if (next === "process") updateProcess();
+    if (next === "process") {
+      updateProcess();
+      if(!window.BillyApp?.isOnline() && window.BillyAccounts?.active?.())
+        window.BillyApp?.connectVision?.();
+    }
     if (next === "upload") updateUpload();
     $("workspaceStage").scrollTop = 0;
   }
 
   function updateProcess() {
+    const state = window.BillyApp?.visionStatus?.() || {};
     const ready = Boolean(window.BillyApp?.isOnline());
     const action = $("simpleRunProcess");
     action.disabled = !ready;
+    $("simpleRetryVision").hidden = ready || Boolean(state.connecting);
     $("simpleProcessStatus").textContent = ready
-      ? "Ready."
-      : "Vision AI is not connected yet. Processing requires a secure server.";
+      ? "Gemini connected. Ready to process."
+      : state.connecting
+        ? "Connecting to Billy Gemini cloud…"
+        : state.error
+          ? "Gemini connection failed: " + state.error
+          : "Gemini is disconnected. Select Retry Gemini connection.";
   }
 
   function updateUpload() {
@@ -230,6 +240,10 @@
   bind("simpleCapture", () => $("scanOpenCamera").click());
   bind("simpleAddFiles", () => $("filePicker").click());
   bind("simpleContinue", () => showScreen("process"));
+  bind("simpleRetryVision", () => {
+    if(window.BillyAccounts?.active?.()) window.BillyApp?.connectVision?.();
+    updateProcess();
+  });
   bind("simpleRunProcess", () => {
     if (!window.BillyApp?.isOnline()) { updateProcess(); return; }
     $("simpleRunProcess").disabled = true;
