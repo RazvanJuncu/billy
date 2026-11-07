@@ -825,5 +825,5 @@ body[data-billy-screen] .document-type-control{display:none!important}
 .simple-documents-pagination button{min-height:45px}
 @media(max-width:720px){.simple-documents-pagination button{flex:1}}
 
-/* Healthy Gemini connections need no status paragraph; errors still surface. */
+/* Healthy AI engine connections need no status paragraph; errors still surface. */
 .simple-process-status[hidden]{display:none!important}
