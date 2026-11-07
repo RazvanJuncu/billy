@@ -2,8 +2,8 @@
    Feedback scores are historical agreement only once a team has >=20 reviews. */
 (() => {
   "use strict";
-  const PDFJS_URL = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
-  const PDFJS_WORKER = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  const PDFJS_URL = "https://cdn.jsdelivr.net/npm/pdfjs-dist@6.5.438/build/pdf.mjs";
+  const PDFJS_WORKER = "https://cdn.jsdelivr.net/npm/pdfjs-dist@6.5.438/build/pdf.worker.min.mjs";
   let pdfPromise = null;
   let teardown = null;
 
@@ -15,20 +15,15 @@
   }
 
   function loadPdfjs() {
-    if (window.pdfjsLib?.getDocument) return Promise.resolve(window.pdfjsLib);
     if (pdfPromise) return pdfPromise;
-    pdfPromise = new Promise((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src = PDFJS_URL;
-      script.async = true;
-      script.onload = () => {
-        if (!window.pdfjsLib?.getDocument) return reject(Error("PDF preview library failed to initialize."));
-        window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
-        resolve(window.pdfjsLib);
-      };
-      script.onerror = () => reject(Error("PDF preview unavailable without network access."));
-      document.head.appendChild(script);
-    }).catch(error => { pdfPromise = null; throw error; });
+    // Modern PDF.js ESM build includes security fixes missing in the legacy v3.
+    pdfPromise = import(PDFJS_URL).then(lib => {
+      lib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
+      return lib;
+    }).catch(error => {
+      pdfPromise = null;
+      throw Error("Secure PDF preview unavailable: " + (error.message || "network error"));
+    });
     return pdfPromise;
   }
 
@@ -190,7 +185,7 @@
             const lib = await loadPdfjs();
             if (stale) return;
             const data = new Uint8Array(await file.arrayBuffer());
-            pdf = await lib.getDocument({data}).promise;
+            pdf = await lib.getDocument({data, isEvalSupported:false, enableScripting:false}).promise;
             totalPages = Math.min(pdf.numPages, 30);
             updateNav();
           }
