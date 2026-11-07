@@ -1,0 +1,27 @@
+# Portable Billy TrOCR engine — CPU-only container for Linux/on-prem servers.
+# This is a headless, OFFLINE-PROCESSING CLI, NOT a network-exposed worker
+# or a production authenticated queue subscriber. No listening port.
+#
+# Build: docker build -f Dockerfile.worker -t billy-trocr-worker .
+# Run:   see WORKER_DEPLOYMENT.md
+#
+# For NVIDIA CUDA on a company server, use a compatible official PyTorch
+# CUDA image/runtime instead; the Python source remains the same.
+
+FROM python:3.11-slim
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    HF_HOME=/var/cache/billy/huggingface \
+    BILLY_HANDWRITING_INFERENCE_ENABLED=1
+
+WORKDIR /app
+RUN useradd -m -u 10001 -s /usr/sbin/nologin billy \
+    && mkdir -p /work /var/cache/billy/huggingface \
+    && chown -R billy:billy /work /var/cache/billy
+COPY requirements-api.txt requirements-handwriting-capture.txt requirements-handwriting-train.txt ./
+RUN python -m pip install --no-cache-dir --upgrade pip \
+    && python -m pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu \
+    && python -m pip install --no-cache-dir -r requirements-api.txt -r requirements-handwriting-train.txt
+COPY billy/ ./billy/
+USER billy
+ENTRYPOINT ["python", "-m", "billy.worker_cli"]
