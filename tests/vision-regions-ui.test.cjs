@@ -40,6 +40,20 @@ test("Selected areas open an editable field, not a fabricated percentage",()=>{
   assert.match(regions,/dispatchEvent\(new Event/);
   assert.doesNotMatch(regions,/Math\.random|confidence.*\*100/);
 });
+test("Four colors distinguish visual clarity without invented numeric confidence",()=>{
+  for (const level of ["clear","slight_uncertainty","ambiguous","unreadable"]) {
+    assert.match(regions,new RegExp(level));
+    assert.match(css,new RegExp("risk-"+level));
+  }
+  assert.match(regions,/qualityFor\(region\)/);
+  assert.match(regions,/alternate_readings/);
+  assert.match(regions,/Green still requires review/);
+  assert.match(backend,/visual_clarity/);
+  assert.match(backend,/alternate_readings/);
+  assert.match(backend,/ambiguous = competing plausible readings/);
+  assert.doesNotMatch(regions,/Math\.random\(\)/);
+});
+
 test("Submission saves once and future prompts use team-scoped feedback",()=>{
   assert.match(review,/Submit corrections/);
   assert.match(review,/confirmed:true/);
