@@ -11,6 +11,9 @@ from pathlib import Path
 from unittest.mock import patch
 
 from fastapi import HTTPException
+from fastapi.testclient import TestClient
+from api import app
+from billy.accounts import require_member
 
 from billy.accounts import Principal
 from billy.records import record_extraction, save_approval
@@ -113,6 +116,29 @@ class HandwritingDataTests(unittest.TestCase):
             with self.assertRaises(HTTPException) as blocked:
                 collect_verified_crops(uuid.uuid4(), b"abc", "a.png", self.owner)
             self.assertEqual(blocked.exception.status_code, 503)
+
+    def test_training_endpoint_requires_explicit_server_toggle_and_consent(self):
+        client = TestClient(app)
+        app.dependency_overrides[require_member] = lambda: self.owner
+        self.addCleanup(lambda: app.dependency_overrides.pop(require_member, None))
+        with patch.dict(os.environ, {"BILLY_HANDWRITING_CAPTURE_ENABLED": "0"}):
+            blocked = client.post(
+                "/api/handwriting/examples",
+                data={"extraction_id": str(uuid.uuid4()), "training_consent": "true"},
+                files={"file": ("image.png", b"\\x89PNG\\r\\n\\x1a\\n", "image/png")},
+            )
+            self.assertEqual(blocked.status_code, 503)
+            progress = client.get("/api/handwriting/status")
+            self.assertEqual(progress.status_code, 200)
+            self.assertFalse(progress.json()["capture_enabled"])
+            self.assertEqual(progress.json()["training_samples"], 0)
+        with patch.dict(os.environ, {"BILLY_HANDWRITING_CAPTURE_ENABLED": "1"}):
+            no_consent = client.post(
+                "/api/handwriting/examples",
+                data={"extraction_id": str(uuid.uuid4()), "training_consent": "false"},
+                files={"file": ("image.png", b"\\x89PNG\\r\\n\\x1a\\n", "image/png")},
+            )
+            self.assertEqual(no_consent.status_code, 400)
 
     def test_field_paths_are_bounded_and_cannot_execute_expressions(self):
         document = {"invoice_number": "Z-7", "lines": [{"quantity": "1"}]}
