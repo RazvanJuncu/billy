@@ -30,6 +30,21 @@
   const readable = path => path.replace(/\[([0-9]+)\]/g, (_, n) => " #" + (Number(n) + 1))
     .replace(/[_.]/g, " ").replace(/\b\w/g, value => value.toUpperCase());
 
+  const qualityLabels = Object.freeze({
+    clear:"Clear strokes", slight_uncertainty:"Some uncertainty",
+    ambiguous:"Ambiguous reading", unreadable:"Needs verification",
+    unassessed:"Not assessed"
+  });
+  const qualityFor = region =>
+    Object.hasOwn(qualityLabels,region?.visual_clarity) ? region.visual_clarity : "unassessed";
+  const qualityDetail = region => {
+    const parts = [qualityLabels[qualityFor(region)]];
+    if (region.visual_reason) parts.push(String(region.visual_reason).slice(0,240));
+    if (Array.isArray(region.alternate_readings) && region.alternate_readings.length)
+      parts.push("Alternatives: " + region.alternate_readings.slice(0,3).join(" / "));
+    return parts.join(" · ");
+  };
+
   const safeRegion = item => {
     if (!item || typeof item.field_path !== "string" || !Array.isArray(item.box_2d) ||
         item.box_2d.length !== 4 || !Number.isInteger(item.page) ||
@@ -60,8 +75,18 @@
     panel.appendChild(heading);
 
     const caption = element("p","review-evidence-legend",
-      "Confidence is not calibrated. % values, when available, are historical reviewer agreement for that field, not certainty about this page.");
+      "Colors describe how readable a zone appears to AI, not the probability that its value is correct. Green still requires review.");
     panel.appendChild(caption);
+    const colorLegend = element("div","review-risk-legend");
+    for (const [level,text] of [
+      ["clear","Green · clear"], ["slight_uncertainty","Yellow · slight doubt"],
+      ["ambiguous","Orange · ambiguous"], ["unreadable","Red · verify"]
+    ]) {
+      const legendItem=element("span","review-risk-legend-item");
+      legendItem.append(element("i","risk-"+level),document.createTextNode(text));
+      colorLegend.appendChild(legendItem);
+    }
+    panel.appendChild(colorLegend);
 
     const controls = element("div","review-evidence-pages");
     const previous = element("button","","Previous");
@@ -120,7 +145,7 @@
         return;
       }
       selectedPath = region.field_path;
-      editorTitle.textContent = readable(region.field_path) + " · " + historyLabel(region.field_path);
+      editorTitle.textContent = readable(region.field_path) + " · " + qualityDetail(region) + " · " + historyLabel(region.field_path);
       correction.value = input.value || "";
       editor.hidden = false;
       markers.querySelectorAll(".review-region-marker").forEach(marker => {
@@ -135,23 +160,24 @@
       const currentRegions = supported.filter(item => item.page === pageNumber && target(item.field_path));
       for (const region of currentRegions) {
         const [y1,x1,y2,x2] = region.box_2d;
-        const button = element("button","review-region-marker");
+        const button = element("button","review-region-marker risk-"+qualityFor(region));
         button.type = "button";
         button.dataset.fieldPath = region.field_path;
         button.style.top = y1 / 10 + "%";
         button.style.left = x1 / 10 + "%";
         button.style.width = (x2 - x1) / 10 + "%";
         button.style.height = (y2 - y1) / 10 + "%";
-        button.title = readable(region.field_path) + " · " + historyLabel(region.field_path);
-        button.setAttribute("aria-label", "Edit " + readable(region.field_path) + ". " + historyLabel(region.field_path));
+        button.title = readable(region.field_path) + " · " + qualityDetail(region) + " · " + historyLabel(region.field_path);
+        button.setAttribute("aria-label", "Edit " + readable(region.field_path) + ". " + qualityDetail(region));
         button.addEventListener("click",() => openEditor(region));
         markers.appendChild(button);
 
-        const row = element("button","review-region-row");
+        const row = element("button","review-region-row risk-"+qualityFor(region));
         row.type = "button";
         const name = element("span","",readable(region.field_path));
-        const metric = element("small","",historyLabel(region.field_path));
-        row.append(name,metric);
+        const metric = element("small","",qualityDetail(region));
+        const history = element("small","review-prior-accuracy",historyLabel(region.field_path));
+        row.append(name,metric,history);
         row.addEventListener("click",() => openEditor(region));
         regionsList.appendChild(row);
       }
@@ -249,5 +275,5 @@
       panel.remove();
     };
   }
-  window.BillyRegions = {mount, safeRegion};
+  window.BillyRegions = {mount, safeRegion, qualityFor, qualityDetail};
 })();
