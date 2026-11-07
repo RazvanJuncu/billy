@@ -36,7 +36,7 @@ app.add_middleware(
     allow_origins=sorted(ALLOWED_WEB_ORIGINS),
     allow_credentials=False,
     allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type"],
+    allow_headers=["Content-Type", "Authorization", "X-Billy-Organization"],
 )
 # Paddle inference is serialized to avoid overlapping heavyweight calls on a CPU.
 _inference_lock = threading.Lock()
