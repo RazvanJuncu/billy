@@ -23,7 +23,7 @@ test("Phones and tablets start with only the centered Upload New button and an o
 test("Upload New uses the supplied scan logo, with obvious clickable feedback",()=>{
   const artwork=read("site/upload-new-mark.svg");
   const sw=read("site/sw.js");
-  assert.match(html, /src="\.\/upload-new-mark\.svg"/);
+  assert.match(html, /src="\.\/upload-new-mark\.svg\?v=2"/);
   assert.doesNotMatch(html, /<svg class="simple-quick-art"/);
   assert.match(artwork, /viewBox="0 0 320 320"/);
   assert.match(artwork, /cx="134\.93"/);
