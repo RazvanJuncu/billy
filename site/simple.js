@@ -188,8 +188,13 @@
   bind("simpleReviewAgain", () => showScreen("review"));
   bind("simpleReviewToUpload", () => { if (approved) showScreen("upload"); });
   bind("simpleNewFromUpload", () => {
+    // After saving feedback, start the next document with one tap on a phone.
+    if (document.documentElement.dataset.billyMobile === "1" && window.BillyQuickScan?.begin) {
+      showScreen("home");
+      window.BillyQuickScan.begin();
+      return;
+    }
     showScreen("new");
-    // Returning to the new-document menu never triggers the camera unexpectedly.
   });
   bind("simpleUploadedBackToHome", () => showScreen("home"));
 
