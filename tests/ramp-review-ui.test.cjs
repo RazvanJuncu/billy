@@ -62,3 +62,20 @@ test("Approve and upload remain gated; no ramp UI writes to company Excel",()=>{
   assert.match(css,/\.ramp-primary\[hidden\]\{display:none!important\}/);
   assert.doesNotMatch(ramp,/\/api\/vision\/approve|excel\.com|xlsx/i);
 });
+
+test("Absent-field button clears the value, skips AI lookup and retains human audit",()=>{
+  assert.match(ramp,/create\("button","ramp-not-present","Not on document"\)/);
+  assert.match(ramp,/fieldNotPresent\.addEventListener\("click"/);
+  assert.match(ramp,/saveValue\(path,null\)/);
+  assert.match(ramp,/notOnDocument\.add\(path\)/);
+  assert.match(ramp,/notOnDocument\.delete\(path\)/);
+  assert.match(ramp,/if\(notOnDocument\.has\(path\)\)/);
+  assert.match(ramp,/form\.append\("not_on_document",JSON\.stringify\(\[\.\.\.notOnDocument\]\)\)/);
+  assert.match(ramp,/not_on_document:\[\.\.\.notOnDocument\]/);
+  assert.match(ramp,/pending===0&&\(revision===0\|\|checkedRevision===revision\)/);
+  assert.match(css,/\.ramp-not-present\{/);
+  assert.match(review,/not_on_document:window\.BillyReview\?\.rampAudit/);
+  assert.match(backend,/function checkedAbsentPaths\(/);
+  assert.match(backend,/skipped_not_on_document:absentPaths/);
+  assert.match(backend,/review_metadata:\{not_on_document:absentPaths/);
+});
