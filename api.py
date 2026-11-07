@@ -200,7 +200,7 @@ async def add_handwriting_examples(
     filename = file.filename or "document"
     await file.close()
     try:
-        return collect_verified_crops(extraction_id, content, filename, principal)
+        return await asyncio.to_thread(collect_verified_crops, extraction_id, content, filename, principal)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except (sqlite3.DatabaseError, OSError):
