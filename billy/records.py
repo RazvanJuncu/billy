@@ -6,6 +6,7 @@ audit log. Replace with server-managed Postgres for a deployed team instance.
 from __future__ import annotations
 
 import json
+from collections import Counter
 import os
 import sqlite3
 import uuid
@@ -154,6 +155,7 @@ def feedback_summary(principal: Principal, document_type: str) -> dict:
             (principal.organization_id, principal.organization_id, document_type),
         ).fetchall()
     fields = {key: {"reviewed": 0, "agreed": 0, "corrected": 0} for key in keys}
+    digit_confusions: Counter[tuple[str, str]] = Counter()
     for before_json, after_json in rows:
         try:
             before, after = json.loads(before_json), json.loads(after_json)
@@ -173,6 +175,14 @@ def feedback_summary(principal: Principal, document_type: str) -> dict:
                 entry["agreed"] += 1
             else:
                 entry["corrected"] += 1
+                # Learn recurring character confusions without collecting raw
+                # document values into prompts. Never auto-replace a digit.
+                if (prior and corrected and len(prior) == len(corrected)
+                        and 1 <= len(prior) <= 40):
+                    differences = [(a, b) for a, b in zip(prior, corrected) if a != b]
+                    if (len(differences) == 1 and differences[0][0] in "0123456789"
+                            and differences[0][1] in "0123456789"):
+                        digit_confusions[differences[0]] += 1
 
     # Only aggregate a limited, fixed field vocabulary into subsequent prompts.
     # No invoice numbers, names, phone numbers or other original values are injected.
@@ -188,8 +198,22 @@ def feedback_summary(principal: Principal, document_type: str) -> dict:
             + labels + ". Examine those printed fields especially carefully; "
             "never copy values from previous documents or fill unseen values."
         )
+    # Requiring 3 independent approvals avoids overreacting to one typo.
+    recurring = [(old, corrected, n) for (old, corrected), n
+                 in digit_confusions.most_common(5) if n >= 3]
+    if recurring:
+        pairs = ", ".join(f"{old} vs {corrected}" for old, corrected, _ in recurring)
+        guidance += (
+            " Human reviews repeatedly found digit ambiguities: " + pairs +
+            ". Inspect the actual letter/number strokes before choosing either "
+            "reading. Never auto-substitute digits solely from past examples."
+        )
     return {
         "samples": len(rows),
         "fields": fields,
+        "digit_confusions": [
+            {"previous": old, "reviewed": corrected, "observations": n}
+            for old, corrected, n in recurring
+        ],
         "review_guidance": guidance,
     }
