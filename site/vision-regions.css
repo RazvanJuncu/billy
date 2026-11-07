@@ -53,3 +53,27 @@
   .review-region-marker{border-width:1.5px}
 }
 @media(prefers-reduced-motion:reduce){.review-region-marker{transition:none}}
+
+
+/* Four legibility tiers; these are visual risk markers, NOT calibrated probabilities. */
+.review-risk-legend{display:flex;flex-wrap:wrap;gap:7px 12px;margin:8px 0 16px}
+.review-risk-legend-item{display:inline-flex;align-items:center;gap:6px;color:#c6cdd1;font-size:10px;line-height:1.4}
+.review-risk-legend-item i{display:block;width:10px;height:10px;border-radius:3px;flex:none}
+.review-risk-legend-item i.risk-clear{background:#3fa977}
+.review-risk-legend-item i.risk-slight_uncertainty{background:#d9b64a}
+.review-risk-legend-item i.risk-ambiguous{background:#dc8741}
+.review-risk-legend-item i.risk-unreadable{background:#d8585d}
+.review-region-marker.risk-clear{border-color:#3fa977;background:rgba(42,159,97,.22)}
+.review-region-marker.risk-slight_uncertainty{border-color:#d9b64a;background:rgba(218,181,67,.22)}
+.review-region-marker.risk-ambiguous{border-color:#dc8741;background:rgba(220,131,55,.25)}
+.review-region-marker.risk-unreadable{border-color:#d8585d;background:rgba(209,61,69,.27)}
+.review-region-marker.risk-unassessed{border-color:#8b9299;background:rgba(148,155,165,.12)}
+.review-region-row.risk-clear{border-left:3px solid #3fa977}
+.review-region-row.risk-slight_uncertainty{border-left:3px solid #d9b64a}
+.review-region-row.risk-ambiguous{border-left:3px solid #dc8741}
+.review-region-row.risk-unreadable{border-left:3px solid #d8585d}
+.review-region-row.risk-unassessed{border-left:3px solid #8b9299}
+.review-region-row .review-prior-accuracy{color:#929da5;font-size:9px}
+.review-region-marker:hover,.review-region-marker:focus-visible,.review-region-marker.is-selected{
+  outline:2px solid #e3e7ea;outline-offset:1px;z-index:2
+}
