@@ -10,7 +10,7 @@ test("Phones and tablets start with only the centered Upload New button and an o
   assert.match(html,/id="simpleRevealFunctions"/);
   assert.match(html,/aria-expanded="false" aria-controls="simpleFunctionArea"/);
   assert.match(html,/class="simple-quick-art"/);
-  assert.match(html,/>Upload New<\/span>/);
+  assert.match(html,/>Tap to QuickScan<\/span>/);
   assert.match(css,/body:not\(\.billy-functions-revealed\) \.simple-home-expanded\{display:none!important\}/);
   assert.match(css,/body:not\(\.billy-functions-revealed\) \.studio-header\{display:none!important\}/);
   assert.match(css,/body\.billy-functions-revealed \.simple-home-expanded\{display:contents\}/);
@@ -20,7 +20,7 @@ test("Phones and tablets start with only the centered Upload New button and an o
   assert.doesNotMatch(flow,/localStorage\.setItem\("billy-functions-revealed"/);
 });
 
-test("Upload New uses the supplied scan logo, with obvious clickable feedback",()=>{
+test("QuickScan uses the supplied scan logo, with obvious clickable feedback",()=>{
   const artwork=read("site/upload-new-mark.svg");
   const sw=read("site/sw.js");
   assert.match(html, /src="\.\/upload-new-mark\.svg\?v=2"/);
@@ -28,7 +28,9 @@ test("Upload New uses the supplied scan logo, with obvious clickable feedback",(
   assert.match(artwork, /viewBox="0 0 320 320"/);
   assert.match(artwork, /cx="134\.93"/);
   assert.match(artwork, /cx="161\.81"/);
-  assert.match(html, /class="simple-quick-cta"[^>]*>Tap to scan/);
+  assert.match(html, /class="simple-quick-cta">Tap to QuickScan<\/span>/);
+  assert.doesNotMatch(html, /class="simple-quick-label">Upload New/);
+  assert.doesNotMatch(html, /simple-quick-cta-arrow/);
   assert.match(css, /#simpleQuickSnap\{[\s\S]*?border:0!important/);
   assert.doesNotMatch(css, /border:1px solid #363a40!important/);
   assert.match(css, /box-shadow:0 14px 34px/);
