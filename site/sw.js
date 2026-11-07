@@ -1,6 +1,6 @@
 /* Billy offline scanner shell. OCR remains a separately connected backend. */
-const CACHE = "billydpi-orbit-v21-quickscan-label";
-const ASSETS = ["./","./index.html","./styles.css","./brand.css","./billydpi-logo.svg","./upload-new-mark.svg","./review.css","./accounts.css","./document-type.css","./simple.css","./snap.css","./snap.webmanifest","./install.html","./install.css","./install.js","./simple.js","./preloader.css","./preloader.js","./account-config.js","./accounts.js","./vision-review.js","./app.js","./workspace.js","./scanner.js","./perspective.js","./manifest.webmanifest","./favicon.svg","./icon-192.png","./icon-512.png"];
+const CACHE = "billydpi-orbit-v22-multipage";
+const ASSETS = ["./","./index.html","./styles.css","./brand.css","./billydpi-logo.svg","./upload-new-mark.svg","./review.css","./accounts.css","./document-type.css","./simple.css","./quickscan.css","./quickscan.js","./snap.css","./snap.webmanifest","./install.html","./install.css","./install.js","./simple.js","./preloader.css","./preloader.js","./account-config.js","./accounts.js","./vision-review.js","./app.js","./workspace.js","./scanner.js","./perspective.js","./manifest.webmanifest","./favicon.svg","./icon-192.png","./icon-512.png"];
 self.addEventListener("install",event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting()));
 });
@@ -22,7 +22,7 @@ self.addEventListener("fetch",event=>{
   }
   // Network-first keeps new app releases fresh; cached files remain usable offline.
   const path = new URL(request.url).pathname;
-  const critical = /\/(?:simple\.css|simple\.js|app\.js|upload-new-mark\.svg)$/.test(path);
+  const critical = /\/(?:simple\.css|simple\.js|quickscan\.css|quickscan\.js|app\.js|upload-new-mark\.svg)$/.test(path);
   event.respondWith(fetch(request,critical ? {cache:"no-store"} : undefined).then(response=>{
     if(response.ok){const copy=response.clone();caches.open(CACHE).then(cache=>cache.put(request,copy));}
     return response;
