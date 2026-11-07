@@ -393,7 +393,10 @@ window.addEventListener("beforeunload", discardPreview);
 window.BillyScanner?.init({onUse: selectFile, getSource: () => state.file});
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js").catch(() => {});
+    // Revalidate the offline shell on every launch, even when iOS holds an older PWA cache.
+    navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" })
+      .then(registration => registration.update())
+      .catch(() => {});
   });
 }
 $("statusDot").className = "status-dot offline";
