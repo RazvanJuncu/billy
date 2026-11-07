@@ -15,7 +15,8 @@ test("Uploaded Documents exposes confirmed, accessible delete actions",()=>{
   assert.match(simple,/aria-label","Delete "\+label/);
   assert.match(simple,/window\.confirm\("Remove /);
   assert.match(simple,/window\.confirm\(message\)/);
-  assert.match(simple,/method:"POST",[\s\S]*?api\+"\/api\/vision\/delete"/);
+  assert.ok(simple.includes('fetch(api+"/api/vision/delete"'));
+  assert.match(simple,/method:"POST"/);
   assert.match(simple,/record\.created_by===window\.BillyAccounts\?\.userId\?\.\(\)/);
   assert.match(accounts,/userId:\(\)=>user\?\.id\|\|null/);
   assert.match(css,/\.simple-document-row\{/);
