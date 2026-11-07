@@ -304,3 +304,14 @@ body.has-document .capture-row{display:none}
   .mobile-wordmark{display:flex;align-items:center;gap:9px;letter-spacing:-.045em;font-size:21px}
   .mobile-wordmark span{color:#f0f2f3}
 }
+
+
+/* Optional, reversible OCR preview enhancement; keep original pixels intact. */
+.scan-enhance-toggle{
+  display:inline-flex;align-items:center;gap:8px;
+  min-height:39px;padding:9px 12px;
+  border-radius:9px;background:#252a2e;color:#d9e1e5;
+  font-size:12px;font-weight:600;cursor:pointer;
+}
+.scan-enhance-toggle input{width:16px;height:16px;accent-color:#9cbcb3;margin:0}
+.scan-enhance-toggle:focus-within{outline:2px solid #c6dde2;outline-offset:2px}
