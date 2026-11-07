@@ -332,7 +332,7 @@ async def extract_document(name: str, content: bytes, document_type: str = "invo
         "generationConfig": {
             "responseMimeType": "application/json",
             "responseJsonSchema": _schema_with_regions(FUEL_SCHEMA if document_type == "fuel_release" else SCHEMA),
-            "maxOutputTokens": 8192,
+            "maxOutputTokens": 16384,  # Multiple pages and localized evidence need headroom.
         },
         "store": False,
     }
