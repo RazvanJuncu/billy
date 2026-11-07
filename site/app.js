@@ -33,7 +33,14 @@ function apiAddress(value) {
   if (url.protocol !== "https:" && !(url.protocol === "http:" && ["localhost", "127.0.0.1"].includes(url.hostname))) {
     throw new Error("Remote OCR services must use HTTPS. HTTP is only allowed for localhost.");
   }
-  return url.origin + url.pathname.replace(/\/+$/, "");
+  const address = url.origin + url.pathname.replace(/\/+$/, "");
+  const official = window.BILLY_AUTH_CONFIG?.apiUrl;
+  const local = ["localhost","127.0.0.1"].includes(url.hostname);
+  // Session bearer tokens must never be sent to an arbitrary HTTPS server.
+  if (!local && (!official || address !== official.replace(/\/+$/, ""))) {
+    throw new Error("Only the official Billy Vision HTTPS endpoint may receive team sessions.");
+  }
+  return address;
 }
 
 function setStage(index) {
