@@ -171,7 +171,19 @@ and physical camera / installation checks on iOS Safari, Android/Samsung and Hua
 4. Capture the page or choose a photo. Billy attempts to locate bright paper edges against a darker backdrop. **Blue corners are draggable**; refine them manually if detection is inaccurate.
 5. Tap **Straighten & use** to transform the trapezoid to a flat document JPEG, or **Save image** to share/download without running OCR. PDF input can still be sent straight to OCR.
 
-The in-browser scan engine operates locally, including when the backend is unavailable. It's a best-effort mobile document scanner, not the iOS Notes scanner: automatic edge detection is heuristic, not a guarantee, and no automatic multi-page PDF assembly is provided yet.
+The in-browser scanner corrects photos locally and supports **multipage QuickScan**. After the first photo, Billy keeps an on-device page queue with **Add another page**, **Import PDF / photo**, move up/down, remove and **Finish & Process**. Images are combined into a single PDF through pdf-lib 1.17.1; already-imported PDFs can be passed through unchanged or split into editable page entries when the PDF library is loaded. The original local perspective editor remains in use. PDF page cards currently show page-number placeholders (rather than rendered PDF thumbnails).
+
+**Limits:** at most 30 pages and 10 MiB per final document for the current Vision API. When combining scans, Billy tries more compact JPEGs if the first PDF is too large. Offline capture still works, but combining multiple pages requires the pdf-lib browser dependency, which is not yet vendored for offline use. No permanent company file storage or Excel upload is implemented. The user must confirm human review of extracted values before approval.
+
+### QuickScan multipage and PDF import
+
+- **Tap to QuickScan** opens the camera directly on phones and tablets.
+- Each captured or cropped page is added to a draft held only in the browser tab.
+- After capture: **Add another page**, **Import PDF / photo**, reorder, remove or finish.
+- On **Finish & Process**, Billy creates one document and uses the existing authenticated Vision extraction workflow when the server is connected. If Vision is offline, the local draft remains available for the normal Edit / Process flow.
+- Images can be merged with supported unencrypted PDFs; page order is respected. A PDF imported without other pages can pass straight through to Vision.
+- Importing PDF pages or merging scans requires the pinned pdf-lib CDN dependency. An unavailable PDF library does not block a single-image capture or an unmodified PDF import.
+- This development PWA does **not** secretly upload or persist the captured pages. If you close or refresh the browser before finishing, the temporary page queue is discarded.
 
 ### A separate OCR backend is required on iPhone
 
