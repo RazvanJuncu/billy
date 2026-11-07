@@ -17,7 +17,10 @@ test("Review renders the original image/PDF and estimated normalized Gemini boxe
   assert.ok(html.indexOf('src="./vision-regions.js')<html.indexOf('src="./vision-review.js'));
   assert.match(html,/vision-regions.css/);
   assert.match(regions,/PDFJS_URL/);
-  assert.match(regions,/pdfjsLib\.getDocument|lib\.getDocument/);
+  assert.match(regions,/lib\.getDocument/);
+  assert.match(regions,/pdfjs-dist@6\.5\.438/);
+  assert.match(regions,/isEvalSupported:false, enableScripting:false/);
+  assert.doesNotMatch(regions,/pdf\.js\/3\.11\.174/);
   assert.match(regions,/box_2d/);
   assert.match(regions,/box_2d\.length !== 4/);
   assert.match(regions,/review-region-marker/);
