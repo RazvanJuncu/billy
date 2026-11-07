@@ -1,6 +1,14 @@
 # BillyDPI — Document Processing Intelligence
 
-**Your invoices, decoded.** Billy is an installable mobile invoice scanning workbench with an offline-capable camera, perspective correction and a separate local Python OCR service built on [PaddleOCR PP-StructureV3](https://www.paddleocr.ai/latest/en/version3.x/pipeline_usage/PP-StructureV3.html).
+**Your invoices, decoded.** Billy is an installable web/PWA document scanner with an offline-capable camera, perspective correction, and a **Gemini cloud extraction + human-review workflow** using an authenticated Supabase Edge Function. The older local Python PaddleOCR/TrOCR tooling remains in the repo but is not required by the public Gemini site.
+
+## Gemini-first cloud pilot (active)
+
+The public PWA uses the `billy-vision` Supabase Edge Function for Gemini extraction, and securely saves **structured extracted + approved records** to the organization's Supabase database. It does not archive original PDFs/photos or export approved values into company Excel automatically.
+
+**The server-side `GEMINI_API_KEY` secret must be configured by a project administrator before AI extraction is usable.** The deployed Edge Function is not proof that Google billing, API access, or end-to-end scanning has been tested.
+
+See [GEMINI_CLOUD.md](GEMINI_CLOUD.md) for setup and the test flow. Worker, Pending queue, fine-tuning, and TrOCR are on hold for the active cloud integration.
 
 ## Portable Billy Worker (PC today, company server later)
 
