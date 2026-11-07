@@ -8,7 +8,10 @@ import tempfile
 import types
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
+from fastapi.testclient import TestClient
+from billy.accounts import Principal, require_member
+from api import app
 
 from PIL import Image
 
@@ -117,6 +120,52 @@ class PretrainedTrOCRTests(unittest.TestCase):
         self.assertTrue(region["handwriting_disagreement"])
         self.assertIn("AB-1", region["alternate_readings"])
         loader.assert_called_once_with(DEFAULT_PRETRAINED, False)
+
+    def test_fastapi_joins_gemini_structure_with_local_trocr_comparison(self):
+        principal = Principal(
+            "11111111-1111-4111-8111-111111111111", ORG, "operator",
+        )
+        app.dependency_overrides[require_member] = lambda: principal
+        self.addCleanup(lambda: app.dependency_overrides.pop(require_member, None))
+        doc = {
+            "document_type": "invoice",
+            "invoice": {"invoice_number": "AB-7"},
+            "source_sha256": "f" * 64,
+            "regions": [{
+                "field_path": "invoice_number", "script_type": "handwritten",
+                "visual_clarity": "ambiguous", "page": 1,
+                "box_2d": [100, 200, 130, 500], "transcription": "AB-7",
+            }],
+        }
+        def mocked_second(content, name, regions, organization):
+            self.assertEqual(organization, ORG)
+            self.assertEqual(regions[0]["transcription"], "AB-7")
+            regions[0]["trocr_reading"] = "AB-1"
+            regions[0]["handwriting_disagreement"] = True
+            return {
+                "status": "processed", "source": "pretrained",
+                "model_version": DEFAULT_PRETRAINED,
+                "comparisons": 1, "disagreements": 1,
+            }
+        with (
+            patch("api.configured", return_value=True),
+            patch("api.extract_document", new=AsyncMock(return_value=doc)),
+            patch("api.feedback_summary", return_value={
+                "review_guidance": "", "fields": {}, "samples": 0,
+            }),
+            patch("api.record_extraction", return_value="test-extraction-1"),
+            patch("api.second_opinion", side_effect=mocked_second),
+        ):
+            reply = TestClient(app).post(
+                "/api/vision/extract",
+                files={"file": ("example.jpg", b"\\xff\\xd8demo", "image/jpeg")},
+                data={"document_type": "invoice"},
+            )
+        self.assertEqual(reply.status_code, 200, reply.text)
+        payload = reply.json()
+        self.assertEqual(payload["invoice"]["invoice_number"], "AB-7")
+        self.assertEqual(payload["regions"][0]["trocr_reading"], "AB-1")
+        self.assertEqual(payload["handwriting_second_opinion"]["comparisons"], 1)
 
     def test_trocr_only_runs_when_explicitly_enabled(self):
         with patch.dict(os.environ, {"BILLY_HANDWRITING_INFERENCE_ENABLED": "0"}):
