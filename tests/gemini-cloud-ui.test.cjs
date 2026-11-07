@@ -93,6 +93,22 @@ test("Gemini is server-side; PWA uses Supabase HTTPS and public key only",()=>{
   assert.doesNotMatch(code,/handwriting_inference|second_opinion\(/);
 });
 
+test("Vision health recognizes both public and function-local Supabase paths",async()=>{
+  const {handler}=mockBackend();
+  const paths=[
+    "/api/vision/health",
+    "/billy-vision/api/vision/health",
+    "/functions/v1/billy-vision/api/vision/health"
+  ];
+  for(const pathname of paths){
+    const response=await handler(new Request("https://synthetic.supabase.co"+pathname,{headers:authHeaders}));
+    assert.equal(response.status,200,pathname);
+    assert.equal((await response.json()).status,"online");
+  }
+  const missing=await handler(new Request("https://synthetic.supabase.co/billy-vision/api/vision/unknown",{headers:authHeaders}));
+  assert.equal(missing.status,404);
+});
+
 test("Cloud health reports missing Gemini secret without exposing it",async()=>{
   const {handler,call}=mockBackend({missingKey:true});
   const r=await handler(call("/api/vision/health"));
