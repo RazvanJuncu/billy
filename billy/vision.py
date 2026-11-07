@@ -162,11 +162,14 @@ _EVIDENCE_ITEM = {
             "type": "string",
             "enum": ["clear", "slight_uncertainty", "ambiguous", "unreadable"],
         },
+        "script_type": {
+            "type": "string", "enum": ["handwritten", "printed", "mixed", "unknown"],
+        },
         "alternate_readings": {"type": "array", "items": {"type": "string"}},
         "visual_reason": _field(),
     },
     "required": ["field_path", "page", "box_2d", "transcription",
-                 "visual_clarity", "alternate_readings", "visual_reason"],
+                 "visual_clarity", "script_type", "alternate_readings", "visual_reason"],
     "additionalProperties": False,
 }
 _EVIDENCE_INSTRUCTIONS = (
@@ -177,6 +180,9 @@ _EVIDENCE_INSTRUCTIONS = (
     "handwritten_entries[0].transcription), page number starting at 1, "
     "box_2d [ymin,xmin,ymax,xmax] integers normalized to 0..1000 "
     "relative to that page, and the exact visible transcription. "
+    "For each region classify script_type: handwritten if written manually, "
+    "printed for machine-produced characters, mixed only when both appear, "
+    "unknown if the source cannot be determined. "
     "For each region, assess VISUAL CLARITY (not statistical accuracy): "
     "clear = distinct strokes with no apparent alternative, "
     "slight_uncertainty = minor blur or partly unclear character, "
@@ -234,6 +240,9 @@ def _clean_regions(raw: object, document_type: str) -> list[dict]:
         quality = item.get("visual_clarity")
         if quality not in {"clear", "slight_uncertainty", "ambiguous", "unreadable"}:
             quality = "unassessed"
+        script = item.get("script_type")
+        if script not in {"handwritten", "printed", "mixed", "unknown"}:
+            script = "unknown"
         alternates = item.get("alternate_readings")
         alternates = ([str(value)[:100] for value in alternates[:3]
                        if isinstance(value, str) and value.strip()]
@@ -243,6 +252,7 @@ def _clean_regions(raw: object, document_type: str) -> list[dict]:
             "field_path": path, "page": page, "box_2d": box,
             "transcription": transcription[:500] if isinstance(transcription, str) else None,
             "visual_clarity": quality,
+            "script_type": script,
             "alternate_readings": alternates,
             "visual_reason": reason[:240] if isinstance(reason, str) else None,
         })
