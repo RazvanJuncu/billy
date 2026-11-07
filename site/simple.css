@@ -800,3 +800,28 @@ body[data-billy-screen] .document-type-control{display:none!important}
   .simple-selected-type span{flex-basis:100%}
 }
 @media(prefers-reduced-motion:reduce){.simple-type-card{transition:none!important}.simple-type-card:active{transform:none!important}}
+
+/* Development cleanup for current-session documents and creator-owned cloud records. */
+.simple-document-row{
+  display:flex;align-items:stretch;gap:8px;width:100%;min-width:0;
+}
+.simple-document-row .simple-document-item{
+  flex:1;min-width:0;width:auto!important;
+}
+.simple-document-delete{
+  flex:0 0 auto;min-width:85px;min-height:55px;
+  padding:10px 15px!important;
+  border:0!important;border-radius:10px!important;
+  background:#27292b!important;color:#d2d4d6!important;
+  font-size:12px;font-weight:650;cursor:pointer;
+  touch-action:manipulation;
+}
+.simple-document-delete:hover:not(:disabled),
+.simple-document-delete:focus-visible{background:#3c3030!important;color:#fff!important}
+.simple-document-delete:disabled{opacity:.55;cursor:wait}
+.simple-document-row .simple-document-name{flex:1}
+@media(max-width:720px){
+  .simple-document-row{gap:7px}
+  .simple-document-row .simple-document-item{min-height:65px;padding:13px 14px!important}
+  .simple-document-delete{min-width:78px;min-height:57px;padding:9px!important}
+}
