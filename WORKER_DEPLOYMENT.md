@@ -96,6 +96,7 @@ mkdir -p .billy/model-cache .billy/worker-output
 # First execution requires network access to download pretrained weights.
 # Mount input read-only; keep output and model cache outside image layers.
 docker run --rm \
+  --user "$(id -u):$(id -g)" \
   --mount type=bind,src="$(pwd)/test",dst=/input,readonly \
   --mount type=bind,src="$(pwd)/.billy/worker-output",dst=/work \
   --mount type=bind,src="$(pwd)/.billy/model-cache",dst=/var/cache/billy/huggingface \
