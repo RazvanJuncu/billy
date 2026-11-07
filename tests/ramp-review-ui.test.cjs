@@ -28,7 +28,7 @@ test("Segmented color indicators are unlabeled visually yet accessible to screen
   assert.match(css,/\.ramp-green\{background:#57b885/);
   assert.match(css,/\.ramp-yellow\{background:#ebc66a/);
   assert.match(css,/\.ramp-red\{background:#e67872/);
-  assert.match(ramp,/required field is missing|Required field is missing/);
+  assert.match(ramp,/No value extracted\. Verify the source/);
 });
 test("Only selected fields open for confirmation and original evidence is initially hidden",()=>{
   assert.match(ramp,/advanced\.hidden=true/);
@@ -126,4 +126,51 @@ test("Historical corrections are text-only, tenant-scoped, and never treated as 
   assert.match(backend,/Never copy names/);
   assert.match(backend,/model_fine_tuned:false/);
   assert.match(backend,/const consent=data\.intelligence_opt_in===true/);
+});
+
+test("A missing fuel unit must not mark known meter readings as critical",()=>{
+  const injected=ramp.replace("  function mount(result,endpoint,getHeaders,sourceFile){",
+    "  window.__testClassify=classification;\n  function mount(result,endpoint,getHeaders,sourceFile){");
+  const context={window:{BillyReview:{render:()=>{}}}};
+  vm.runInNewContext(injected,context);
+  const classify=context.window.__testClassify;
+  assert.equal(typeof classify,"function");
+  const doc={meter_start:"71058",meter_finish:"71072",delivered_quantity:"14",
+    quantity_unit:null,aircraft_registration:"1719P",fueler_name:"EB"};
+  const clear=field_path=>({field_path,visual_clarity:"clear",alternate_readings:[]});
+  const unitWarning=["Fuel quantity unit missing or unreadable."];
+  assert.equal(classify("meter_start",doc,"fuel_release",[clear("meter_start")],unitWarning).level,"green");
+  assert.equal(classify("meter_finish",doc,"fuel_release",[clear("meter_finish")],unitWarning).level,"green");
+  assert.equal(classify("delivered_quantity",doc,"fuel_release",[clear("delivered_quantity")],unitWarning).level,"green");
+  const absent=classify("quantity_unit",doc,"fuel_release",[],unitWarning);
+  assert.equal(absent.level,"yellow");
+  assert.match(absent.reason,/Not on document/);
+  const meterWarnings=[...unitWarning,"Meter arithmetic matches (14), but verify both original meter readings visually. Arithmetic is not proof of OCR accuracy."];
+  assert.equal(classify("meter_start",doc,"fuel_release",[clear("meter_start")],meterWarnings).level,"yellow");
+  assert.notEqual(classify("meter_start",doc,"fuel_release",[clear("meter_start")],meterWarnings).level,"red");
+});
+
+test("Competing readings override Gemini's own visually clear classification",()=>{
+  const injected=ramp.replace("  function mount(result,endpoint,getHeaders,sourceFile){",
+    "  window.__testClassify=classification;\n  function mount(result,endpoint,getHeaders,sourceFile){");
+  const ctx={window:{BillyReview:{render:()=>{}}}};
+  vm.runInNewContext(injected,ctx);
+  const classify=ctx.window.__testClassify;
+  const doc={aircraft_registration:"1719P",meter_start:"71058",release_number:"M 04569",
+    fueler_name:"EB"};
+  const region=(field_path,alternates,visual_clarity="clear")=>
+    ({field_path,visual_clarity,alternate_readings:alternates});
+  assert.equal(classify("aircraft_registration",doc,"fuel_release",[
+    region("aircraft_registration",["17191"])
+  ],[]).level,"yellow");
+  assert.equal(classify("meter_start",doc,"fuel_release",[
+    region("meter_start",["71053"])
+  ],[]).level,"yellow");
+  // A number printed with an optional one-letter prefix is not a competing digit reading.
+  assert.equal(classify("release_number",doc,"fuel_release",[
+    region("release_number",["04569"])
+  ],[]).level,"green");
+  assert.equal(classify("fueler_name",doc,"fuel_release",[
+    region("fueler_name",["EO","EF"],"ambiguous")
+  ],[]).level,"red");
 });
