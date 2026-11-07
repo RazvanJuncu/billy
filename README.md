@@ -21,13 +21,17 @@ A separate optional worker can fine-tune
 [`microsoft/trocr-base-handwritten`](https://huggingface.co/microsoft/trocr-base-handwritten)
 on those labeled crops. It measures character error rate on a **document-split
 holdout**, blocks numeric regression, and only promotes improved checkpoints.
-An optional second-opinion inference pass re-reads visually ambiguous handwriting
-using the **last promoted team checkpoint**; disagreements appear as alternatives
-rather than overwriting invoice totals, registration numbers or fuel quantities.
+With `BILLY_HANDWRITING_INFERENCE_ENABLED=1`, local TrOCR Small can run
+**immediately without fine-tuning** using Microsoft's original pretrained
+checkpoint. A successfully trained and promoted team checkpoint automatically
+takes priority later. It re-reads visually ambiguous handwriting, surfaces
+Gemini/TrOCR disagreements and never overrides financial fields without review.
+See [SETUP_WINDOWS.md](SETUP_WINDOWS.md) for the first CPU baseline test.
 
-**Important:** collection, GPU training and promoted-model inference are OFF
-by default. They require a separate trusted Python server and training host,
-and are NOT deployed or executed by GitHub Pages. This repository does not
+**Important:** training capture, automatic training and local TrOCR inference
+are OFF by default until the backend operator enables them. Inference can run
+on a local CPU; only practical fine-tuning typically benefits from a GPU.
+These Python services are NOT deployed or executed by GitHub Pages. This repository does not
 contain a company dataset, trained Billy checkpoint or a completed benchmark.
 TrOCR reads single lines; a separately fine-tuned page-layout model is still
 future work. No claim of 100% accuracy is made.
