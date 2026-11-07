@@ -280,7 +280,7 @@ function renderResult() {
   $("rawOutput").hidden = true;
   $("formattedOutput").hidden = false;
   if (!window.BillyReview) throw new Error("Billy Review is unavailable.");
-  window.BillyReview.render(state.result, state.api, () => window.BillyAccounts.sessionHeaders());
+  window.BillyReview.render(state.result, state.api, () => window.BillyAccounts.sessionHeaders(), state.file);
 }
 
 async function scanInvoice() {
