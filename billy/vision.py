@@ -191,7 +191,7 @@ def _clean_regions(raw: object, document_type: str) -> list[dict]:
     if not isinstance(raw, list):
         return []
     primary = _TEXT_KEYS if document_type == "invoice" else FUEL_KEYS
-    child = _LINE_KEYS if document_type == "invoice" else ("label", "transcription", "legibility")
+    child = _LINE_KEYS if document_type == "invoice" else ("label", "transcription")
     group = "lines" if document_type == "invoice" else "handwritten_entries"
     regions = []
     seen = set()
