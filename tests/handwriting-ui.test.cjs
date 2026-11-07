@@ -15,8 +15,8 @@ test("Submit & Learn is explicit, optional, and always keeps the normal approval
   assert.match(review,/handwriting_training_capture_enabled === true/);
   assert.match(review,/Submit & Learn/);
   assert.match(review,/Submit only · don't train/);
-  assert.match(review,/api+"\/api\/vision\/approve"/);
-  assert.match(review,/api+"\/api\/handwriting\/examples"/);
+  assert.match(review,/api\+"\/api\/vision\/approve"/);
+  assert.match(review,/api\+"\/api\/handwriting\/examples"/);
   assert.match(review,/form\.append\("training_consent","true"\)/);
   assert.match(review,/if\(allowTraining && trainingEligible\)/);
   assert.match(review,/Review saved, but handwriting sample collection failed/);
