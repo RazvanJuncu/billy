@@ -172,8 +172,19 @@
         button.append(name,status);
         if(record.state==="approved" && record.reviewed_data){
           button.addEventListener("click",()=>{
-            const content=JSON.stringify({approved:true,document_type:record.document_type,
-              document:record.reviewed_data,record_id:record.id},null,2);
+            const initial=record.extracted_data||null;
+            const reviewed=record.reviewed_data;
+            const changes=initial?Object.keys(reviewed).filter(key=>JSON.stringify(initial[key])!==JSON.stringify(reviewed[key]))
+              .map(field_path=>({field_path,original:initial[field_path]??null,reviewed:reviewed[field_path]??null})):[];
+            const content=JSON.stringify({
+              schema_version:"0.7",approved:true,document_type:record.document_type,
+              document:reviewed,original_extraction:initial,changes_from_original:changes,
+              original_validation_warnings:record.original_validation_warnings||[],
+              review_validation_warnings:record.validation_warnings||[],
+              evidence_regions:record.regions_data||[],
+              model:record.model_name||null,record_id:record.id,
+              source_sha256:record.source_sha256||null
+            },null,2);
             const url=URL.createObjectURL(new Blob([content],{type:"application/json"}));
             const link=document.createElement("a");
             link.href=url;link.download="billy-"+record.id+".json";
