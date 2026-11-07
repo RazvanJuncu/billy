@@ -99,7 +99,7 @@ def inference_status(organization_id: str) -> dict:
         "enabled": True,
         "model": display,
         "source": "fine_tuned" if local_only else "pretrained",
-        "loaded": None,  # Health does not load the model; see extraction results.
+        "loading": "on_demand",  # Health never downloads weights or claims an inference ran.
     }
 
 
