@@ -145,6 +145,25 @@
     showScreen("edit");
   }
 
+  // Development cleanup. Removing a session entry only forgets this browser's
+  // current-session list. Deleting a cloud record is a permanent server action.
+  function makeDocumentRow(button,deleteButton){
+    const row=document.createElement("div");
+    row.className="simple-document-row";
+    row.append(button,deleteButton);
+    return row;
+  }
+  function makeDeleteButton(label,onDelete){
+    const button=document.createElement("button");
+    button.type="button";
+    button.className="simple-document-delete";
+    button.textContent="Delete";
+    button.setAttribute("aria-label","Delete "+label);
+    button.title="Delete "+label;
+    button.addEventListener("click",onDelete);
+    return button;
+  }
+
   async function renderUploaded() {
     const list = $("simpleDocumentsList");
     list.replaceChildren();
@@ -165,7 +184,13 @@
         // Opening a session file starts another draft; never imply persistence.
         window.BillyApp?.openFile(item.file);
       });
-      list.appendChild(button);
+      const remove=makeDeleteButton(item.file.name,()=>{
+        if(!window.confirm("Remove '"+item.file.name+"' from this browser session?\nThe original file on your device will not be deleted."))return;
+        const index=sessionFiles.indexOf(item);
+        if(index>=0)sessionFiles.splice(index,1);
+        if(body.dataset.billyScreen==="uploaded")renderUploaded();
+      });
+      list.appendChild(makeDocumentRow(button,remove));
     }
     const api = window.BILLY_AUTH_CONFIG?.apiUrl;
     if(!api || !window.BillyAccounts?.active?.())return;
@@ -226,7 +251,36 @@
           button.disabled=true;
           button.title="Original source file is not archived. Reopen the original document to review.";
         }
-        list.appendChild(button);
+        // Team members can view the shared ledger; only the creator can delete a record.
+        const ownsRecord=record.created_by===window.BillyAccounts?.userId?.();
+        if(ownsRecord){
+          const remove=makeDeleteButton(name.textContent,async()=>{
+            if(remove.disabled)return;
+            const message="Permanently delete this Billy cloud record?\\n\\n"+
+              name.textContent+"\\n\\nThis removes its approved/extracted data and any Billy Intelligence examples linked to it. It cannot be undone.";
+            if(!window.confirm(message))return;
+            remove.disabled=true;remove.textContent="Deleting…";
+            try{
+              const latestHeaders=await window.BillyAccounts.sessionHeaders();
+              const response=await fetch(api+"/api/vision/delete",{
+                method:"POST",
+                headers:{"Content-Type":"application/json",...latestHeaders},
+                body:JSON.stringify({record_id:record.id})
+              });
+              const outcome=await response.json();
+              if(!response.ok||outcome.deleted!==true)
+                throw Error(outcome.detail||"Could not delete this record.");
+              if(body.dataset.billyScreen==="uploaded")await renderUploaded();
+            }catch(error){
+              remove.disabled=false;remove.textContent="Delete";
+              const info=$("simpleDocumentsIntro");
+              info.textContent="Deletion failed: "+(error.message||"Unknown error")+". The record is still saved.";
+            }
+          });
+          list.appendChild(makeDocumentRow(button,remove));
+        }else{
+          list.appendChild(button);
+        }
       }
     }catch(error){
       const info=document.createElement("p");
