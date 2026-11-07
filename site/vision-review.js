@@ -193,7 +193,7 @@ function render(result,endpoint,authHeaders,sourceFile=null){
            ?" No corrected text was eligible for Billy Intelligence."
            :"";
      notice.textContent=cloudReview
-       ?"Approved values saved in your team's private records. No original image archived; Excel is not connected."+intelligenceInfo
+       ?"Approved values saved in your team's private records. Original file is not archived; Excel is not connected."+intelligenceInfo
        :trainingMessage+" Company Excel is not connected."+intelligenceInfo;
      exports.hidden=false;
      root.querySelectorAll(".review-grid input, .review-items input, .review-items select, .review-add-line, .line-remove").forEach(el=>{el.disabled=true;});
