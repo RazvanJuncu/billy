@@ -141,6 +141,8 @@ function render(result,endpoint,authHeaders,sourceFile=null){
  approveButton.type="button";approveButton.disabled=false;
  async function submitReview(allowTraining){
    if(approved)return;
+   // Ramp verification flow is a mandatory gate when active.
+   if(typeof window.BillyReview?.canApprove==="function"&&!window.BillyReview.canApprove())return;
    approveButton.disabled=true;
    if(skipTraining)skipTraining.disabled=true;
    approveButton.textContent="Saving corrections…";
