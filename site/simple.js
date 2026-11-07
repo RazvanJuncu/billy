@@ -142,8 +142,9 @@
 
   function startSnapCamera() {
     if (!window.BillyAccounts?.active?.()) return;
-    // Open over the home screen: canceling the camera returns to one button.
-    window.BillyScanner?.startCamera?.();
+    // The phone starts in camera; captures accumulate in a local QuickScan session.
+    if (window.BillyQuickScan?.begin) window.BillyQuickScan.begin();
+    else window.BillyScanner?.startCamera?.();
   }
 
   // Intentionally transient: a refresh or relaunch returns to the one-button home.
