@@ -77,3 +77,10 @@
 .review-region-marker:hover,.review-region-marker:focus-visible,.review-region-marker.is-selected{
   outline:2px solid #e3e7ea;outline-offset:1px;z-index:2
 }
+
+/* Truthful local TrOCR baseline diagnostics, not numerical model confidence. */
+.review-model-status{
+  background:#252f35;border:1px solid #44535b;border-radius:9px;
+  color:#dbe5ea;padding:10px 12px;margin:12px 0 6px;
+  font-size:11px;line-height:1.55;
+}
