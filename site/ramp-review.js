@@ -109,7 +109,7 @@
     const warnings=Array.isArray(result.validation_warnings)?result.validation_warnings:[];
     const paths=fieldsFor(doc,type);
     const state=new Map(paths.map(path=>[path,classification(path,doc,type,regions,warnings)]));
-    const humanReviewed=new Set(), manualAcknowledged=new Set();
+    const humanReviewed=new Set(), manualAcknowledged=new Set(), notOnDocument=new Set();
     let revision=0,checkedRevision=-1,busy=false,recheckCount=0;
     let selected=null;
     // The original detailed UI remains functional, but is hidden by default.
@@ -142,9 +142,11 @@
     const fieldButtons=create("div","ramp-detail-actions");
     const fieldConfirm=create("button","ramp-confirm","Confirm this value");
     fieldConfirm.type="button";
+    const fieldNotPresent=create("button","ramp-not-present","Not on document");
+    fieldNotPresent.type="button";
     const fieldCancel=create("button","ramp-secondary","Close");
     fieldCancel.type="button";
-    fieldButtons.append(fieldConfirm,fieldCancel);
+    fieldButtons.append(fieldConfirm,fieldNotPresent,fieldCancel);
     detail.append(fieldTitle,reason,fieldInput,fieldButtons);
     compact.append(detail);
     const feedback=create("p","ramp-feedback");
@@ -174,6 +176,7 @@
       checkedRevision=-1;
       manualAcknowledged.delete(path);
       humanReviewed.delete(path);
+      notOnDocument.delete(path);
       state.set(path,{level:"yellow",reason:"Updated by operator. Recheck is required."});
     };
     const saveValue=(path,value)=>{
@@ -210,8 +213,10 @@
       ai_recheck_count:recheckCount,
       manual_confirmations:[...humanReviewed],
       ambiguity_acknowledgements:[...manualAcknowledged],
+      not_on_document:[...notOnDocument],
       final_field_states:paths.map(field_path=>({
-        field_path,status:state.get(field_path)?.level||"unknown",
+        field_path,
+        status:notOnDocument.has(field_path)?"not_on_document":state.get(field_path)?.level||"unknown",
         basis:state.get(field_path)?.reason||""
       })),
       final_approval_gate:readyToApprove()?"passed":"not_passed",
@@ -235,7 +240,8 @@
       count.textContent=totals.green+" clear · "+totals.yellow+" to check · "+totals.red+" critical";
       const pending=totals.red+totals.yellow;
       const needsReview=[...state].filter(([path,value])=>value.level!=="green"&&!humanReviewed.has(path));
-      recheck.hidden=pending===0||needsReview.length>0;
+      // A field explicitly marked absent changes the review, so still recheck the remaining values.
+      recheck.hidden=needsReview.length>0||(pending===0&&(revision===0||checkedRevision===revision));
       finish.hidden=!readyToApprove();
       recheck.disabled=busy;
       finish.disabled=busy;
@@ -255,6 +261,7 @@
       const entry=state.get(path);
       fieldTitle.textContent=labelFor(path,type,doc);
       fieldInput.value=valueAt(doc,path)??"";
+      fieldNotPresent.textContent=notOnDocument.has(path)?"Not on document ✓":"Not on document";
       reason.textContent=entry.reason;
       fieldConfirm.textContent=entry.level==="yellow"&&checkedRevision===revision&&humanReviewed.has(path)
         ?"Confirm despite unclear evidence":"Confirm this value";
@@ -264,6 +271,19 @@
       detail.scrollIntoView?.({block:"nearest",behavior:"smooth"});
     }
     fieldCancel.addEventListener("click",()=>{selected=null;detail.hidden=true;paint();});
+    fieldNotPresent.addEventListener("click",()=>{
+      if(!selected)return;
+      const path=selected;
+      // "Absent" is an operator assertion, never an AI reading or a guessed empty value.
+      saveValue(path,null);
+      notOnDocument.add(path);
+      humanReviewed.add(path);
+      state.set(path,{level:"green",reason:"Operator confirmed that this field is not present on the source document."});
+      selected=null;
+      detail.hidden=true;
+      paint();
+      feedback.textContent="Marked as not on document. AI will not search for this field during recheck.";
+    });
     fieldInput.addEventListener("keydown",event=>{
       if(event.key==="Enter"){event.preventDefault();fieldConfirm.click();}
       if(event.key==="Escape"){event.preventDefault();fieldCancel.click();}
@@ -300,6 +320,7 @@
         form.append("extraction_id",result.extraction_id);
         form.append("document_type",type);
         form.append("reviewed_document",JSON.stringify(doc));
+        form.append("not_on_document",JSON.stringify([...notOnDocument]));
         const response=await fetch(endpoint+"/api/vision/recheck",{
           method:"POST",headers:await getHeaders(),body:form
         });
@@ -310,6 +331,10 @@
         const meterMismatch=(payload.deterministic_warnings||[]).some(w=>/Meter mismatch|Meter finish is less than start/i.test(String(w)));
         const totalsMismatch=(payload.deterministic_warnings||[]).some(w=>/Subtotal \+ VAT does not match|Sum of line net amounts differs|quantity × unit price differs/i.test(String(w)));
         for(const path of paths){
+          if(notOnDocument.has(path)){
+            state.set(path,{level:"green",reason:"Operator confirmed absent; excluded from AI search."});
+            continue;
+          }
           const item=map.get(path);
           if(meterMismatch&&["delivered_quantity","meter_start","meter_finish"].includes(path)){
             state.set(path,{level:"red",reason:"Meter readings or fuel totals are mathematically inconsistent."});
