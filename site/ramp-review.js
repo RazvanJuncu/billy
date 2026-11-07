@@ -200,13 +200,15 @@
     advanced.addEventListener("input",syncFromEvidence);
     advanced.addEventListener("change",syncFromEvidence);
     const riskCounts=()=>{
-      const count={green:0,yellow:0,red:0};
+      const count={green:0,blue:0,yellow:0,red:0};
       for(const entry of state.values())count[entry.level]++;
       return count;
     };
-    const allGreen=()=>state.size>0&&[...state.values()].every(entry=>entry.level==="green");
+    // Blue means the operator acted; it is resolved only after any required recheck.
+    const allResolved=()=>state.size>0&&[...state.values()]
+      .every(entry=>entry.level==="green"||entry.level==="blue");
     // Preserve all client confirmations only as metadata. They are not OCR confidence.
-    const readyToApprove=()=>!busy&&allGreen()&&
+    const readyToApprove=()=>!busy&&allResolved()&&
       (revision===0||checkedRevision===revision);
     window.BillyReview.canApprove=readyToApprove;
     window.BillyReview.rampAudit=()=>({
@@ -228,27 +230,38 @@
       for(const path of paths){
         const item=state.get(path),button=create("button","ramp-segment ramp-"+item.level);
         button.type="button";
-        button.setAttribute("aria-label",labelFor(path,type,doc)+": "+item.level+". "+item.reason);
+        button.setAttribute("aria-label",labelFor(path,type,doc)+": "+
+          (item.level==="blue"?"checked by operator":item.level)+". "+item.reason);
         button.setAttribute("title",labelFor(path,type,doc)+" · "+item.reason);
         button.setAttribute("aria-pressed",String(selected===path));
         button.dataset.fieldPath=path;
-        button.append(create("span","ramp-segment-number",String(++index).padStart(2,"0")));
+        index++;
+        if(item.level==="blue"){
+          const icon=create("span","ramp-segment-check","✓");
+          icon.setAttribute("aria-hidden","true");
+          button.append(icon);
+        }else button.append(create("span","ramp-segment-number",String(index).padStart(2,"0")));
         button.addEventListener("click",()=>openEditor(path));
         jar.append(button);
       }
       const totals=riskCounts();
-      count.textContent=totals.green+" clear · "+totals.yellow+" to check · "+totals.red+" critical";
+      count.textContent=totals.green+" clear · "+totals.blue+" operator checked · "+
+        totals.yellow+" to check · "+totals.red+" critical";
       const pending=totals.red+totals.yellow;
-      const needsReview=[...state].filter(([path,value])=>value.level!=="green"&&!humanReviewed.has(path));
+      const needsReview=[...state].filter(([path,value])=>
+        (value.level==="red"||value.level==="yellow")&&!humanReviewed.has(path));
       // A field explicitly marked absent changes the review, so still recheck the remaining values.
-      recheck.hidden=needsReview.length>0||(pending===0&&(revision===0||checkedRevision===revision));
+      recheck.hidden=needsReview.length>0||
+        (pending===0&&(revision===0||checkedRevision===revision))||
+        (pending>0&&checkedRevision===revision);
       finish.hidden=!readyToApprove();
       recheck.disabled=busy;
       finish.disabled=busy;
       if(busy)feedback.textContent="Gemini is checking your values against the original image…";
       else if(pending===0){
         feedback.textContent=revision>0&&checkedRevision===revision
-          ?"All fields resolved. Operator confirmation is still required before saving."
+          ?"Review completed. Blue fields were checked by the operator."
+          :revision>0?"Operator-checked fields are blue. Run AI recheck before approval."
           :"No flagged fields. Confirm the document before continuing.";
       }else if(needsReview.length){
         feedback.textContent="Verify "+needsReview.length+" highlighted field(s), then run AI recheck.";
@@ -278,7 +291,7 @@
       saveValue(path,null);
       notOnDocument.add(path);
       humanReviewed.add(path);
-      state.set(path,{level:"green",reason:"Operator confirmed that this field is not present on the source document."});
+      state.set(path,{level:"blue",reason:"Operator confirmed absent on the source document. AI did not read a value."});
       selected=null;
       detail.hidden=true;
       paint();
@@ -294,22 +307,30 @@
       const value=fieldInput.value.trim();
       if(!value){feedback.textContent="A value is required for this field.";return;}
       const before=valueAt(doc,path);
-      if(value!==String(before??""))saveValue(path,value);
-      humanReviewed.add(path);
       const current=state.get(path);
-      if(current.level==="yellow"&&checkedRevision===revision&&value===String(valueAt(doc,path)??"")){
+      const changed=value!==String(before??"");
+      const resolvingUnclear=current.level==="yellow"&&checkedRevision===revision&&
+        humanReviewed.has(path)&&!changed;
+      if(changed)saveValue(path,value);
+      else if((current.level==="yellow"||current.level==="red")&&!resolvingUnclear){
+        // A confirmation without a text edit still needs its own AI recheck.
+        revision++;
+        checkedRevision=-1;
+      }
+      humanReviewed.add(path);
+      if(resolvingUnclear){
         manualAcknowledged.add(path);
-        state.set(path,{level:"green",reason:"Operator verified the original. AI evidence remains unclear."});
-      }else if(current.level==="green"){
-        state.set(path,{level:"green",reason:"Confirmed by operator."});
-      }else {
-        state.set(path,{level:"yellow",reason:"Operator confirmed this field; independent AI recheck still required."});
+        state.set(path,{level:"blue",reason:"Operator accepted unclear source evidence after AI recheck."});
+      }else{
+        state.set(path,{level:"blue",reason:checkedRevision===revision?
+          "Verified by operator; AI recheck completed.":"Checked by operator; AI recheck is pending."});
       }
       selected=null;detail.hidden=true;paint();
     });
     async function recheckWithAI(){
       if(busy||!sourceFile)return;
-      const pending=[...state].filter(([path,entry])=>entry.level!=="green"&&!humanReviewed.has(path));
+      const pending=[...state].filter(([path,entry])=>
+        (entry.level==="red"||entry.level==="yellow")&&!humanReviewed.has(path));
       if(pending.length){feedback.textContent="Confirm each highlighted field before rechecking.";return;}
       busy=true;paint();recheck.disabled=true;
       const currentRevision=revision;
@@ -332,7 +353,7 @@
         const totalsMismatch=(payload.deterministic_warnings||[]).some(w=>/Subtotal \+ VAT does not match|Sum of line net amounts differs|quantity × unit price differs/i.test(String(w)));
         for(const path of paths){
           if(notOnDocument.has(path)){
-            state.set(path,{level:"green",reason:"Operator confirmed absent; excluded from AI search."});
+            state.set(path,{level:"blue",reason:"Operator confirmed absent; excluded from AI search."});
             continue;
           }
           const item=map.get(path);
@@ -353,17 +374,19 @@
             humanReviewed.delete(path);
             manualAcknowledged.delete(path);
           }else if(item.status==="match"){
-            state.set(path,{level:"green",reason:"AI visually supports this value; review remains operator responsibility."});
+            state.set(path,{level:humanReviewed.has(path)?"blue":"green",reason:
+              humanReviewed.has(path)?"Checked by operator and supported by AI recheck.":
+                "AI visually supports this value; review remains operator responsibility."});
           }
         }
         checkedRevision=revision;
         recheckCount++;
         for(const [path,entry] of state){
           if(entry.level==="yellow"&&manualAcknowledged.has(path)&&humanReviewed.has(path)){
-            state.set(path,{level:"green",reason:"Accepted by operator despite unclear AI evidence."});
+            state.set(path,{level:"blue",reason:"Accepted by operator despite unclear AI evidence."});
           }
         }
-        statusText=allGreen()
+        statusText=allResolved()
           ?"Recheck completed. Ready for operator approval."
           :"AI found remaining doubtful fields. Open the highlighted segments.";
       }catch(error){
