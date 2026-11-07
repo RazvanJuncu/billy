@@ -163,6 +163,25 @@
     toggleEvidence.type="button";
     extra.append(toggleEvidence);
     compact.append(extra);
+    const intelligence=create("section","ramp-intelligence");
+    const intelTitle=create("strong","ramp-intelligence-heading","Billy Intelligence");
+    const exampleCount=Number(result.intelligence?.examples_used)||0;
+    const intelInfo=create("p","ramp-intelligence-note",
+      exampleCount+" previous team correction example(s) used for this scan. " +
+      "The current image always takes priority.");
+    const intelLabel=create("label","ramp-intelligence-consent");
+    const intelCheckbox=create("input","ramp-intelligence-check");
+    intelCheckbox.type="checkbox";
+    intelCheckbox.checked=false; // Explicit opt-in per approved document; never persist by default.
+    const intelText=create("span","",
+      "Learn from my corrections (team-only text examples; no image archive).");
+    intelLabel.append(intelCheckbox,intelText);
+    const intelPrivacy=create("p","ramp-intelligence-privacy",
+      "Opt in only for documents your team is allowed to retain. Corrected text may " +
+      "include identifiers and is reused only in this team's future Gemini requests.");
+    intelligence.append(intelTitle,intelInfo,intelLabel,intelPrivacy);
+    compact.append(intelligence);
+    window.BillyReview.intelligenceOptIn=()=>intelCheckbox.checked;
     const localInput=path=>[...advanced.querySelectorAll("[data-evidence-path]")]
       .find(el=>el.dataset.evidencePath===path);
     let syncing=false;
@@ -416,6 +435,7 @@
   window.BillyReview.render=function(result,endpoint,getHeaders,sourceFile){
     window.BillyReview.canApprove=null;
     window.BillyReview.rampAudit=null;
+    window.BillyReview.intelligenceOptIn=null;
     originalRender(result,endpoint,getHeaders,sourceFile);
     mount(result,endpoint,getHeaders,sourceFile);
   };
