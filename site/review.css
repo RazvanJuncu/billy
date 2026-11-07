@@ -35,3 +35,13 @@
 .review-export-button.secondary{background:#1c272d;border-color:#45545c}
 @media(max-width:720px){.vision-review{padding:15px!important}.review-grid{gap:10px}.review-input{min-height:37px;font-size:12px;padding:7px}.review-title{font-size:19px!important}.review-export-button{flex-basis:100%}}
 @media(max-width:380px){.review-grid{grid-template-columns:1fr}}
+
+/* Explicit and reversible training participation at the moment of approval. */
+.review-training-consent{font-size:11px;color:#b9c5c9;line-height:1.6;margin:0 0 10px}
+.review-submit-without-training{
+ display:block;width:100%;background:transparent;border:0;
+ color:#adbcc3;font:inherit;font-size:11px;padding:11px;
+ text-decoration:underline;text-underline-offset:3px;cursor:pointer
+}
+.review-submit-without-training:focus-visible{outline:2px solid #bcd2da;outline-offset:2px}
+.review-submit-without-training:disabled{opacity:.45;cursor:not-allowed}
