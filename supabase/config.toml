@@ -1,0 +1,3 @@
+# Billy's cloud Gemini-only backend requires a signed-in Supabase user JWT.
+[functions.billy-vision]
+verify_jwt = true
