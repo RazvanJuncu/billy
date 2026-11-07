@@ -60,8 +60,10 @@ function render(result,endpoint,authHeaders,sourceFile=null){
  }
  add.addEventListener("click",()=>{const items=documentType==="fuel_release"?draft.handwritten_entries:draft.lines;if(items.length>=100)return;const blank={};lineKeys.forEach(k=>blank[k[0]]=null);if(documentType==="fuel_release"){blank.label="Additional field";blank.legibility="uncertain";}items.push(blank);dirty();paint();});paint();
  const footer=node("section","review-approval");
- footer.appendChild(node("p","review-confirm-label","By clicking Submit corrections, I confirm I checked every value and unclear handwritten entry against the original document. Corrections are saved to this team's local pilot feedback memory."));
- const trainingEligible = result.handwriting_training_capture_enabled === true && !!sourceFile;
+ const cloudReview = api.includes("/functions/v1/billy-vision");
+ footer.appendChild(node("p","review-confirm-label","By clicking Submit corrections, I confirm I checked every value and unclear handwritten entry against the original document. " +
+   (cloudReview ? "Approved values are stored in your team's private Billy cloud records." : "Corrections are saved to this team's local pilot feedback memory.")));
+ const trainingEligible = !cloudReview && result.handwriting_training_capture_enabled === true && !!sourceFile;
  const trainingNotice = trainingEligible
   ? "Submit & Learn securely sends only corrected, localized text crops to your team's local handwriting training queue. No model is retrained instantly. Choose Submit only to skip training."
   : "Submit corrections saves your review. Handwriting training is off until the team explicitly enables it.";
@@ -106,7 +108,7 @@ function render(result,endpoint,authHeaders,sourceFile=null){
        }
      }
      approveButton.textContent="Submitted · record "+resultBody.approval_id;
-     notice.textContent=trainingMessage+" Company storage and Excel are not connected.";
+     notice.textContent=cloudReview ? "Approved values saved to your team cloud records. Original file is not archived; company Excel is not updated." : trainingMessage+" Company Excel is not connected.";
      exports.hidden=false;
      root.querySelectorAll(".review-grid input, .review-items input, .review-items select, .review-add-line, .line-remove").forEach(el=>{el.disabled=true;});
      if(skipTraining)skipTraining.disabled=true;
