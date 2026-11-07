@@ -111,14 +111,14 @@ test("Cloud Delete is shown only for the author and refreshes records after succ
   ];
   const app=mount({cloud:true,userId:creator,records,confirmations:[true]});
   app.win.BillySimple.showScreen("uploaded");
-  for(let i=0;i<8;i++)await Promise.resolve();
+  for(let i=0;i<30;i++)await new Promise(resolve=>setImmediate(resolve));
   const children=app.element("simpleDocumentsList").children;
   const owned=children.find(el=>el.className==="simple-document-row");
   assert.ok(owned,JSON.stringify({children:children.map(c=>({id:c.id,cls:c.className,text:c.textContent})),calls:app.calls}));
   assert.equal(owned.children[1].textContent,"Delete");
   assert.ok(children.some(el=>el.disabled===true)); // Other author's item has no Delete.
   await owned.children[1].click();
-  for(let i=0;i<8;i++)await Promise.resolve();
+  for(let i=0;i<30;i++)await new Promise(resolve=>setImmediate(resolve));
   assert.equal(records.length,1);
   assert.ok(app.calls.some(c=>typeof c==="object"&&c.method==="POST"&&c.url.endsWith("/api/vision/delete")));
 });
