@@ -29,8 +29,9 @@ test("Upload New uses the supplied scan logo, with obvious clickable feedback",(
   assert.match(artwork, /cx="134\.93"/);
   assert.match(artwork, /cx="161\.81"/);
   assert.match(html, /class="simple-quick-cta"[^>]*>Tap to scan/);
-  assert.match(css, /#simpleQuickSnap\{[\s\S]*?border:1px solid #363a40!important/);
-  assert.match(css, /box-shadow:0 13px 33px/);
+  assert.match(css, /#simpleQuickSnap\{[\s\S]*?border:0!important/);
+  assert.doesNotMatch(css, /border:1px solid #363a40!important/);
+  assert.match(css, /box-shadow:0 14px 34px/);
   assert.match(css, /#simpleQuickSnap:active\{/);
   assert.match(css, /#simpleQuickSnap:focus-visible\{/);
   assert.match(sw, /"\.\/upload-new-mark\.svg"/);
