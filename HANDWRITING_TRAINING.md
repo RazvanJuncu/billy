@@ -39,7 +39,8 @@ is **not implemented** in this phase.
   text submission, while the latter stores approval data only.
 - Never assume every field is correct just because someone clicked Submit:
   this pilot collects **only actual corrections** matched to server-stored
-  evidence regions. Regions can be wrongly localized; audit samples.
+  evidence regions classified as handwritten or mixed. Printed-only and unknown
+  regions are excluded. Regions can still be wrongly localized; audit samples.
 - The backend verifies Supabase membership, original file SHA-256, extraction
   ownership, human approval, server-generated field coordinates and labels.
   The browser cannot invent labels or choose an arbitrary organization's data.
