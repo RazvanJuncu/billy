@@ -32,6 +32,6 @@ test("camera, perspective, invoice, fuel release and review preserve source link
     assert.match(html,new RegExp('id="'+name+'"'));
   }
   assert.match(get("site/vision-review.js"),/handwritten_entries/);
-  assert.match(get("site/vision-review.js"),/Approve document/);
+  assert.match(get("site/vision-review.js"),/Submit corrections/);
   assert.match(get("site/sw.js"),/accounts.js/);
 });
