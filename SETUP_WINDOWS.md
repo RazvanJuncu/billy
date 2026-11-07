@@ -122,6 +122,23 @@ The training/correction capture toggle is **not necessary** for a pretrained
 baseline trial; leave `BILLY_HANDWRITING_CAPTURE_ENABLED` unset unless
 you have explicit permission to use documents for training.
 
+## Measure whether fine-tuning actually helps
+
+After several authorized, redacted documents have been reviewed and approved,
+run the following command **on the same developer backend**. Replace the team
+UUID with your organization's actual approved UUID:
+
+```powershell
+python -m scripts.evaluate_trocr_baseline --database .billy/approved.sqlite3 --organization YOUR-TEAM-UUID
+```
+
+The report aggregates **Gemini vs TrOCR** reviewer agreement and character
+error rate for the *same* handwritten field crops. It exposes no original
+transcriptions, page images or employee names. If Gemini returns no eligible
+bounding boxes or local TrOCR was disabled, the report will correctly show
+zero comparisons, not fabricated accuracy. A small number of examples is
+insufficient to conclude one model is more reliable; use varied documents.
+
 ## Enable approved handwriting feedback, locally
 
 **Only after you have consent/permission for the training use**, in the API
