@@ -158,8 +158,15 @@ _EVIDENCE_ITEM = {
         "page": {"type": "integer"},
         "box_2d": {"type": "array", "items": {"type": "integer"}},
         "transcription": _field(),
+        "visual_clarity": {
+            "type": "string",
+            "enum": ["clear", "slight_uncertainty", "ambiguous", "unreadable"],
+        },
+        "alternate_readings": {"type": "array", "items": {"type": "string"}},
+        "visual_reason": _field(),
     },
-    "required": ["field_path", "page", "box_2d", "transcription"],
+    "required": ["field_path", "page", "box_2d", "transcription",
+                 "visual_clarity", "alternate_readings", "visual_reason"],
     "additionalProperties": False,
 }
 _EVIDENCE_INSTRUCTIONS = (
@@ -170,8 +177,16 @@ _EVIDENCE_INSTRUCTIONS = (
     "handwritten_entries[0].transcription), page number starting at 1, "
     "box_2d [ymin,xmin,ymax,xmax] integers normalized to 0..1000 "
     "relative to that page, and the exact visible transcription. "
-    "Do not invent locations, field values, or confidence percentages; "
-    "omit unlocatable fields. Page coordinates are estimates requiring review."
+    "For each region, assess VISUAL CLARITY (not statistical accuracy): "
+    "clear = distinct strokes with no apparent alternative, "
+    "slight_uncertainty = minor blur or partly unclear character, "
+    "ambiguous = competing plausible readings such as handwritten 1 vs 7, "
+    "unreadable = cannot reliably decipher or important text obscured. "
+    "When ambiguous, list up to 3 plausible alternate_readings only if visibly supported. "
+    "Write visual_reason describing concrete visual ambiguity, not a model confidence claim. "
+    "Do not invent locations, field values, probabilities, or confidence percentages; "
+    "omit unlocatable fields. Page coordinates and visual clarity are model estimates, "
+    "not independently verified and require human review."
 )
 
 
@@ -216,9 +231,20 @@ def _clean_regions(raw: object, document_type: str) -> list[dict]:
             continue
         seen.add((page, path))
         transcription = item.get("transcription")
+        quality = item.get("visual_clarity")
+        if quality not in {"clear", "slight_uncertainty", "ambiguous", "unreadable"}:
+            quality = "unassessed"
+        alternates = item.get("alternate_readings")
+        alternates = ([str(value)[:100] for value in alternates[:3]
+                       if isinstance(value, str) and value.strip()]
+                      if isinstance(alternates, list) else [])
+        reason = item.get("visual_reason")
         regions.append({
             "field_path": path, "page": page, "box_2d": box,
             "transcription": transcription[:500] if isinstance(transcription, str) else None,
+            "visual_clarity": quality,
+            "alternate_readings": alternates,
+            "visual_reason": reason[:240] if isinstance(reason, str) else None,
         })
         if len(regions) >= 180:
             break
