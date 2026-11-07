@@ -61,23 +61,75 @@ function render(result,endpoint,authHeaders,sourceFile=null){
  add.addEventListener("click",()=>{const items=documentType==="fuel_release"?draft.handwritten_entries:draft.lines;if(items.length>=100)return;const blank={};lineKeys.forEach(k=>blank[k[0]]=null);if(documentType==="fuel_release"){blank.label="Additional field";blank.legibility="uncertain";}items.push(blank);dirty();paint();});paint();
  const footer=node("section","review-approval");
  footer.appendChild(node("p","review-confirm-label","By clicking Submit corrections, I confirm I checked every value and unclear handwritten entry against the original document. Corrections are saved to this team's local pilot feedback memory."));
- approveButton=node("button","review-approve","Submit corrections");approveButton.type="button";approveButton.disabled=false;
- approveButton.addEventListener("click",async()=>{
-  if(approved)return;approveButton.disabled=true;approveButton.textContent="Saving corrections…";
-  try{
-   const response=await fetch(api+"/api/vision/approve",{method:"POST",headers:{"Content-Type":"application/json",...await getHeaders()},body:JSON.stringify({extraction_id:extractId,document_type:documentType,document:draft,confirmed:true})});
-   const resultBody=await response.json();
-   if(!response.ok)throw Error(resultBody.detail||"Approval was not saved");
-   approved=true;approveButton.textContent="Submitted · record "+resultBody.approval_id;
-   notice.textContent="Corrections saved for future team feedback. No Gemini model weights were retrained. Company storage and Excel are not connected.";
-   exports.hidden=false;
-   root.querySelectorAll(".review-grid input, .review-items input, .review-items select, .review-add-line, .line-remove").forEach(el=>{el.disabled=true;});
-   window.dispatchEvent(new CustomEvent("billy:document-approved",{
-     detail:{approvalId:resultBody.approval_id,documentType}
-   }));
-  }catch(err){approveButton.textContent="Submit corrections";approveButton.disabled=false;notice.textContent="Submission failed: "+(err.message||"Unknown error");}
- });
- footer.appendChild(approveButton);notice=node("p","review-approval-note","Review the highlighted regions and fields before submitting.");footer.appendChild(notice);
+ const trainingEligible = result.handwriting_training_capture_enabled === true && !!sourceFile;
+ const trainingNotice = trainingEligible
+  ? "Submit & Learn securely sends only corrected, localized text crops to your team's local handwriting training queue. No model is retrained instantly. Choose Submit only to skip training."
+  : "Submit corrections saves your review. Handwriting training is off until the team explicitly enables it.";
+ const footerNote = node("p","review-training-consent",trainingNotice);
+ footer.appendChild(footerNote);
+ approveButton=node("button","review-approve",trainingEligible?"Submit & Learn":"Submit corrections");
+ approveButton.type="button";approveButton.disabled=false;
+ async function submitReview(allowTraining){
+   if(approved)return;
+   approveButton.disabled=true;
+   if(skipTraining)skipTraining.disabled=true;
+   approveButton.textContent="Saving corrections…";
+   try{
+     const response=await fetch(api+"/api/vision/approve",{
+       method:"POST",
+       headers:{"Content-Type":"application/json",...await getHeaders()},
+       body:JSON.stringify({extraction_id:extractId,document_type:documentType,document:draft,confirmed:true})
+     });
+     const resultBody=await response.json();
+     if(!response.ok)throw Error(resultBody.detail||"Approval was not saved");
+     approved=true;
+     let trainingMessage="Handwriting fine-tuning was not requested.";
+     if(allowTraining && trainingEligible){
+       approveButton.textContent="Queueing handwriting examples…";
+       const form=new FormData();
+       form.append("file",sourceFile,sourceFile.name||"document");
+       form.append("extraction_id",extractId);
+       form.append("training_consent","true");
+       try{
+         // User must deliberately choose Submit & Learn; no hidden data collection.
+         const reply=await fetch(api+"/api/handwriting/examples",{
+           method:"POST",headers:{...await getHeaders()},body:form
+         });
+         const feedback=await reply.json();
+         if(!reply.ok)throw Error(feedback.detail||"The training queue rejected this sample.");
+         trainingMessage=feedback.examples_added
+           ? feedback.examples_added+" verified crop(s) queued for team-specific TrOCR fine-tuning; model weights are unchanged until validated training runs."
+           : "Review saved, but no corrected field had a usable matching image region. No training crop was stored.";
+       }catch(error){
+         trainingMessage="Review saved, but handwriting sample collection failed: "+(error.message||"Unknown error")+
+           ". No fine-tuning is implied.";
+       }
+     }
+     approveButton.textContent="Submitted · record "+resultBody.approval_id;
+     notice.textContent=trainingMessage+" Company storage and Excel are not connected.";
+     exports.hidden=false;
+     root.querySelectorAll(".review-grid input, .review-items input, .review-items select, .review-add-line, .line-remove").forEach(el=>{el.disabled=true;});
+     if(skipTraining)skipTraining.disabled=true;
+     window.dispatchEvent(new CustomEvent("billy:document-approved",{
+       detail:{approvalId:resultBody.approval_id,documentType}
+     }));
+   }catch(error){
+     approveButton.textContent=trainingEligible?"Submit & Learn":"Submit corrections";
+     approveButton.disabled=false;
+     if(skipTraining)skipTraining.disabled=false;
+     notice.textContent="Submission failed: "+(error.message||"Unknown error");
+   }
+ }
+ approveButton.addEventListener("click",()=>submitReview(trainingEligible));
+ footer.appendChild(approveButton);
+ const skipTraining = trainingEligible ? node("button","review-submit-without-training","Submit only · don't train") : null;
+ if(skipTraining){
+   skipTraining.type="button";
+   skipTraining.addEventListener("click",()=>submitReview(false));
+   footer.appendChild(skipTraining);
+ }
+ notice=node("p","review-approval-note","Review the highlighted regions and fields before submitting.");
+ footer.appendChild(notice);
  const exports=node("div","review-export");exports.hidden=true;exportPanel=exports;
  const csv=node("button","review-export-button","↓ Excel-compatible CSV");csv.type="button";csv.addEventListener("click",exportCSV);
  const json=node("button","review-export-button secondary","↓ Approved JSON");json.type="button";json.addEventListener("click",exportJSON);
