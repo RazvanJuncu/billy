@@ -111,8 +111,11 @@
     action.disabled = !ready || !type;
     $("simpleSelectedType").textContent = type === "fuel_release" ? "Fuel Release" : type === "invoice" ? "Invoice" : "Not selected";
     $("simpleRetryVision").hidden = ready || Boolean(state.connecting);
+    // Connection success is represented by the enabled Process button.
+    // Show status copy only when a connection needs attention.
+    $("simpleProcessStatus").hidden = ready;
     $("simpleProcessStatus").textContent = ready
-      ? "Gemini connected. Ready to process."
+      ? ""
       : state.connecting
         ? "Connecting to Billy Gemini cloud…"
         : state.error
