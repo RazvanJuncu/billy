@@ -47,3 +47,15 @@
  .ramp-evidence{padding:8px}
 }
 @media(prefers-reduced-motion:reduce){.ramp-segment{transition:none!important}.ramp-segment:active{transform:none}}
+
+/* Explicitly absent fields are operator-confirmed exceptions, not AI-verified OCR. */
+.ramp-not-present{
+  min-height:49px;padding:12px 17px!important;
+  background:#32363a!important;color:#f1f2f3!important;
+  border:1px solid #63686d!important;border-radius:10px!important;
+  font-size:13px;font-weight:650;cursor:pointer;
+}
+.ramp-not-present:hover,.ramp-not-present:focus-visible{
+  background:#44494e!important;outline-offset:2px;
+}
+@media(max-width:720px){.ramp-not-present{width:100%}}
