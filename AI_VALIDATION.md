@@ -37,3 +37,14 @@ Keep Gemini credentials server-side only. Before using company-confidential docu
 Reference:
 - https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash
 - https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/3-8-flash
+
+
+## Visual evidence and team-scoped learning (pilot)
+
+- The Gemini structured response now requests `regions` for **visible, nonempty fields**, including eligible invoice line-item cells and Fuel Release handwriting. Coordinates are `[ymin,xmin,ymax,xmax]`, normalized 0–1000 with 1-based page numbers. Every region is validated for page limits, field-path whitelist and geometry. **AI-estimated coordinates may be wrong** and must be checked against the document.
+- Billy's Review panel renders these boxes on image pages and on PDF canvases (PDF.js is fetched on demand); tapping a box opens **Apply correction**, synchronized with the editable structured fields. If the PDF preview library fails, the ordinary field editor remains available.
+- The approval action is now **Submit corrections**: one explicit click verifies the reviewed document and saves original predictions plus corrections to the existing **local SQLite pilot**. This does not create a production upload, nor does it train Gemini's weights.
+- Before the next team extraction, `feedback_summary` collects **only names of repeatedly corrected fields** from at most 200 approved reviews in the same organization and adds a careful-check reminder to the Gemini prompt. Original values, raw documents and names from previous invoices are never copied into the new prompt. This is adaptive prompt guidance, **not fine-tuning**.
+- An evidence region shows **Not calibrated** until a field has at least 20 nonempty approved reviews. After that, Billy may show the **historical reviewer agreement percentage** and sample count. This is **not the probability that the current region is correct**. True per-region reliability requires a separately labeled benchmark with verified ground truth, calibrated error estimates and localization-quality evaluation.
+- Failure paths: no/invalid boxes => fields remain editable; no PDF.js => PDF boxes cannot be plotted but the text editor remains; no Vision server => no AI extraction and no feedback upload; validation or database failure => the UI must never show a successful approval.
+
