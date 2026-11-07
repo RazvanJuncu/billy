@@ -4,7 +4,7 @@
 */
 const INVOICE_FIELDS = ["supplier_name","supplier_tax_id","customer_name","invoice_number","issue_date","due_date","currency","subtotal","vat_total","grand_total"];
 const LINE_FIELDS = ["description","quantity","unit_price","net_amount","vat_rate","vat_amount"];
-const FUEL_FIELDS = ["release_number","supplier_name","operator_name","airport","aircraft_registration","flight_number","delivery_date","fuel_type","requested_quantity","delivered_quantity","quantity_unit","truck_identifier","fueler_name","receiver_name"];
+const FUEL_FIELDS = ["release_number","supplier_name","operator_name","airport","aircraft_registration","flight_number","delivery_date","fuel_type","requested_quantity","delivered_quantity","quantity_unit","truck_identifier","fueler_name","receiver_name","meter_start","meter_finish"];
 const MIME = new Map([["pdf","application/pdf"],["png","image/png"],["jpg","image/jpeg"],["jpeg","image/jpeg"],["webp","image/webp"]]);
 const MAX_BYTES = 10*1024*1024;
 const MODEL = "gemini-3.8-flash";
@@ -28,9 +28,10 @@ const INVOICE_SCHEMA = {
 };
 const FUEL_SCHEMA = {
   type:"object",properties:{...props(FUEL_FIELDS),
-    handwritten_entries:arraySchema(["label","transcription","legibility"],{
+    handwritten_entries:arraySchema(["label","transcription","legibility","interpreted_as"],{
       label:{type:"string"},transcription:textSchema,
-      legibility:{type:"string",enum:["clear","uncertain","illegible"]}
+      legibility:{type:"string",enum:["clear","uncertain","illegible"]},
+      interpreted_as:textSchema
     }),notes:{type:"array",items:{type:"string"}},regions:EVIDENCE},
   required:[...FUEL_FIELDS,"handwritten_entries","notes","regions"],additionalProperties:false
 };
@@ -40,8 +41,12 @@ const INSTRUCTIONS =
   "Preserve original formatting of dates, decimals, names and identifiers. " +
   "Use null when not printed or confidently visible; never invent. " +
   "For invoice: list all line items and separately identify net, VAT and gross. " +
-  "For fuel release: keep printed labels separate from handwritten values; " +
-  "when handwriting is ambiguous, use null and explain in notes; never infer signer identity. " +
+  "For fuel release: extract meter_start and meter_finish as numbers transcribed directly from the visible meter; never derive unreadable meter digits from arithmetic. " +
+  "If digits are faint, ambiguous, or only guessed, use null and clearly describe the uncertainty. " +
+  "For handwritten_entries preserve the EXACT form label and transcription, even when a field is misused: set interpreted_as to a fuel-release schema field name only when a distinct semantic mapping is justified, otherwise null. " +
+  "For example, NET JETS written under AIRCRAFT TYPE may be interpreted as operator_name, but retain AIRCRAFT TYPE and NET JETS unchanged in the handwritten entry. " +
+  "Never infer a signers identity. Do not confuse transcription with interpretation. " +
+  "For faint or unclear regions, mark visual_clarity as slight_uncertainty, ambiguous or unreadable; identify the field and explain why. " +
   "Do not assert calibrated probabilities. Include regions for fields that can truly be located, " +
   "with field_path, page (1-based), normalized [ymin,xmin,ymax,xmax] 0..1000, " +
   "exact transcription, script_type and visual_clarity. Give up to 3 supported alternative " +
@@ -75,7 +80,7 @@ function cleanDoc(value,type) {
     doc[k]=typeof field==="string"?field.trim():null;
   }
   const listKey=type==="invoice"?"lines":"handwritten_entries";
-  const subKeys=type==="invoice"?LINE_FIELDS:["label","transcription","legibility"];
+  const subKeys=type==="invoice"?LINE_FIELDS:["label","transcription","legibility","interpreted_as"];
   const entries=value[listKey];
   if(!Array.isArray(entries)||entries.length>(type==="invoice"?200:100))throw Error("Invalid document rows.");
   doc[listKey]=entries.map(item=>{
@@ -85,6 +90,7 @@ function cleanDoc(value,type) {
       const v=item[k];
       if(k==="label" && (typeof v!=="string"||v.length>160))throw Error("Invalid handwritten label.");
       if(k==="legibility" && !["clear","uncertain","illegible"].includes(v))throw Error("Invalid legibility.");
+      if(k==="interpreted_as" && v!=null && !FUEL_FIELDS.includes(v))throw Error("Invalid field interpretation.");
       if(k!=="label"&&k!=="legibility"&&v!==null&&v!==undefined&&typeof v!=="string")throw Error("Invalid row text.");
       if(typeof v==="string" && v.length>700)throw Error("Row text too long.");
       row[k]=typeof v==="string"?v.trim():null;
@@ -136,13 +142,45 @@ function parseAmount(v) {
   if(!/^-?\d+(\.\d+)?$/.test(x))return null;
   const n=Number(x);return Number.isFinite(n)?n:null;
 }
-function validate(doc,type) {
+function parseMeter(value) {
+  if(typeof value!=="string")return null;
+  const raw=value.trim();
+  // Accept integer meter readings and correctly grouped thousands separators.
+  // Do not coerce partially legible or decimal readings to integers.
+  if(!/^\d+$/.test(raw) && !/^\d{1,3}(?:[ ,.]\d{3})+$/.test(raw))return null;
+  const result=Number(raw.replace(/[ , .]/g,""));
+  return Number.isSafeInteger(result)&&result>=0?result:null;
+}
+function parseFuelQuantity(value){
+  if(typeof value!=="string")return null;
+  const raw=value.trim().replace(/\s*(?:GAL|GALLONS|LITRES|LITERS|LTR|L)\s*$/i,"").trim();
+  const thousands=/^\d{1,3}(?:,\d{3})+$/;
+  return thousands.test(raw)?Number(raw.replace(/,/g,"")):parseAmount(raw);
+}
+function validate(doc,type,regions=[]) {
   const warnings=[];
   if(type==="fuel_release"){
     for(const [key,label] of [["aircraft_registration","Aircraft registration"],["delivered_quantity","Delivered fuel quantity"],["quantity_unit","Fuel quantity unit"],["delivery_date","Fuel delivery date"]]){
       if(!doc[key])warnings.push(label+" missing or unreadable.");
     }
-    for(const row of doc.handwritten_entries){if(row.legibility!=="clear")warnings.push("Check handwriting in '"+row.label+"' ("+row.legibility+").");}
+    for(const row of doc.handwritten_entries){if(row.legibility!=="clear")warnings.push("Needs verification: handwriting in '"+row.label+"' ("+row.legibility+").");}
+    const start=parseMeter(doc.meter_start),finish=parseMeter(doc.meter_finish);
+    const amount=parseFuelQuantity(doc.delivered_quantity);
+    if(doc.meter_start && start===null)warnings.push("Needs verification: meter start reading has invalid or ambiguous digits.");
+    if(doc.meter_finish && finish===null)warnings.push("Needs verification: meter finish reading has invalid or ambiguous digits.");
+    if((doc.meter_start&&!doc.meter_finish)||(!doc.meter_start&&doc.meter_finish))
+      warnings.push("Only one meter reading is available; verify the missing reading and delivered quantity.");
+    if(start!==null&&finish!==null){
+      if(finish<start)warnings.push("Meter finish is less than start: verify a possible rollover or transcription error.");
+      else {
+        const difference=finish-start;
+        if(amount===null)warnings.push("Meter difference is "+difference+"; delivered quantity is absent or unreadable.");
+        else if(Math.abs(difference-amount)>.01)
+          warnings.push("Meter mismatch: finish minus start is "+difference+" but delivered quantity is "+doc.delivered_quantity+". Check the original meter ticket.");
+        else warnings.push("Meter arithmetic matches ("+difference+"), but verify both original meter readings visually. Arithmetic is not proof of OCR accuracy.");
+      }
+    }
+    if(doc.delivered_quantity && amount===null)warnings.push("Needs verification: delivered fuel quantity is not a valid numeric amount.");
   }else{
     const total=parseAmount(doc.grand_total),net=parseAmount(doc.subtotal),vat=parseAmount(doc.vat_total);
     if(total!==null&&net!==null&&vat!==null&&Math.abs(net+vat-total)>.05)warnings.push("Subtotal + VAT does not match the invoice total; inspect discounts and other charges.");
@@ -157,7 +195,14 @@ function validate(doc,type) {
     if(!doc.supplier_name)warnings.push("Supplier not identified; verify the source.");
     if(!doc.grand_total)warnings.push("Total not found; verify the source.");
   }
-  return warnings.slice(0,60);
+  for(const region of Array.isArray(regions)?regions:[]){
+    if(!region||region.visual_clarity==="clear")continue;
+    const field=typeof region.field_path==="string"?region.field_path.slice(0,90):"unknown field";
+    const quality=typeof region.visual_clarity==="string"?region.visual_clarity:"unassessed";
+    const reason=typeof region.visual_reason==="string"&&region.visual_reason.trim()?" ("+region.visual_reason.slice(0,120)+")":"";
+    warnings.push("Needs verification: "+field+" has "+quality.replaceAll("_"," ")+" source evidence"+reason+".");
+  }
+  return [...new Set(warnings)].slice(0,60);
 }
 function mimeOf(name,bytes){
   const ext=(name.split(".").pop()||"").toLowerCase(),mime=MIME.get(ext);
@@ -270,7 +315,7 @@ async function extract(req,principal){
     console.error("Gemini invalid structured response",String(e).slice(0,180));
     return error("Gemini returned an invalid structured document. Try another scan.",502);
   }
-  const warnings=validate(fields,type);
+  const warnings=validate(fields,type,regions);
   const usage={
     input_tokens:response.usageMetadata?.promptTokenCount??null,
     output_tokens:response.usageMetadata?.candidatesTokenCount??null,
@@ -284,7 +329,7 @@ async function extract(req,principal){
     model_name:MODEL,token_usage:usage
   });
   return json({
-    schema_version:"0.6",engine:"Billy Vision",provider:"gemini",
+    schema_version:"0.7",engine:"Billy Vision",provider:"gemini",
     document_type:type,model:MODEL,filename:safeFileName(file.name),
     source_sha256:hash,extraction_id:id,
     invoice:type==="invoice"?fields:null,
@@ -304,7 +349,7 @@ async function approve(req,principal){
   let checked;
   try{checked=cleanDoc(data.document,data.document_type);}catch{return error("Approved document has invalid fields.",400);}
   const owned=await database(principal,"GET","document_records",{
-    "select":"id,document_type,extracted_data,state",
+    "select":"id,document_type,extracted_data,regions_data,state",
     "id":"eq."+data.extraction_id,"organization_id":"eq."+principal.organization_id,
     "created_by":"eq."+principal.user_id,"limit":"1"
   });
@@ -313,7 +358,7 @@ async function approve(req,principal){
   if(source.document_type!==data.document_type)return error("Document type mismatch.",400);
   if(source.state!=="extracted")return error("This document was already approved.",409);
   const corrections=Object.keys(checked).filter(k=>JSON.stringify(checked[k])!==JSON.stringify(source.extracted_data?.[k])).length;
-  const warnings=validate(checked,data.document_type);
+  const warnings=validate(checked,data.document_type,source.regions_data||[]);
   // Compare-and-swap makes repeated approvals return 409 instead of overwriting.
   const updated=await database(principal,"PATCH","document_records",{
     "select":"id",
@@ -329,10 +374,13 @@ async function approve(req,principal){
 }
 async function listRecords(principal) {
   const rows=await database(principal,"GET","document_records",{
-    select:"id,document_type,state,created_at,approved_at,model_name,reviewed_data",
+    select:"id,document_type,state,created_at,approved_at,model_name,source_sha256,extracted_data,reviewed_data,regions_data,validation_warnings",
     organization_id:"eq."+principal.organization_id,order:"created_at.desc",limit:"50"
   });
-  return json({records:rows});
+  return json({records:rows.map(record=>({
+    ...record,
+    original_validation_warnings:validate(record.extracted_data||{},record.document_type,record.regions_data||[])
+  }))});
 }
 
 Deno.serve(async req=>{
