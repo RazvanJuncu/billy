@@ -1,0 +1,6 @@
+# Install ONLY on a trusted training/inference machine (preferably with CUDA GPU).
+# Install matching PyTorch CUDA wheel using https://pytorch.org/get-started/locally/
+-r requirements-handwriting-capture.txt
+torch>=2.3,<3
+transformers>=4.48,<5
+safetensors>=0.4,<1
