@@ -60,15 +60,19 @@ window.addEventListener("billy:scanner-stage", (event) => {
 });
 
 function updateScanButton() {
-  $("scanButton").disabled = !state.file || state.busy;
-  $("scanLabel").textContent = state.busy ? "Processing invoice…" :
+  const type = $("documentType").value;
+  const validType = type === "invoice" || type === "fuel_release";
+  $("scanButton").disabled = !state.file || !validType || state.busy;
+  $("scanLabel").textContent = state.busy ? "Processing document…" :
     !state.file ? "Select a document first" :
+    !validType ? "Choose document type first" :
     state.online ? "Extract with Vision AI" : "Connect Vision AI";
   $("ocrHint").textContent = !state.file
     ? "Capture an invoice or handwritten Fuel Release."
+    : !validType ? "Select Invoice or Fuel Release before processing."
     : state.online
-    ? "AI can extract your invoice now. Human review is required."
-    : "Document ready. Connect Vision to read the invoice.";
+      ? "AI can extract the selected document. Human review is required."
+      : "Document ready. Connect Vision to read this document.";
   $("ocrHint").classList.toggle("ready", state.online);
   $("ocrHint").classList.toggle("need-engine", !state.online);
 }
@@ -156,6 +160,7 @@ function selectFile(file) {
     showNotification("Choose a non-empty document no larger than 10 MiB.", true);
     return;
   }
+  $("documentType").value = ""; // New file, new explicit classification.
   state.file = file;
   setStage(2);
   state.result = null;
@@ -315,6 +320,10 @@ function renderResult() {
 
 async function scanInvoice() {
   if (!state.file || state.busy) return;
+  if (!["invoice","fuel_release"].includes($("documentType").value)) {
+    showNotification("Choose Invoice or Fuel Release before processing this document.",true);
+    return;
+  }
   if (!state.online) {
     $("settings").open = true;
     window.BillyWorkspace?.showView("engine");
