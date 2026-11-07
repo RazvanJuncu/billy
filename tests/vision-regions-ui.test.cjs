@@ -27,7 +27,7 @@ test("Review renders the original image/PDF and estimated normalized Gemini boxe
   assert.match(sw,/"\.\/vision-regions.css"/);
 });
 test("Selected areas open an editable field, not a fabricated percentage",()=>{
-  assert.match(review,/data\.evidencePath=path/);
+  assert.match(review,/dataset\.evidencePath=path/);
   assert.match(review,/BillyRegions\.mount/);
   assert.match(app,/state\.file\)/);
   assert.match(regions,/Not calibrated/);
