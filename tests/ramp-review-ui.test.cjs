@@ -105,3 +105,25 @@ test("Blue is visually reviewed, but modified fields still require AI recheck be
   assert.match(ramp,/\(value\.level==="red"\|\|value\.level==="yellow"\)&&!humanReviewed\.has\(path\)/);
   assert.match(ramp,/statusText=allResolved\(\)/);
 });
+
+test("Billy Intelligence is explicitly opt-in and shown without replacing ramp review",()=>{
+  assert.match(ramp,/Billy Intelligence/);
+  assert.match(ramp,/previous team correction example\(s\) used for this scan/);
+  assert.match(ramp,/intelCheckbox\.checked=false/);
+  assert.match(ramp,/window\.BillyReview\.intelligenceOptIn=\(\)=>intelCheckbox\.checked/);
+  assert.match(ramp,/window\.BillyReview\.intelligenceOptIn=null/);
+  assert.match(ramp,/team-only text examples; no image archive/);
+  assert.match(css,/\.ramp-intelligence-consent\{/);
+  assert.match(review,/intelligence_opt_in:window\.BillyReview\?\.intelligenceOptIn\?\.\(\)===true/);
+  assert.match(review,/intelligence:approvalResult\?\.intelligence\|\|null/);
+});
+test("Historical corrections are text-only, tenant-scoped, and never treated as current OCR values",()=>{
+  assert.match(backend,/const INTELLIGENCE_EXCLUDED_FIELDS=new Set\(/);
+  assert.match(backend,/function correctionLessons\(before,after,type\)/);
+  assert.match(backend,/async function intelligenceHints\(principal,type\)/);
+  assert.match(backend,/organization_id:"eq\."\+principal\.organization_id/);
+  assert.match(backend,/Document scans, entire invoices and handwritten signatures are never archived/);
+  assert.match(backend,/Never copy names/);
+  assert.match(backend,/model_fine_tuned:false/);
+  assert.match(backend,/const consent=data\.intelligence_opt_in===true/);
+});
