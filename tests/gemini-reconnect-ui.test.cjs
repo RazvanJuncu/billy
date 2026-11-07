@@ -11,7 +11,8 @@ test("Billy exposes real Gemini connection diagnostics instead of a generic disc
  assert.match(app,/connectVision: \(\) =>/);
  assert.match(simple,/Gemini connection failed: /);
  assert.match(simple,/Connecting to Billy Gemini cloud/);
- assert.match(simple,/Gemini connected\. Ready to process/);
+ assert.doesNotMatch(simple,/Gemini connected\. Ready to process/);
+ assert.match(simple,/\$\("simpleProcessStatus"\)\.hidden = ready/);
 });
 test("Process Document retries automatically, with a manual visible fallback",()=>{
  assert.match(html,/id="simpleRetryVision"/);
