@@ -125,7 +125,7 @@
     const intro=create("div","ramp-header");
     intro.append(create("span","ramp-kicker","BILLY / RAMP REVIEW"),
       create("h3","ramp-heading","Document check"),
-      create("p","ramp-intro","Tap only the highlighted segments. Green = no outstanding task, not proof of accuracy."));
+      create("p","ramp-intro","Yellow/red = needs attention. Blue ✓ = checked by operator. Green = no flagged issue, not proof of accuracy."));
     compact.append(intro);
     const count=create("p","ramp-count","");
     compact.append(count);
