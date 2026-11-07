@@ -48,5 +48,5 @@ test("Review highlights uncertain evidence and browser cache version is advanced
   assert.match(css,/review-field-alert/);
   assert.match(html,/vision-review\.js\?v=0\.9\.2/);
   assert.match(html,/simple\.js\?v=1\.2\.7/);
-  assert.match(read("site/sw.js"),/v34-ramp-empty-fields/);
+  assert.match(read("site/sw.js"),/v35-ramp-checked-blue/);
 });
