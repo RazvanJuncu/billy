@@ -58,7 +58,7 @@
   }
 
   function chooseDocumentType(type) {
-    if (!activeFile || !["invoice","fuel_release"].includes(type)) return;
+    if (!activeFile || (type !== "invoice" && type !== "fuel_release")) return;
     const select = $("documentType");
     select.value = type;
     // Keep the original extraction engine's document-type value authoritative.
