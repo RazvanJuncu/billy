@@ -69,7 +69,7 @@ function render(result,endpoint,authHeaders,sourceFile=null){
    const resultBody=await response.json();
    if(!response.ok)throw Error(resultBody.detail||"Approval was not saved");
    approved=true;approveButton.textContent="Submitted · record "+resultBody.approval_id;
-   notice.textContent="Corrections saved for future team feedback. No Gemini model weights were retrained. Company storage and Excel remain disconnected.";
+   notice.textContent="Corrections saved for future team feedback. No Gemini model weights were retrained. Company storage and Excel are not connected.";
    exports.hidden=false;
    root.querySelectorAll(".review-grid input, .review-items input, .review-items select, .review-add-line, .line-remove").forEach(el=>{el.disabled=true;});
    window.dispatchEvent(new CustomEvent("billy:document-approved",{
