@@ -38,6 +38,7 @@ function exportJSON(){
     original_validation_warnings:auditMeta?.warnings||[],
     review_validation_warnings:approvalResult?.validation_warnings||[],
     evidence_regions:auditMeta?.regions||[],
+    ramp_review:window.BillyReview?.rampAudit?.()||null,
     model:auditMeta?.model||null,approval_id:approvalResult?.approval_id||null,
     source_sha256:sha
   },null,2),"billy-approved.json","application/json");
