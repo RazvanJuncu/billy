@@ -22,7 +22,7 @@ from billy.vision import (
     MAX_VISION_BYTES, VisionProviderError, configured, extract_document, selected_model,
 )
 from billy.accounts import Principal, require_member
-from billy.records import record_extraction, save_approval
+from billy.records import record_extraction, save_approval, feedback_summary
 
 ALLOWED_WEB_ORIGINS = {
     "https://razvanjuncu.github.io",
@@ -121,8 +121,25 @@ async def vision_extract(
     filename = file.filename or "document"
     await file.close()
     try:
-        result = await extract_document(filename, content, document_type)
+        # Corrected team examples guide future scans without passing historical
+        # invoice values, user identities or team identifiers to the model.
+        feedback = feedback_summary(principal, document_type)
+        result = await extract_document(
+            filename, content, document_type,
+            feedback_guidance=feedback["review_guidance"],
+        )
         result["extraction_id"] = record_extraction(result, principal)
+        # These are prior human-review agreement rates, NOT per-box probabilities.
+        result["historical_field_agreement"] = {
+            key: {
+                "percent": round(100 * item["agreed"] / item["reviewed"], 1)
+                           if item["reviewed"] >= 20 else None,
+                "sample_size": item["reviewed"],
+                "metric": "historical_review_agreement",
+            }
+            for key, item in feedback["fields"].items()
+        }
+        result["feedback_example_count"] = feedback["samples"]
         return result
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
