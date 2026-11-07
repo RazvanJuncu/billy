@@ -353,7 +353,7 @@ async function scanInvoice() {
     state.tab = "document";
     renderResult();
     window.dispatchEvent(new CustomEvent("billy:ocr-ready", {detail:{model:responseBody.model}}));
-    showNotification("Check the extracted values against the original before approval.");
+    showNotification(""); // Review screen and colored fields already communicate the next action.
   } catch (error) {
     showNotification("Could not scan this document: " + (error.message || "Connection error"), true);
   } finally {
