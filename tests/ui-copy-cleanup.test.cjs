@@ -63,3 +63,14 @@ test("Ramp review hides redundant counts and helper copy but keeps review and co
   assert.match(ramp,/Recheck with AI/);
   assert.match(ramp,/Approve & continue/);
 });
+
+test("Dashboard card states match and a tall uploaded history cannot overlap navigation",()=>{
+  assert.match(simpleCss,/body\\[data-billy-screen="home"\\] #simpleNewDocument,\\s*body\\[data-billy-screen="home"\\] #simpleUploadedDocuments\\{/);
+  assert.match(simpleCss,/body\\[data-billy-screen="home"\\] #simpleNewDocument:hover,\\s*body\\[data-billy-screen="home"\\] #simpleUploadedDocuments:hover/);
+  assert.match(simpleCss,/body\\[data-billy-screen="home"\\] #simpleNewDocument:active,\\s*body\\[data-billy-screen="home"\\] #simpleUploadedDocuments:active/);
+  assert.match(simpleCss,/body\\[data-billy-screen="uploaded"\\] #simpleUploaded\\{[\\s\\S]*?flex:0 0 auto!important;[\\s\\S]*?justify-content:flex-start!important/);
+  assert.match(simpleCss,/body\\[data-billy-screen="uploaded"\\] #simpleFlowTitle\\{\\s*display:none!important/);
+  assert.match(simpleCss,/body\\[data-billy-screen="uploaded"\\] #simpleFlowHeader\\{[\\s\\S]*?z-index:2;/);
+  assert.match(html,/id="simpleUploaded" aria-label="Uploaded documents"/);
+  assert.match(html,/class="simple-flow-header" id="simpleFlowHeader"/);
+});
