@@ -23,7 +23,7 @@ test("Old Billy Crew and BillySnap links now open the same Billy home",()=>{
 
 test("Mobile Upload New opens the shared scanner; cancel returns to the simple home",()=>{
   assert.match(html,/id="simpleQuickSnap"/);
-  assert.match(html,/>Upload New<\/span>/);
+  assert.match(html,/>Tap to QuickScan<\/span>/);
   assert.match(simple,/bind\("simpleQuickSnap", startSnapCamera\)/);
   assert.match(simple,/function startSnapCamera\(\)/);
   assert.match(simple,/BillyAccounts\?\.active\?\.\(\)/);
