@@ -77,7 +77,8 @@ test("QuickScan is loaded with mobile/desktop layout and import hooks",()=>{
     "quickscanImportInput","quickscanFinish","quickscanCameraImport","quickscanCancel"]){
     assert.match(html,new RegExp('id="'+id+'"'),id);
   }
-  assert.match(html,/pdf-lib@1\.17\.1\/dist\/pdf-lib\.min\.js/);
+  assert.match(js,/pdf-lib@1\.17\.1\/dist\/pdf-lib\.min\.js/);
+  assert.doesNotMatch(html,/src="https:\/\/cdn\.jsdelivr\.net\/npm\/pdf-lib/);
   assert.ok(html.indexOf('src="./quickscan.js')<html.indexOf('src="./simple.js'));
   assert.ok(html.indexOf('src="./scanner.js')<html.indexOf('src="./quickscan.js'));
   assert.match(css,/#quickscanSession\[hidden\]/);
