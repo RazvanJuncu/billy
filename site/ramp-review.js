@@ -111,7 +111,7 @@
     const state=new Map(paths.map(path=>[path,classification(path,doc,type,regions,warnings)]));
     const humanReviewed=new Set(), manualAcknowledged=new Set();
     let revision=0,checkedRevision=-1,busy=false;
-    let selected=null,confirmedRecheck=false,approvalInProgress=false;
+    let selected=null;
     // The original detailed UI remains functional, but is hidden by default.
     const advanced=create("section","ramp-advanced");
     advanced.hidden=true;
@@ -185,7 +185,7 @@
     };
     const allGreen=()=>state.size>0&&[...state.values()].every(entry=>entry.level==="green");
     // Preserve all client confirmations only as metadata. They are not OCR confidence.
-    const readyToApprove=()=>!busy&&!approvalInProgress&&allGreen()&&
+    const readyToApprove=()=>!busy&&allGreen()&&
       (revision===0||checkedRevision===revision);
     window.BillyReview.canApprove=readyToApprove;
     function paint(){
@@ -209,7 +209,7 @@
       recheck.hidden=pending===0||needsReview.length>0;
       finish.hidden=!readyToApprove();
       recheck.disabled=busy;
-      finish.disabled=busy||approvalInProgress;
+      finish.disabled=busy;
       if(busy)feedback.textContent="Gemini is checking your values against the original image…";
       else if(pending===0){
         feedback.textContent=revision>0&&checkedRevision===revision
@@ -303,11 +303,10 @@
       if(!readyToApprove())return;
       const oldButton=advanced.querySelector(".review-approve");
       if(!oldButton){feedback.textContent="Approval control is unavailable.";return;}
-      approvalInProgress=true;finish.disabled=true;
+      finish.disabled=true;
       oldButton.click();
       // Existing approval routine emits billy:document-approved after the server confirms.
       // A failed request leaves the operator here with the complete advanced error.
-      approvalInProgress=false;
     });
     toggleEvidence.addEventListener("click",()=>{
       evidence.hidden=!evidence.hidden;
