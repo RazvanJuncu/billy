@@ -44,7 +44,7 @@ test("Reverse AI recheck is image-bound and cannot auto-save or auto-replace ope
   assert.match(backend,/async function recheck\(req,principal\)/);
   assert.match(backend,/await sha256\(bytes\)!==record\.source_sha256/);
   assert.match(backend,/created_by:"eq\."\+principal\.user_id/);
-  assert.match(backend,/"/api\/vision\/recheck"/);
+  assert.ok(backend.includes('"/api/vision/recheck"'));
   assert.match(backend,/AI did not verify this field/);
   assert.match(backend,/approval_unlocked:false/);
   assert.match(ramp,/form\.append\("reviewed_document",JSON\.stringify\(doc\)\)/);
