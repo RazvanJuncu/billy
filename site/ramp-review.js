@@ -158,26 +158,44 @@
     compact.append(controls);
     const extra=create("div","ramp-extras");
     const toggleEvidence=create("button","ramp-link","Show original document and colored regions");
-    const toggleAdvanced=create("button","ramp-link","Advanced fields & export");
-    toggleEvidence.type=toggleAdvanced.type="button";
-    extra.append(toggleEvidence,toggleAdvanced);
+    toggleEvidence.type="button";
+    extra.append(toggleEvidence);
     compact.append(extra);
     const localInput=path=>[...advanced.querySelectorAll("[data-evidence-path]")]
       .find(el=>el.dataset.evidencePath===path);
-    const saveValue=(path,value)=>{
+    let syncing=false;
+    const markChanged=(path,value)=>{
+      if(!paths.includes(path)) {
+        paths.push(path);
+        state.set(path,{level:"yellow",reason:"New field value. Recheck is required."});
+      }
       setAt(doc,path,value);
-      const el=localInput(path);
-      if(!el)throw Error("The editable source field is unavailable: "+path);
-      el.value=value??"";
-      el.dispatchEvent(new Event(el.tagName==="SELECT"?"change":"input",{bubbles:true}));
       revision++;
       checkedRevision=-1;
-      confirmedRecheck=false;
       manualAcknowledged.delete(path);
-      const previous=state.get(path);
+      humanReviewed.delete(path);
       state.set(path,{level:"yellow",reason:"Updated by operator. Recheck is required."});
-      return previous;
     };
+    const saveValue=(path,value)=>{
+      const el=localInput(path);
+      if(!el)throw Error("The editable source field is unavailable: "+path);
+      syncing=true;
+      try{
+        el.value=value??"";
+        el.dispatchEvent(new Event(el.tagName==="SELECT"?"change":"input",{bubbles:true}));
+      }finally{syncing=false;}
+      markChanged(path,value);
+    };
+    const syncFromEvidence=event=>{
+      if(syncing)return;
+      const el=event.target;
+      const path=el?.dataset?.evidencePath;
+      if(!path||(!paths.includes(path)&&!Object.hasOwn(doc,path)))return;
+      markChanged(path,el.value||null);
+      paint();
+    };
+    advanced.addEventListener("input",syncFromEvidence);
+    advanced.addEventListener("change",syncFromEvidence);
     const riskCounts=()=>{
       const count={green:0,yellow:0,red:0};
       for(const entry of state.values())count[entry.level]++;
@@ -273,8 +291,20 @@
         if(!response.ok)throw Error(payload.detail||"Recheck request failed");
         if(revision!==currentRevision)throw Error("Document changed during recheck. Please run it again.");
         const map=new Map((payload.checks||[]).map(check=>[check.field_path,check]));
+        const meterMismatch=(payload.deterministic_warnings||[]).some(w=>/Meter mismatch|Meter finish is less than start/i.test(String(w)));
+        const totalsMismatch=(payload.deterministic_warnings||[]).some(w=>/Subtotal \+ VAT does not match|Sum of line net amounts differs|quantity × unit price differs/i.test(String(w)));
         for(const path of paths){
           const item=map.get(path);
+          if(meterMismatch&&["delivered_quantity","meter_start","meter_finish"].includes(path)){
+            state.set(path,{level:"red",reason:"Meter readings or fuel totals are mathematically inconsistent."});
+            humanReviewed.delete(path);manualAcknowledged.delete(path);
+            continue;
+          }
+          if(totalsMismatch&&["subtotal","vat_total","grand_total"].includes(path)){
+            state.set(path,{level:"red",reason:"Document totals are mathematically inconsistent."});
+            humanReviewed.delete(path);manualAcknowledged.delete(path);
+            continue;
+          }
           if(!item||item.status==="unclear"){
             state.set(path,{level:"yellow",reason:item?.reason||"AI could not verify this field from the image."});
           }else if(item.status==="mismatch"){
@@ -311,10 +341,6 @@
     toggleEvidence.addEventListener("click",()=>{
       evidence.hidden=!evidence.hidden;
       toggleEvidence.textContent=evidence.hidden?"Show original document and colored regions":"Hide original document";
-    });
-    toggleAdvanced.addEventListener("click",()=>{
-      advanced.hidden=!advanced.hidden;
-      toggleAdvanced.textContent=advanced.hidden?"Advanced fields & export":"Hide advanced fields";
     });
     paint();
   }
