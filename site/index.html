@@ -242,19 +242,15 @@
 
         <section class="simple-type simple-screen" id="simpleType" aria-label="Choose document type" hidden>
           <div class="simple-type-wrap">
-            <p class="simple-type-kicker">DOCUMENT CLASSIFICATION</p>
             <h1 class="simple-heading">What kind of document is this?</h1>
-            <p class="simple-type-help">Choose the correct type before Billy sends it to Gemini. Different types use different fields.</p>
             <div class="simple-type-grid" role="group" aria-label="Document type">
               <button id="simpleChooseInvoice" type="button" class="simple-type-card" data-document-type="invoice" aria-pressed="false">
                 <span class="simple-type-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 2.5h9l3 3v16l-3-2-3 2-3-2-3 2z"/><path d="M9 9h6M9 12.5h6M9 16h4"/></svg></span>
                 <span class="simple-type-copy"><strong>Invoice</strong><small>Suppliers, amounts, tax and line items</small></span>
-                <span class="simple-type-arrow" aria-hidden="true">→</span>
               </button>
               <button id="simpleChooseFuelRelease" type="button" class="simple-type-card" data-document-type="fuel_release" aria-pressed="false">
                 <span class="simple-type-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20V5a2 2 0 0 1 2-2h8v17M4 11h10M8 7h2M4 20h13"/><path d="M14 7h2l3 4v6a2 2 0 0 0 4 0v-5l-2-2"/></svg></span>
                 <span class="simple-type-copy"><strong>Fuel Release</strong><small>Aircraft, fuel quantities, meter readings and handwriting</small></span>
-                <span class="simple-type-arrow" aria-hidden="true">→</span>
               </button>
             </div>
             <p class="simple-type-footnote">Billy will not process the document until you select a type.</p>
@@ -265,7 +261,7 @@
           <div class="simple-flow-card">
             <h2 class="simple-heading">Ready to process.</h2>
             <div class="simple-selected-type"><span>DOCUMENT TYPE</span><strong id="simpleSelectedType">Not selected</strong><button id="simpleChangeType" class="simple-change-type" type="button">Change</button></div>
-            <button id="simpleRunProcess" type="button" class="simple-main-action"><svg viewBox="0 0 24 24" aria-hidden="true" class="ui-icon"><path d="M7 3H4v4m13-4h3v4M4 17v4h3m13-4v4h-3"/><path d="M6 12h12"/></svg><span>Process document</span><svg viewBox="0 0 24 24" aria-hidden="true" class="ui-icon"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button>
+            <button id="simpleRunProcess" type="button" class="simple-main-action"><svg viewBox="0 0 24 24" aria-hidden="true" class="ui-icon"><path d="M7 3H4v4m13-4h3v4M4 17v4h3m13-4v4h-3"/><path d="M6 12h12"/></svg><span>Process document</span></button>
             <p id="simpleProcessStatus" class="simple-process-status" role="status" aria-live="polite"></p>
             <button id="simpleRetryVision" type="button" class="simple-secondary-action" hidden>Retry Gemini connection</button>
           </div>
@@ -408,7 +404,7 @@
             </div>
           </div>
           <div class="panel-actions">
-            <button id="scanButton" class="primary-button" type="button" disabled><span id="scanLabel">Select a document first</span><span aria-hidden="true">→</span></button>
+            <button id="scanButton" class="primary-button" type="button" disabled><span id="scanLabel">Select a document first</span></button>
             <p class="scan-hint" id="ocrHint">Capture locally. AI extraction and approval require a server.</p>
           </div>
           <details class="settings" id="settings">
@@ -494,7 +490,7 @@
 <div id="scannerOverlay" class="scanner-overlay" role="dialog" aria-modal="true" aria-labelledby="scannerHeading" hidden>
   <div class="scanner-frame">
     <div class="scanner-header">
-      <div><div class="section-index"><span class="full-brand">BILLYDPI</span><span class="snap-brand">BILLYDPI</span> / SCANNER</div><h2 id="scannerHeading">Capture document</h2></div>
+      <div><h2 id="scannerHeading">Capture document</h2></div>
       <button id="scannerClose" class="scanner-close" aria-label="Close scanner" type="button">×</button>
     </div>
     <div id="scanLive" class="scan-live" hidden>
@@ -524,7 +520,7 @@
       <div class="scan-actions">
         <button id="scanUseOriginal" class="outline-button" type="button">Skip crop</button>
         <button id="scanSave" class="outline-button" type="button">Save image</button>
-        <button id="scanApply" class="primary-button" type="button">Use this scan →</button>
+        <button id="scanApply" class="primary-button" type="button">Use this scan</button>
       </div>
       <button id="scanRetake" class="scanner-retake" type="button">Retake photo</button>
     </div>
