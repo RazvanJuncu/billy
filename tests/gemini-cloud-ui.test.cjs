@@ -103,7 +103,9 @@ function mockBackend(opts={}) {
       }
       const id=url.searchParams.get("id");
       const list=[...stored.values()].filter(item=>!id||"eq."+item.id===id);
-      return new Response(JSON.stringify(list),{status:200});
+      const offset=Number(url.searchParams.get("offset")||0);
+      const limit=Number(url.searchParams.get("limit")||list.length);
+      return new Response(JSON.stringify(list.slice(offset,offset+limit)),{status:200});
     }
     throw Error("Unexpected endpoint in test: "+url.href);
   };
@@ -568,4 +570,28 @@ test("Cloud deletion rejects other creators, malformed IDs and unauthenticated c
   const wrongMethod=await handler(call("/api/vision/delete","GET"));
   assert.equal(wrongMethod.status,405);
   assert.equal(stored.has(id),true);
+});
+
+test("List records supports paging through older documents for deletion",async()=>{
+  const {handler,call,stored}=mockBackend();
+  for(let i=0;i<53;i++){
+    const id=String(i).padStart(8,"0")+"-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    stored.set(id,{
+      id,created_by:UID,organization_id:ORG,state:"extracted",document_type:"invoice",
+      extracted_data:doc,regions_data:[],review_metadata:{},validation_warnings:[]
+    });
+  }
+  const page1=await handler(call("/api/vision/records"));
+  assert.equal(page1.status,200);
+  const first=await page1.json();
+  assert.equal(first.records.length,50);
+  assert.equal(first.has_more,true);
+  assert.equal(first.next_offset,50);
+  const page2=await handler(call("/api/vision/records?offset=50"));
+  assert.equal(page2.status,200);
+  const older=await page2.json();
+  assert.equal(older.records.length,3);
+  assert.equal(older.has_more,false);
+  assert.equal(older.next_offset,null);
+  assert.equal((await handler(call("/api/vision/records?offset=-1"))).status,400);
 });
