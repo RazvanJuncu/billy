@@ -56,6 +56,44 @@ class VisualEvidenceTests(unittest.TestCase):
         self.assertEqual(result[1]["field_path"], "lines[0].quantity")
         self.assertNotIn("confidence", result[0])
 
+    def test_visual_clarity_and_alternatives_are_sanitized(self):
+        regions = _clean_regions([
+            {"field_path":"invoice_number", "page":1,
+             "box_2d":[20,30,50,130], "transcription":"AB-7",
+             "visual_clarity":"ambiguous","alternate_readings":["AB-1"],
+             "visual_reason":"Handwritten 7 may resemble a 1."},
+            {"field_path":"grand_total", "page":1,
+             "box_2d":[100,30,150,130],"transcription":"100",
+             "visual_clarity":"definitely_correct",
+             "alternate_readings":[],"visual_reason":None},
+        ], "invoice")
+        self.assertEqual(regions[0]["visual_clarity"], "ambiguous")
+        self.assertEqual(regions[0]["alternate_readings"], ["AB-1"])
+        self.assertEqual(regions[1]["visual_clarity"], "unassessed")
+        self.assertNotIn("confidence", regions[0])
+
+    def test_repeated_digit_confusion_becomes_cautious_team_guidance(self):
+        first = Principal("11111111-1111-4111-8111-111111111111",
+                          "22222222-2222-4222-8222-222222222222", "operator")
+        with tempfile.TemporaryDirectory() as root:
+            with patch.dict(os.environ, {"BILLY_APPROVAL_DB": str(Path(root)/"digits.sqlite3")}):
+                for index in range(3):
+                    predicted = invoice()
+                    predicted["invoice_number"] = "TEST-" + str(index) + "-7"
+                    corrected = invoice()
+                    corrected["invoice_number"] = "TEST-" + str(index) + "-1"
+                    eid = record_extraction({
+                        "document_type":"invoice","invoice":predicted,
+                        "source_sha256":f"{index+1:064x}"
+                    },first)
+                    save_approval(__import__("uuid").UUID(eid),"invoice",corrected,first)
+                result = feedback_summary(first,"invoice")
+                self.assertEqual(result["digit_confusions"][0]["previous"], "7")
+                self.assertEqual(result["digit_confusions"][0]["reviewed"], "1")
+                self.assertIn("7 vs 1",result["review_guidance"])
+                self.assertNotIn("TEST-", result["review_guidance"])
+                self.assertIn("Never auto-substitute",result["review_guidance"])
+
     def test_review_feedback_is_team_scoped_and_not_a_training_claim(self):
         first = Principal("11111111-1111-4111-8111-111111111111",
                           "22222222-2222-4222-8222-222222222222", "operator")
