@@ -264,7 +264,8 @@ async function extract(req,principal){
     const message=(response.candidates?.[0]?.content?.parts||[]).filter(p=>!p.thought).map(p=>p.text||"").join("");
     const parsed=JSON.parse(message);
     regions=cleanRegions(parsed.regions,type);
-    fields=cleanDoc(parsed,type);
+    const {regions: _evidence, ...structured}=parsed;
+    fields=cleanDoc(structured,type);
   }catch(e){
     console.error("Gemini invalid structured response",String(e).slice(0,180));
     return error("Gemini returned an invalid structured document. Try another scan.",502);
