@@ -61,6 +61,7 @@ class HandwritingDataTests(unittest.TestCase):
             "field_path": "invoice_number", "page": 1,
             "box_2d": [100, 100, 300, 510],
             "transcription": "INV-7", "visual_clarity": "ambiguous",
+            "script_type": "handwritten",
         }]
         extraction = record_extraction({
             "document_type": "invoice",
