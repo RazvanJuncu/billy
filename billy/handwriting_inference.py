@@ -80,6 +80,8 @@ def second_opinion(
                 "ambiguous", "slight_uncertainty", "unreadable"
             ):
                 continue
+            if region.get("script_type") not in {"handwritten", "mixed"}:
+                continue
             field_path = str(region.get("field_path", ""))
             # A handwriting specialist is most useful on full handwritten fields.
             if "legibility" in field_path or ".label" in field_path:
