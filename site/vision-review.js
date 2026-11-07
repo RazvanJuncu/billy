@@ -190,6 +190,9 @@ function render(result,endpoint,authHeaders,sourceFile=null){
      approveButton.disabled=false;
      if(skipTraining)skipTraining.disabled=false;
      notice.textContent="Submission failed: "+(error.message||"Unknown error");
+     window.dispatchEvent(new CustomEvent("billy:approval-failed",{
+       detail:{message:"Submission failed: "+(error.message||"Unknown error")}
+     }));
    }
  }
  approveButton.addEventListener("click",()=>submitReview(trainingEligible));
