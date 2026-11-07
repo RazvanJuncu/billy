@@ -33,6 +33,7 @@ def init(connection: sqlite3.Connection) -> None:
           document_type TEXT NOT NULL,
           source_sha256 TEXT NOT NULL,
           original_json TEXT NOT NULL,
+          regions_json TEXT NOT NULL DEFAULT '[]',
           created_at TEXT NOT NULL
         )
     """)
@@ -48,6 +49,10 @@ def init(connection: sqlite3.Connection) -> None:
           warnings_json TEXT NOT NULL
         )
     """)
+    # Existing pilot databases were created before evidence coordinates were retained.
+    columns = {row[1] for row in connection.execute("PRAGMA table_info(extractions)")}
+    if "regions_json" not in columns:
+        connection.execute("ALTER TABLE extractions ADD COLUMN regions_json TEXT NOT NULL DEFAULT '[]'")
     connection.execute("CREATE INDEX IF NOT EXISTS extraction_team_idx ON extractions(organization_id,created_by)")
 
 
@@ -60,11 +65,12 @@ def record_extraction(result: dict, principal: Principal) -> str:
     with sqlite3.connect(database_path(), timeout=10) as connection:
         init(connection)
         connection.execute(
-            "INSERT INTO extractions (id,organization_id,created_by,document_type,source_sha256,original_json,created_at)"
-            "VALUES (?,?,?,?,?,?,?)",
+            "INSERT INTO extractions (id,organization_id,created_by,document_type,source_sha256,original_json,regions_json,created_at)"
+            "VALUES (?,?,?,?,?,?,?,?)",
             (
                 extraction_id, principal.organization_id, principal.user_id, doc_type,
                 result["source_sha256"], json.dumps(prediction,ensure_ascii=False),
+                json.dumps(result.get("regions", []), ensure_ascii=False),
                 datetime.now(timezone.utc).isoformat()
             )
         )
