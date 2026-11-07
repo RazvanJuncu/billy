@@ -6,6 +6,8 @@ const $ = (id) => document.getElementById(id);
 const state = {
   api: "",
   online: false,
+  connecting: false,
+  connectionError: "",
   busy: false,
   file: null,
   previewUrl: null,
@@ -72,15 +74,23 @@ function updateScanButton() {
 }
 
 async function connectEngine() {
+  if (state.connecting) return;
+  state.connecting = true;
+  state.connectionError = "";
+  window.dispatchEvent(new CustomEvent("billy:engine-updated"));
   const dot = $("statusDot");
   const label = $("statusText");
-  const input = $("endpoint").value.trim();
+  const input = $("endpoint").value.trim() || window.BILLY_AUTH_CONFIG?.apiUrl || "";
+  if (input) $("endpoint").value = input;
   if (!input) {
     state.online = false;
     state.api = "";
     dot.className = "status-dot offline";
     label.textContent = "Scanner ready · Vision AI not connected";
+    state.connectionError = "Billy Vision endpoint is not configured.";
+    state.connecting = false;
     updateScanButton();
+    window.dispatchEvent(new CustomEvent("billy:engine-updated"));
     return;
   }
   state.online = false;
@@ -90,7 +100,7 @@ async function connectEngine() {
   try {
     const address = apiAddress($("endpoint").value);
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 4500);
+    const timeout = setTimeout(() => controller.abort(), 15000);
     let response;
     try {
       const headers = await window.BillyAccounts.sessionHeaders();
@@ -98,20 +108,33 @@ async function connectEngine() {
     } finally {
       clearTimeout(timeout);
     }
-    if (!response.ok) throw new Error("HTTP " + response.status);
+    if (!response.ok) {
+      let detail = "";
+      try {
+        const body = await response.json();
+        if (typeof body?.detail === "string") detail = body.detail.slice(0, 180);
+      } catch {}
+      throw new Error("Vision backend HTTP " + response.status + (detail ? ": " + detail : ""));
+    }
     const payload = await response.json();
     if (payload.status !== "online") throw new Error("Unexpected response from OCR service");
     state.api = address;
     state.online = Boolean(payload.configured);
+    if (!state.online) state.connectionError = "Gemini API key not detected by Billy cloud backend.";
     dot.className = state.online ? "status-dot online" : "status-dot offline";
     label.textContent = state.online ? "Vision configured · " + payload.model : "Vision server online · API key missing";
     $("settings").open = !state.online;
     showNotification(state.online ? "" : "Vision server is running, but GEMINI_API_KEY is not configured on the server.");
   } catch (error) {
     state.online = false;
+    state.connectionError = error?.name === "AbortError"
+      ? "Gemini connection timed out. Retry."
+      : String(error?.message || "Could not reach Billy Vision.");
     dot.className = "status-dot offline";
-    label.textContent = "Scanner ready · Vision AI not connected";
-    showNotification("Vision server not reachable. The camera still works locally; AI needs a secure backend.", true);
+    label.textContent = "Gemini disconnected · " + state.connectionError;
+    showNotification("Gemini connection: " + state.connectionError, true);
+  } finally {
+    state.connecting = false;
   }
   updateScanButton();
   window.dispatchEvent(new CustomEvent("billy:engine-updated"));
@@ -431,6 +454,15 @@ window.addEventListener("billy:account-ready", () => {
    No backend keys or elevated access are provided here. */
 window.BillyApp = {
   isOnline: () => state.online,
+  visionStatus: () => ({online: state.online, connecting: state.connecting, error: state.connectionError}),
+  connectVision: () => {
+    if (!window.BillyAccounts?.active?.()) {
+      state.connectionError = "Sign in to a Billy organization before connecting Gemini.";
+      window.dispatchEvent(new CustomEvent("billy:engine-updated"));
+      return;
+    }
+    return connectEngine();
+  },
   hasDocument: () => Boolean(state.file),
   openFile: selectFile,
   acceptFile: handlePhotoOrDocument
