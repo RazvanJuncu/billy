@@ -4,13 +4,13 @@ const app=read("site/app.js"),simple=read("site/simple.js"),html=read("site/inde
 const sw=read("site/sw.js"),config=read("site/account-config.js");
 test("Billy exposes real Gemini connection diagnostics instead of a generic disconnected message",()=>{
  assert.match(app,/connectionError/);
- assert.match(app,/Gemini connection timed out/);
+ assert.match(app,/AI engine connection timed out/);
  assert.match(app,/Vision backend HTTP/);
  assert.match(app,/setTimeout\(\(\) => controller\.abort\(\), 15000\)/);
  assert.match(app,/visionStatus: \(\) =>/);
  assert.match(app,/connectVision: \(\) =>/);
- assert.match(simple,/Gemini connection failed: /);
- assert.match(simple,/Connecting to Billy Gemini cloud/);
+ assert.match(simple,/AI engine connection failed: /);
+ assert.match(simple,/Connecting to the AI engine/);
  assert.doesNotMatch(simple,/Gemini connected\. Ready to process/);
  assert.match(simple,/\$\("simpleProcessStatus"\)\.hidden = ready/);
 });
