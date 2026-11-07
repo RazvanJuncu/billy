@@ -4,6 +4,28 @@ This is a **real fine-tuning implementation**, not prompt-only "learning". It ha
 not trained on real Billy data yet. All training data, model checkpoints, and
 team identifiers stay on a trusted local server; **never store them in GitHub**.
 
+## Immediate baseline: no fine-tuning required
+
+For initial comparisons, enable `BILLY_HANDWRITING_INFERENCE_ENABLED=1`
+on the trusted Python backend and install
+`requirements-handwriting-train.txt`. The first eligible handwritten
+region automatically loads the official pretrained
+[`microsoft/trocr-small-handwritten`](https://huggingface.co/microsoft/trocr-small-handwritten)
+on **CPU or available CUDA GPU**. It downloads weights to the host's Hugging
+Face cache once. Run `python -m scripts.smoke_trocr` to pre-download and
+verify local inference before connecting Gemini.
+
+Gemini continues to extract structure and values. Local TrOCR only compares
+eligible visually uncertain handwritten/mixed **single-line regions** that
+Gemini localizes. The review UI shows both readings and disagreements without
+modifying the structured value. If the trained team checkpoint is later
+promoted, it replaces the pretrained baseline automatically for that team.
+
+Training capture is an independent toggle and is **not required** for the
+baseline. Tests on real, permissioned documents are still necessary to
+measure quality, latency and costs. A real Gemini API key and running
+FastAPI backend are required for end-to-end extraction.
+
 ## Architecture
 
 ```text
@@ -105,7 +127,7 @@ materially worsen. Candidate models and the previous active version remain
 on disk for rollback. `active.json` is an atomic pointer to the validated
 checkpoint.
 
-Set `BILLY_HANDWRITING_INFERENCE_ENABLED=1` to use the **promoted checkpoint**
+Set `BILLY_HANDWRITING_INFERENCE_ENABLED=1` to use the **pretrained Small baseline**, or the promoted team checkpoint if one exists,
 as a second opinion at the next extraction. The model does not silently
 replace Gemini's values: differences appear as possible alternative readings.
 
