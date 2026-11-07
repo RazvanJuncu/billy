@@ -125,7 +125,7 @@ class HandwritingDataTests(unittest.TestCase):
             blocked = client.post(
                 "/api/handwriting/examples",
                 data={"extraction_id": str(uuid.uuid4()), "training_consent": "true"},
-                files={"file": ("image.png", b"\\x89PNG\\r\\n\\x1a\\n", "image/png")},
+                files={"file": ("image.png", b"\x89PNG\r\n\x1a\n", "image/png")},
             )
             self.assertEqual(blocked.status_code, 503)
             progress = client.get("/api/handwriting/status")
@@ -136,7 +136,7 @@ class HandwritingDataTests(unittest.TestCase):
             no_consent = client.post(
                 "/api/handwriting/examples",
                 data={"extraction_id": str(uuid.uuid4()), "training_consent": "false"},
-                files={"file": ("image.png", b"\\x89PNG\\r\\n\\x1a\\n", "image/png")},
+                files={"file": ("image.png", b"\x89PNG\r\n\x1a\n", "image/png")},
             )
             self.assertEqual(no_consent.status_code, 400)
 
