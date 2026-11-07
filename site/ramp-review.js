@@ -110,7 +110,7 @@
     const paths=fieldsFor(doc,type);
     const state=new Map(paths.map(path=>[path,classification(path,doc,type,regions,warnings)]));
     const humanReviewed=new Set(), manualAcknowledged=new Set();
-    let revision=0,checkedRevision=-1,busy=false;
+    let revision=0,checkedRevision=-1,busy=false,recheckCount=0;
     let selected=null;
     // The original detailed UI remains functional, but is hidden by default.
     const advanced=create("section","ramp-advanced");
@@ -206,6 +206,17 @@
     const readyToApprove=()=>!busy&&allGreen()&&
       (revision===0||checkedRevision===revision);
     window.BillyReview.canApprove=readyToApprove;
+    window.BillyReview.rampAudit=()=>({
+      ai_recheck_count:recheckCount,
+      manual_confirmations:[...humanReviewed],
+      ambiguity_acknowledgements:[...manualAcknowledged],
+      final_field_states:paths.map(field_path=>({
+        field_path,status:state.get(field_path)?.level||"unknown",
+        basis:state.get(field_path)?.reason||""
+      })),
+      final_approval_gate:readyToApprove()?"passed":"not_passed",
+      ai_assessment_not_a_calibrated_confidence:true
+    });
     function paint(){
       jar.replaceChildren();
       let index=0;
@@ -321,6 +332,7 @@
           }
         }
         checkedRevision=revision;
+        recheckCount++;
         for(const [path,entry] of state){
           if(entry.level==="yellow"&&manualAcknowledged.has(path)&&humanReviewed.has(path)){
             state.set(path,{level:"green",reason:"Accepted by operator despite unclear AI evidence."});
@@ -355,6 +367,7 @@
   }
   window.BillyReview.render=function(result,endpoint,getHeaders,sourceFile){
     window.BillyReview.canApprove=null;
+    window.BillyReview.rampAudit=null;
     originalRender(result,endpoint,getHeaders,sourceFile);
     mount(result,endpoint,getHeaders,sourceFile);
   };
