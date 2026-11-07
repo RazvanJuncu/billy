@@ -364,7 +364,7 @@ function intelligencePrompt(examples){
 }
 
 async function extract(req,principal){
-  if(!providerKey())return error("Gemini API key is not configured in Supabase Edge Function secrets.",503);
+  if(!providerKey())return error("The AI engine is not configured on the server.",503);
   const contentType=req.headers.get("content-type")||"";
   if(!contentType.startsWith("multipart/form-data"))return error("Upload a document using multipart form data.",400);
   // A 10 MiB file becomes larger when parsed. Refuse oversized bodies early.
@@ -394,7 +394,7 @@ async function extract(req,principal){
   });
   if(!google.ok){
     console.error("Gemini error status",google.status);
-    return error("Gemini returned HTTP "+google.status+". Check your Google project billing, quota and model access.",502);
+    return error("The AI engine returned HTTP "+google.status+". Check provider billing, quota and model access.",502);
   }
   const response=await google.json();
   let fields,regions;
@@ -406,7 +406,7 @@ async function extract(req,principal){
     fields=cleanDoc(structured,type);
   }catch(e){
     console.error("Gemini invalid structured response",String(e).slice(0,180));
-    return error("Gemini returned an invalid structured document. Try another scan.",502);
+    return error("The AI engine returned an invalid structured document. Try another scan.",502);
   }
   const warnings=validate(fields,type,regions);
   const usage={
@@ -463,7 +463,7 @@ function checkedAbsentPaths(candidate,doc,type){
   return [...unique];
 }
 async function recheck(req,principal) {
-  if(!providerKey())return error("Gemini is not configured.",503);
+  if(!providerKey())return error("The AI engine is not configured.",503);
   const contentType=req.headers.get("content-type")||"";
   if(!contentType.startsWith("multipart/form-data"))return error("Recheck requires the original file.",400);
   const declared=Number(req.headers.get("content-length")||0);
@@ -531,14 +531,14 @@ async function recheck(req,principal) {
   });
   if(!google.ok){
     console.error("Gemini recheck HTTP",google.status);
-    return error("Gemini recheck returned HTTP "+google.status+".",502);
+    return error("The AI engine recheck returned HTTP "+google.status+".",502);
   }
   let parsed;
   try{
     const response=await google.json();
     const message=(response.candidates?.[0]?.content?.parts||[]).filter(p=>!p.thought).map(p=>p.text||"").join("");
     parsed=JSON.parse(message);
-  }catch{return error("Gemini returned an invalid recheck response.",502);}
+  }catch{return error("The AI engine returned an invalid recheck response.",502);}
   const fromAI=new Map();
   const allowed=new Set(fieldPaths);
   for(const check of Array.isArray(parsed.checks)?parsed.checks:[]){
