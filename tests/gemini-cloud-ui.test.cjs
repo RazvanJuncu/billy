@@ -31,7 +31,7 @@ const regions = [{
 }];
 
 function mockBackend(opts={}) {
-  const stored=new Map(), calls=[];
+  const stored=new Map(), calls=[], examples=[...(opts.preloadedExamples||[])], googlePrompts=[];
   let handler;
   const googleResponse=()=>new Response(JSON.stringify({
     candidates:[{content:{parts:[{text:JSON.stringify({...opts.fuelDoc||doc,regions:opts.regions||regions})}]}}],
@@ -46,6 +46,7 @@ function mockBackend(opts={}) {
     if(url.hostname==="generativelanguage.googleapis.com"){
       const body=JSON.parse(init.body);
       const prompt=body.contents[0].parts[0].text||"";
+      googlePrompts.push(prompt);
       if(prompt.includes("Independently check whether the supplied field values")){
         const checks=opts.recheckChecks||[
           {field_path:"supplier_name",status:"match",reason:"Visible"},
@@ -61,6 +62,19 @@ function mockBackend(opts={}) {
         });
       }
       return googleResponse();
+    }
+    if(url.pathname.endsWith("/billy_intelligence_examples")){
+      if(init.method==="POST"){
+        if(opts.memorySaveFails)return new Response("Unavailable",{status:503});
+        const rows=JSON.parse(init.body);
+        examples.push(...rows);
+        return new Response(JSON.stringify(rows),{status:201});
+      }
+      if(opts.memoryReadFails)return new Response("Unavailable",{status:503});
+      const org=url.searchParams.get("organization_id")?.replace(/^eq\./,"");
+      const type=url.searchParams.get("document_type")?.replace(/^eq\./,"");
+      const rows=examples.filter(row=>row.organization_id===org&&row.document_type===type);
+      return new Response(JSON.stringify(rows.reverse()),{status:200});
     }
     if(url.pathname.endsWith("/document_records")){
       if(init.method==="POST"){
@@ -96,7 +110,7 @@ function mockBackend(opts={}) {
     "https://synthetic.supabase.co/functions/v1/billy-vision"+route,
     {method,headers:authHeaders,...extra}
   );
-  return {handler,call,stored,calls};
+  return {handler,call,stored,calls,examples,googlePrompts};
 }
 
 test("Gemini is server-side; PWA uses Supabase HTTPS and public key only",()=>{
@@ -385,4 +399,98 @@ test("The backend rejects attempts to mark populated or unknown fields absent",a
     }));
     assert.equal(approval.status,400);
   }
+});
+
+
+test("Billy Intelligence stores only opted-in corrections and reuses same-team examples on a later scan",async()=>{
+  const {handler,call,stored,examples,googlePrompts}=mockBackend();
+  const bytes=new Uint8Array([255,216,5,6,7,8]);
+  const form=()=>{const f=new FormData();f.append("file",new File([bytes],"doc.jpg",{type:"image/jpeg"}));f.append("document_type","invoice");return f;};
+  const initial=await handler(call("/api/vision/extract","POST",{body:form()}));
+  assert.equal(initial.status,200);
+  const data=await initial.json();
+  assert.equal(data.intelligence.examples_used,0);
+  const edited={...data.invoice,supplier_name:"TEST SUPPLIER INC"};
+  const approved=await handler(call("/api/vision/approve","POST",{
+    headers:{...authHeaders,"Content-Type":"application/json"},
+    body:JSON.stringify({extraction_id:data.extraction_id,document_type:"invoice",document:edited,
+      confirmed:true,intelligence_opt_in:true})
+  }));
+  assert.equal(approved.status,200);
+  const body=await approved.json();
+  assert.equal(body.intelligence.status,"saved");
+  assert.equal(body.intelligence.examples_saved,1);
+  assert.equal(examples.length,1);
+  assert.equal(examples[0].organization_id,ORG);
+  assert.equal(examples[0].original_text,"TEST SUPPLIER");
+  assert.equal(examples[0].corrected_text,"TEST SUPPLIER INC");
+  assert.equal(examples[0].source_record_id,data.extraction_id);
+  assert.ok(!("image" in examples[0]));
+  assert.equal(stored.get(data.extraction_id).extracted_data.supplier_name,"TEST SUPPLIER");
+  const future=await handler(call("/api/vision/extract","POST",{body:form()}));
+  assert.equal(future.status,200);
+  const next=await future.json();
+  assert.equal(next.intelligence.examples_used,1);
+  assert.match(googlePrompts.at(-1),/Billy Intelligence: examples/);
+  assert.match(googlePrompts.at(-1),/TEST SUPPLIER INC/);
+  assert.match(googlePrompts.at(-1),/Never copy names/);
+  assert.equal(next.invoice.supplier_name,"TEST SUPPLIER"); // Mock model did not copy old data.
+});
+
+test("Without opt-in Billy Intelligence never saves corrected text",async()=>{
+  const {handler,call,examples}=mockBackend();
+  const form=new FormData();form.append("file",new File([new Uint8Array([255,216,1])],"a.jpg",{type:"image/jpeg"}));
+  form.append("document_type","invoice");
+  const scanned=await handler(call("/api/vision/extract","POST",{body:form}));
+  const id=(await scanned.json()).extraction_id;
+  const response=await handler(call("/api/vision/approve","POST",{
+    headers:{...authHeaders,"Content-Type":"application/json"},
+    body:JSON.stringify({extraction_id:id,document_type:"invoice",
+      document:{...doc,supplier_name:"CHANGED SUPPLIER"},confirmed:true})
+  }));
+  assert.equal(response.status,200);
+  assert.equal((await response.json()).intelligence.status,"not_requested");
+  assert.equal(examples.length,0);
+});
+
+test("Intelligence examples cannot leak across organizations and identifier fields are excluded",async()=>{
+  const malicious={
+    organization_id:"99999999-9999-4999-8999-999999999999",
+    document_type:"invoice",field_path:"supplier_name",
+    original_text:"PRIVATE_ORG_DATA",corrected_text:"OTHER_ORG_SECRET",field_label:null
+  };
+  const {handler,call,examples,googlePrompts}=mockBackend({preloadedExamples:[malicious]});
+  const form=new FormData();form.append("file",new File([new Uint8Array([255,216,1])],"a.jpg",{type:"image/jpeg"}));
+  form.append("document_type","invoice");
+  const scanned=await handler(call("/api/vision/extract","POST",{body:form}));
+  const data=await scanned.json();
+  assert.equal(data.intelligence.examples_used,0);
+  assert.doesNotMatch(googlePrompts[0],/OTHER_ORG_SECRET/);
+  const changed={...data.invoice,invoice_number:"PRIVATE_INV_NUMBER",customer_name:"PRIVATE_CUSTOMER"};
+  const response=await handler(call("/api/vision/approve","POST",{
+    headers:{...authHeaders,"Content-Type":"application/json"},
+    body:JSON.stringify({extraction_id:data.extraction_id,document_type:"invoice",
+      document:changed,confirmed:true,intelligence_opt_in:true})
+  }));
+  assert.equal(response.status,200);
+  assert.equal((await response.json()).intelligence.status,"no_eligible_corrections");
+  assert.equal(examples.length,1);
+});
+
+test("If Intelligence storage is down, original extraction and approval still work",async()=>{
+  const {handler,call,googlePrompts}=mockBackend({memoryReadFails:true,memorySaveFails:true});
+  const form=new FormData();form.append("file",new File([new Uint8Array([255,216,1])],"a.jpg",{type:"image/jpeg"}));
+  form.append("document_type","invoice");
+  const scanned=await handler(call("/api/vision/extract","POST",{body:form}));
+  assert.equal(scanned.status,200);
+  const data=await scanned.json();
+  assert.equal(data.intelligence.examples_used,0);
+  const response=await handler(call("/api/vision/approve","POST",{
+    headers:{...authHeaders,"Content-Type":"application/json"},
+    body:JSON.stringify({extraction_id:data.extraction_id,document_type:"invoice",
+      document:{...data.invoice,supplier_name:"CORRECTED"},confirmed:true,intelligence_opt_in:true})
+  }));
+  assert.equal(response.status,200);
+  assert.equal((await response.json()).intelligence.status,"save_failed");
+  assert.ok(!googlePrompts[0].includes("Billy Intelligence: examples"));
 });
