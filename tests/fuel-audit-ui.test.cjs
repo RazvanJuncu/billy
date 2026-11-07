@@ -32,7 +32,7 @@ test("Original form label and handwriting remain distinct from interpretation",(
 test("Original Gemini draft can be exported before approval and is never overwritten",()=>{
   assert.match(review,/function exportRawJSON/);
   assert.match(review,/unverified_gemini_output/);
-  assert.match(review,/Download original Gemini JSON \(unverified\)/);
+  assert.match(review,/Download original AI engine JSON \(unverified\)/);
   assert.match(review,/original_extraction:original/);
   assert.match(review,/changes_from_original:auditChanges\(\)/);
   assert.match(simple,/original_extraction:initial/);
