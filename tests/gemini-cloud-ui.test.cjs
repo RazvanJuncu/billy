@@ -77,6 +77,18 @@ function mockBackend(opts={}) {
       return new Response(JSON.stringify(rows.reverse()),{status:200});
     }
     if(url.pathname.endsWith("/document_records")){
+      if(init.method==="DELETE"){
+        const id=url.searchParams.get("id")?.replace(/^eq\./,"");
+        const org=url.searchParams.get("organization_id")?.replace(/^eq\./,"");
+        const creator=url.searchParams.get("created_by")?.replace(/^eq\./,"");
+        const record=stored.get(id);
+        if(!record||record.organization_id!==org||record.created_by!==creator)
+          return new Response("[]",{status:200});
+        stored.delete(id);
+        for(let i=examples.length-1;i>=0;i--)
+          if(examples[i].source_record_id===id)examples.splice(i,1);
+        return new Response(JSON.stringify([{id}]),{status:200});
+      }
       if(init.method==="POST"){
         const entry=JSON.parse(init.body);
         stored.set(entry.id,entry);
@@ -493,4 +505,67 @@ test("If Intelligence storage is down, original extraction and approval still wo
   assert.equal(response.status,200);
   assert.equal((await response.json()).intelligence.status,"save_failed");
   assert.ok(!googlePrompts[0].includes("Billy Intelligence: examples"));
+});
+
+test("Creator can delete one cloud document, and its Intelligence examples are removed",async()=>{
+  const {handler,call,stored,examples}=mockBackend();
+  const form=new FormData();
+  form.append("file",new File([new Uint8Array([255,216,7])],"file.jpg",{type:"image/jpeg"}));
+  form.append("document_type","invoice");
+  const extracted=await handler(call("/api/vision/extract","POST",{body:form}));
+  const data=await extracted.json();
+  assert.equal(extracted.status,200);
+  assert.equal(stored.has(data.extraction_id),true);
+  examples.push({
+    source_record_id:data.extraction_id,organization_id:ORG,document_type:"invoice",
+    original_text:"OLD",corrected_text:"NEW",field_path:"supplier_name"
+  });
+  const deleted=await handler(call("/api/vision/delete","POST",{
+    headers:{...authHeaders,"Content-Type":"application/json"},
+    body:JSON.stringify({record_id:data.extraction_id})
+  }));
+  assert.equal(deleted.status,200);
+  const json=await deleted.json();
+  assert.equal(json.deleted,true);
+  assert.equal(json.record_id,data.extraction_id);
+  assert.equal(json.intelligence_examples_removed_with_record,true);
+  assert.equal(stored.has(data.extraction_id),false);
+  assert.equal(examples.length,0);
+  const history=await handler(call("/api/vision/records"));
+  const records=(await history.json()).records;
+  assert.equal(records.length,0);
+  const again=await handler(call("/api/vision/delete","POST",{
+    headers:{...authHeaders,"Content-Type":"application/json"},
+    body:JSON.stringify({record_id:data.extraction_id})
+  }));
+  assert.equal(again.status,404);
+});
+
+test("Cloud deletion rejects other creators, malformed IDs and unauthenticated callers",async()=>{
+  const {handler,call,stored}=mockBackend();
+  const form=new FormData();
+  form.append("file",new File([new Uint8Array([255,216,7])],"file.jpg",{type:"image/jpeg"}));
+  form.append("document_type","invoice");
+  const extracted=await handler(call("/api/vision/extract","POST",{body:form}));
+  const id=(await extracted.json()).extraction_id;
+  stored.get(id).created_by="99999999-9999-4999-8999-999999999999";
+  const request=record_id=>call("/api/vision/delete","POST",{
+    headers:{...authHeaders,"Content-Type":"application/json"},
+    body:JSON.stringify({record_id})
+  });
+  const notOwner=await handler(request(id));
+  assert.equal(notOwner.status,404);
+  assert.equal(stored.has(id),true);
+  const malformed=await handler(request("../../records"));
+  assert.equal(malformed.status,400);
+  assert.equal(stored.has(id),true);
+  const untrusted=await handler(call("/api/vision/delete","POST",{
+    headers:{"Content-Type":"application/json","X-Billy-Organization":ORG,"apikey":"public"},
+    body:JSON.stringify({record_id:id})
+  }));
+  assert.equal(untrusted.status,401);
+  assert.equal(stored.has(id),true);
+  const wrongMethod=await handler(call("/api/vision/delete","GET"));
+  assert.equal(wrongMethod.status,405);
+  assert.equal(stored.has(id),true);
 });
