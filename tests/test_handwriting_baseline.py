@@ -158,7 +158,7 @@ class PretrainedTrOCRTests(unittest.TestCase):
         ):
             reply = TestClient(app).post(
                 "/api/vision/extract",
-                files={"file": ("example.jpg", b"\\xff\\xd8demo", "image/jpeg")},
+                files={"file": ("example.jpg", b"\xff\xd8demo", "image/jpeg")},
                 data={"document_type": "invoice"},
             )
         self.assertEqual(reply.status_code, 200, reply.text)
