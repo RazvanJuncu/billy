@@ -149,6 +149,82 @@ FUEL_PROMPT = (
     "If this is not a fuel release, use null fields and explain it in notes."
 )
 
+# Gemini can estimate visible bounding boxes, but does NOT provide calibrated
+# probabilities that a particular transcription is right.
+_EVIDENCE_ITEM = {
+    "type": "object",
+    "properties": {
+        "field_path": {"type": "string"},
+        "page": {"type": "integer"},
+        "box_2d": {"type": "array", "items": {"type": "integer"}},
+        "transcription": _field(),
+    },
+    "required": ["field_path", "page", "box_2d", "transcription"],
+    "additionalProperties": False,
+}
+_EVIDENCE_INSTRUCTIONS = (
+    " In addition to the extracted fields, return 'regions': one localized area "
+    "for every nonempty field you can actually find on the provided document, "
+    "including line-item cells where feasible. Each region needs field_path "
+    "(e.g. invoice_number, grand_total, lines[0].quantity, "
+    "handwritten_entries[0].transcription), page number starting at 1, "
+    "box_2d [ymin,xmin,ymax,xmax] integers normalized to 0..1000 "
+    "relative to that page, and the exact visible transcription. "
+    "Do not invent locations, field values, or confidence percentages; "
+    "omit unlocatable fields. Page coordinates are estimates requiring review."
+)
+
+
+def _schema_with_regions(base: dict) -> dict:
+    # Avoid mutating the static schemas consumed by existing callers/tests.
+    return {
+        **base,
+        "properties": {**base["properties"], "regions": {
+            "type": "array", "items": _EVIDENCE_ITEM,
+        }},
+        "required": [*base["required"], "regions"],
+    }
+
+
+def _clean_regions(raw: object, document_type: str) -> list[dict]:
+    """Reject fabricated/invalid paths or out-of-page geometries from AI."""
+    if not isinstance(raw, list):
+        return []
+    primary = _TEXT_KEYS if document_type == "invoice" else FUEL_KEYS
+    child = _LINE_KEYS if document_type == "invoice" else ("label", "transcription", "legibility")
+    group = "lines" if document_type == "invoice" else "handwritten_entries"
+    regions = []
+    seen = set()
+    for item in raw[:300]:
+        if not isinstance(item, dict):
+            continue
+        path = item.get("field_path")
+        if not isinstance(path, str) or len(path) > 90:
+            continue
+        accepted = path in primary
+        if not accepted:
+            match = re.fullmatch(rf"{group}\\[(\\d+)\\]\\.([a-z_]+)", path)
+            accepted = bool(match and int(match.group(1)) < 200 and match.group(2) in child)
+        page, box = item.get("page"), item.get("box_2d")
+        if not accepted or type(page) is not int or not 1 <= page <= 30:
+            continue
+        if (not isinstance(box, list) or len(box) != 4 or
+                any(type(v) is not int or v < 0 or v > 1000 for v in box)):
+            continue
+        y1, x1, y2, x2 = box
+        if x2 <= x1 or y2 <= y1 or (page, path) in seen:
+            continue
+        seen.add((page, path))
+        transcription = item.get("transcription")
+        regions.append({
+            "field_path": path, "page": page, "box_2d": box,
+            "transcription": transcription[:500] if isinstance(transcription, str) else None,
+        })
+        if len(regions) >= 180:
+            break
+    return regions
+
+
 def validate_fuel_release(document: FuelRelease) -> list[str]:
     warnings: list[str] = []
     if not document.aircraft_registration:
@@ -240,7 +316,7 @@ def selected_model() -> str:
 class VisionProviderError(RuntimeError):
     pass
 
-async def extract_document(name: str, content: bytes, document_type: str = "invoice", *, client: httpx.AsyncClient | None = None) -> dict[str, Any]:
+async def extract_document(name: str, content: bytes, document_type: str = "invoice", *, client: httpx.AsyncClient | None = None, feedback_guidance: str = "") -> dict[str, Any]:
     if document_type not in {"invoice", "fuel_release"}:
         raise ValueError("Unsupported Billy document type.")
     mime = mime_for_document(name, content)
@@ -250,12 +326,12 @@ async def extract_document(name: str, content: bytes, document_type: str = "invo
     model = selected_model()
     request_json = {
         "contents": [{"role": "user", "parts": [
-            {"text": FUEL_PROMPT if document_type == "fuel_release" else PROMPT},
+            {"text": (FUEL_PROMPT if document_type == "fuel_release" else PROMPT) + _EVIDENCE_INSTRUCTIONS + (" " + feedback_guidance[:700] if feedback_guidance else "")},
             {"inline_data": {"mime_type": mime, "data": base64.b64encode(content).decode("ascii")}}
         ]}],
         "generationConfig": {
             "responseMimeType": "application/json",
-            "responseJsonSchema": FUEL_SCHEMA if document_type == "fuel_release" else SCHEMA,
+            "responseJsonSchema": _schema_with_regions(FUEL_SCHEMA if document_type == "fuel_release" else SCHEMA),
             "maxOutputTokens": 8192,
         },
         "store": False,
@@ -281,7 +357,11 @@ async def extract_document(name: str, content: bytes, document_type: str = "invo
         data = response.json()
         parts = data["candidates"][0]["content"]["parts"]
         text = "".join(str(part.get("text", "")) for part in parts if not part.get("thought"))
-        document = (FuelRelease if document_type == "fuel_release" else Invoice).model_validate(json.loads(text))
+        parsed = json.loads(text)
+        if not isinstance(parsed, dict):
+            raise ValueError("Structured response was not a document object.")
+        regions = _clean_regions(parsed.pop("regions", []), document_type)
+        document = (FuelRelease if document_type == "fuel_release" else Invoice).model_validate(parsed)
     except (ValueError, KeyError, IndexError, TypeError) as exc:
         raise VisionProviderError("Gemini returned no valid structured document; review the model setup.") from exc
     usage = data.get("usageMetadata", {})
@@ -299,7 +379,8 @@ async def extract_document(name: str, content: bytes, document_type: str = "invo
             "output_tokens": usage.get("candidatesTokenCount"),
             "total_tokens": usage.get("totalTokenCount"),
         },
-        "confidence": None,  # Calibrated confidence requires a measured benchmark.
+        "confidence": None,  # Not a Gemini-generated or calibrated probability.
+        "regions": regions,  # Estimated coordinates only; always requires visual review.
     }
 
 
