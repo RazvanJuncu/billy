@@ -88,9 +88,15 @@
         // even when it calls its primary choice "clear". Do not silently mark green.
         const normalized=v=>String(v??"").toUpperCase().replace(/[^A-Z0-9]/g,"");
         const chosen=normalized(value);
-        const alternate=(region.alternate_readings||[]).find(a=>
-          normalized(a)&&normalized(a)!==chosen
-        );
+        const alternate=(region.alternate_readings||[]).find(a=>{
+          const other=normalized(a);
+          if(!other||other===chosen)return false;
+          // A single optional prefix (e.g. "M 04569" vs "04569") isn't
+          // necessarily an alternate reading of the handwritten digits.
+          if(chosen.endsWith(other)&&chosen.length-other.length<=1)return false;
+          if(other.endsWith(chosen)&&other.length-chosen.length<=1)return false;
+          return true;
+        });
         if(alternate&&severity.yellow>severity[level]){
           level="yellow";
           reason="AI also considered '"+String(alternate).slice(0,90)+"'. Verify the original writing.";
