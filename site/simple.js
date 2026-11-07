@@ -117,10 +117,10 @@
     $("simpleProcessStatus").textContent = ready
       ? ""
       : state.connecting
-        ? "Connecting to Billy Gemini cloud…"
+        ? "Connecting to the AI engine…"
         : state.error
-          ? "Gemini connection failed: " + state.error
-          : "Gemini is disconnected. Select Retry Gemini connection.";
+          ? "AI engine connection failed: " + state.error
+          : "The AI engine is disconnected. Select Retry AI engine connection.";
   }
 
   function updateUpload() {
@@ -305,7 +305,7 @@
       if(navigation.children.length)list.appendChild(navigation);
     }catch(error){
       const info=document.createElement("p");
-      info.textContent="Cloud history unavailable. Check your Gemini connection and team membership.";
+      info.textContent="Cloud history unavailable. Check the AI engine connection and team membership.";
       list.appendChild(info);
     }
   }
