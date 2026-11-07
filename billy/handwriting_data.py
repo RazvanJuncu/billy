@@ -134,6 +134,9 @@ def _crop(image, box: list[int]):
     lower = min(h, int(ymax * h / 1000) + padding_y)
     if right - left < 14 or lower - upper < 8:
         raise ValueError("Region is too small to train on.")
+    # TrOCR reads single text lines, not whole pages or multi-row tables.
+    if ymax - ymin > 220 or (xmax - xmin) * (ymax - ymin) > 180_000:
+        raise ValueError("Region looks too large or multiline for TrOCR.")
     return image.crop((left, upper, right, lower))
 
 
