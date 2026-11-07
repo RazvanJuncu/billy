@@ -43,7 +43,25 @@ function mockBackend(opts={}) {
       return new Response(JSON.stringify({id:UID,email_confirmed_at:"2026-01-01T00:00:00Z"}),{status:200});
     if(url.pathname.endsWith("/organization_memberships"))
       return new Response(JSON.stringify(opts.noMembership?[]:[{role:"owner"}]),{status:200});
-    if(url.hostname==="generativelanguage.googleapis.com")return googleResponse();
+    if(url.hostname==="generativelanguage.googleapis.com"){
+      const body=JSON.parse(init.body);
+      const prompt=body.contents[0].parts[0].text||"";
+      if(prompt.includes("Independently check whether the supplied field values")){
+        const checks=opts.recheckChecks||[
+          {field_path:"supplier_name",status:"match",reason:"Visible"},
+          {field_path:"invoice_number",status:"match",reason:"Visible"},
+          {field_path:"issue_date",status:"match",reason:"Visible"},
+          {field_path:"currency",status:"match",reason:"Visible"},
+          {field_path:"subtotal",status:"match",reason:"Visible"},
+          {field_path:"vat_total",status:"match",reason:"Visible"},
+          {field_path:"grand_total",status:"match",reason:"Visible"}
+        ];
+        return new Response(JSON.stringify({candidates:[{content:{parts:[{text:JSON.stringify({checks})}]}}]}),{
+          status:200,headers:{"Content-Type":"application/json"}
+        });
+      }
+      return googleResponse();
+    }
     if(url.pathname.endsWith("/document_records")){
       if(init.method==="POST"){
         const entry=JSON.parse(init.body);
@@ -245,4 +263,64 @@ test("Meter mismatch, suspicious digits, and unclear regions are flagged",()=>{
   one.meter_start="43O1809";
   assert.ok(vm.runInNewContext("validate",sandbox)(one,"fuel_release",[])
     .some(w=>w.includes("invalid or ambiguous digits")));
+});
+
+test("Recheck compares reviewed values against the exact original file without overwriting source",async()=>{
+  const {handler,call,stored,calls}=mockBackend({recheckChecks:[
+    {field_path:"supplier_name",status:"match",reason:"Visible"},
+    {field_path:"invoice_number",status:"mismatch",reason:"Image clearly says INV-42"},
+    {field_path:"grand_total",status:"unclear",reason:"Faint printed digits"}
+  ]});
+  const bytes=new Uint8Array([255,216,5,6,7,8]);
+  const form=new FormData();
+  form.append("file",new File([bytes],"doc.jpg",{type:"image/jpeg"}));
+  form.append("document_type","invoice");
+  const extracted=await handler(call("/api/vision/extract","POST",{body:form}));
+  assert.equal(extracted.status,200);
+  const data=await extracted.json();
+  const amended={...data.invoice,invoice_number:"INV-43"};
+  const check=new FormData();
+  check.append("file",new File([bytes],"doc.jpg",{type:"image/jpeg"}));
+  check.append("document_type","invoice");
+  check.append("extraction_id",data.extraction_id);
+  check.append("reviewed_document",JSON.stringify(amended));
+  const response=await handler(call("/api/vision/recheck","POST",{body:check}));
+  assert.equal(response.status,200);
+  const result=await response.json();
+  assert.equal(result.checks.find(x=>x.field_path==="invoice_number").status,"mismatch");
+  assert.equal(result.checks.find(x=>x.field_path==="grand_total").status,"unclear");
+  assert.equal(result.approval_unlocked,false);
+  assert.ok(result.unverified_count>=2);
+  assert.ok(result.checks.every(x=>x.status!=="match"||x.field_path!=="grand_total"));
+  assert.equal(stored.get(data.extraction_id).extracted_data.invoice_number,"INV-42");
+  assert.equal(stored.get(data.extraction_id).reviewed_data,undefined);
+  assert.equal(calls.filter(x=>x.url.includes("generativelanguage.googleapis.com")).length,2);
+  const tampered=new FormData();
+  tampered.append("file",new File([new Uint8Array([255,216,9])],"doc.jpg",{type:"image/jpeg"}));
+  tampered.append("document_type","invoice");
+  tampered.append("extraction_id",data.extraction_id);
+  tampered.append("reviewed_document",JSON.stringify(amended));
+  const rejected=await handler(call("/api/vision/recheck","POST",{body:tampered}));
+  assert.equal(rejected.status,409);
+});
+
+test("Recheck treats omitted AI field checks as unclear, never green",async()=>{
+  const {handler,call}=mockBackend({recheckChecks:[]});
+  const bytes=new Uint8Array([255,216,5,6,7,8]);
+  const form=new FormData();
+  form.append("file",new File([bytes],"doc.jpg",{type:"image/jpeg"}));
+  form.append("document_type","invoice");
+  const extracted=await handler(call("/api/vision/extract","POST",{body:form}));
+  const prediction=await extracted.json();
+  const check=new FormData();
+  check.append("file",new File([bytes],"doc.jpg",{type:"image/jpeg"}));
+  check.append("document_type","invoice");
+  check.append("extraction_id",prediction.extraction_id);
+  check.append("reviewed_document",JSON.stringify(prediction.invoice));
+  const response=await handler(call("/api/vision/recheck","POST",{body:check}));
+  assert.equal(response.status,200);
+  const result=await response.json();
+  assert.ok(result.checked_count>0);
+  assert.equal(result.checked_count,result.unverified_count);
+  assert.ok(result.checks.every(x=>x.status==="unclear"));
 });
