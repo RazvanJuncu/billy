@@ -618,15 +618,20 @@ async function approve(req,principal){
     review_metadata:{not_on_document:absentPaths,origin:"operator_confirmation"},
     intelligence:memory,posted_to_excel:false});
 }
-async function listRecords(principal) {
+async function listRecords(principal,req) {
+  const raw=new URL(req.url).searchParams.get("offset")||"0";
+  if(!/^\d{1,6}$/.test(raw)||Number(raw)>999999)return error("Invalid records offset.",400);
+  const offset=Number(raw);
   const rows=await database(principal,"GET","document_records",{
     select:"id,created_by,document_type,state,created_at,approved_at,model_name,source_sha256,extracted_data,reviewed_data,review_metadata,regions_data,validation_warnings",
-    organization_id:"eq."+principal.organization_id,order:"created_at.desc",limit:"50"
+    organization_id:"eq."+principal.organization_id,order:"created_at.desc",offset:String(offset),limit:"51"
   });
-  return json({records:rows.map(record=>({
+  const page=rows.slice(0,50);
+  const hasMore=rows.length>50;
+  return json({records:page.map(record=>({
     ...record,
     original_validation_warnings:validate(record.extracted_data||{},record.document_type,record.regions_data||[])
-  }))});
+  })),has_more:hasMore,next_offset:hasMore?offset+page.length:null});
 }
 
 // Deleting pilot records is explicit, permanent, and restricted to the creator.
@@ -675,7 +680,7 @@ Deno.serve(async req=>{
     if(suffix==="/api/vision/recheck")return await recheck(req,principal);
     if(suffix==="/api/vision/approve")return await approve(req,principal);
     if(suffix==="/api/vision/delete")return await deleteRecord(req,principal);
-    return await listRecords(principal);
+    return await listRecords(principal,req);
   }catch(e){
     console.error("Billy Vision backend error:",e instanceof Error?e.message:"unknown");
     return error("Billy Vision is temporarily unavailable. Check the server logs.",503);
