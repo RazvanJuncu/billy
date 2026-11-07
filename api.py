@@ -23,6 +23,7 @@ from billy.vision import (
 )
 from billy.accounts import Principal, require_member
 from billy.records import record_extraction, save_approval, feedback_summary
+from billy.handwriting_data import capture_enabled, collect_verified_crops
 
 ALLOWED_WEB_ORIGINS = {
     "https://razvanjuncu.github.io",
@@ -140,6 +141,7 @@ async def vision_extract(
             for key, item in feedback["fields"].items()
         }
         result["feedback_example_count"] = feedback["samples"]
+        result["handwriting_training_capture_enabled"] = capture_enabled()
         return result
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -160,3 +162,31 @@ def vision_approve(payload: VisionApproval, principal: Principal = Depends(requi
     except sqlite3.DatabaseError:
         log.exception("Local approval journal unavailable")
         raise HTTPException(status_code=500, detail="Could not save the reviewed document.") from None
+
+
+@app.post("/api/handwriting/examples")
+async def add_handwriting_examples(
+    extraction_id: uuid.UUID = Form(...),
+    training_consent: bool = Form(False),
+    file: UploadFile = File(...),
+    principal: Principal = Depends(require_member),
+):
+    """After explicit approval, accept *only* the original source file.
+
+    Regions and labels come exclusively from server-owned, team-scoped records.
+    This request does not trigger a heavyweight model training job.
+    """
+    if not capture_enabled():
+        raise HTTPException(status_code=503, detail="Handwriting training collection is not enabled.")
+    if not training_consent:
+        raise HTTPException(status_code=400, detail="Explicit training-data consent is required.")
+    content = await file.read(MAX_VISION_BYTES + 1)
+    filename = file.filename or "document"
+    await file.close()
+    try:
+        return collect_verified_crops(extraction_id, content, filename, principal)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except (sqlite3.DatabaseError, OSError):
+        log.exception("Could not store approved handwriting example")
+        raise HTTPException(status_code=500, detail="Could not queue training examples.") from None
