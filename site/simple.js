@@ -256,8 +256,8 @@
         if(ownsRecord){
           const remove=makeDeleteButton(name.textContent,async()=>{
             if(remove.disabled)return;
-            const message="Permanently delete this Billy cloud record?\\n\\n"+
-              name.textContent+"\\n\\nThis removes its approved/extracted data and any Billy Intelligence examples linked to it. It cannot be undone.";
+            const message="Permanently delete this Billy cloud record?\n\n"+
+              name.textContent+"\n\nThis removes its approved/extracted data and any Billy Intelligence examples linked to it. It cannot be undone.";
             if(!window.confirm(message))return;
             remove.disabled=true;remove.textContent="Deleting…";
             try{
