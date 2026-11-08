@@ -821,7 +821,7 @@ async function recheck(req,principal) {
     const m=path.match(/^(lines|handwritten_entries)\[(\d+)\]\.([a-z_]+)$/);
     const value=m?reviewed[m[1]][Number(m[2])][m[3]]:reviewed[path];
     const pair=(record.translation_metadata?.translations||[])
-      .find(row=>row.field_path===path&&row.english_text===value);
+      .find(row=>row.field_path===path);
     return pair?{field_path:path,value,source_text:pair.source_text}:{field_path:path,value};
   });
   const payload={
@@ -883,7 +883,7 @@ async function approve(req,principal){
     absentPaths=checkedAbsentPaths(data.not_on_document,checked,data.document_type);
   }catch{return error("Approved document or absent-field selections are invalid.",400);}
   const owned=await database(principal,"GET","document_records",{
-    "select":"id,document_type,extracted_data,regions_data,state",
+    "select":"id,document_type,extracted_data,regions_data,translation_metadata,state",
     "id":"eq."+data.extraction_id,"organization_id":"eq."+principal.organization_id,
     "created_by":"eq."+principal.user_id,"limit":"1"
   });
@@ -918,11 +918,16 @@ async function approve(req,principal){
   const memory={opted_in:consent,examples_saved:0,corrections_saved:0,
     confirmations_saved:0,status:consent?"no_eligible_corrections":"not_requested"};
   if(consent){
+    // Translated prose is not a visual glyph correction. Don't teach issue
+    // memory a false cross-language 0/9 example from English wording edits.
+    const translatedPaths=new Set((source.translation_metadata?.translations||[])
+      .map(pair=>pair?.field_path).filter(path=>typeof path==="string"));
     const lessons=[
       ...correctionLessons(source.extracted_data,checked,data.document_type),
       ...confirmationLessons(source.extracted_data,checked,data.document_type,
         source.regions_data||[],confirmationClaims)
-    ].map(lesson=>issueForLesson(lesson,source.regions_data||[],data.document_type));
+    ].filter(lesson=>!translatedPaths.has(lesson.field_path))
+     .map(lesson=>issueForLesson(lesson,source.regions_data||[],data.document_type));
     if(lessons.length){
       try{
         const rows=await database(principal,"POST","billy_intelligence_examples",{},lessons.map(lesson=>({
