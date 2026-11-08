@@ -47,7 +47,7 @@ test("Review highlights uncertain evidence and browser cache version is advanced
   assert.match(review,/review-field-alert/);
   assert.match(css,/review-field-alert/);
   assert.match(html,/vision-review\.js\?v=0\.10\.6/);
-  assert.match(html,/simple\.js\?v=1\.2\.13/);
+  assert.match(html,/simple\.js\?v=1\.2\.14/);
   assert.match(read("site/sw.js"),/v49-learning-optin-audit/);
 });
 
