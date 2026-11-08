@@ -113,9 +113,10 @@ test("Billy Intelligence is explicitly opt-in and shown without replacing ramp r
   assert.match(ramp,/intelCheckbox\.checked=false/);
   assert.match(ramp,/window\.BillyReview\.intelligenceOptIn=\(\)=>intelCheckbox\.checked/);
   assert.match(ramp,/window\.BillyReview\.intelligenceOptIn=null/);
-  assert.match(ramp,/team-only text examples; no image archive/);
+  assert.match(ramp,/Learn from my corrections and confirmations \(team-only text examples\)/);
   assert.match(css,/\.ramp-intelligence-consent\{/);
   assert.match(review,/intelligence_opt_in:window\.BillyReview\?\.intelligenceOptIn\?\.\(\)===true/);
+  assert.match(review,/manual_confirmations:window\.BillyReview\?\.rampAudit\?\.\(\)\?\.manual_confirmations\|\|\[\]/);
   assert.match(review,/intelligence:approvalResult\?\.intelligence\|\|null/);
 });
 test("Historical corrections are text-only, tenant-scoped, and never treated as current OCR values",()=>{
@@ -174,4 +175,16 @@ test("Competing readings override Gemini's own visually clear classification",()
   assert.equal(classify("fueler_name",doc,"fuel_release",[
     region("fueler_name",["EO","EF"],"ambiguous")
   ],[]).level,"red");
+});
+
+test("Human checks create a separate Intelligence signal, not a calibrated AI confidence",()=>{
+  assert.match(ramp,/manual_confirmations:\[\.\.\.humanReviewed\]/);
+  assert.match(ramp,/ambiguity_acknowledgements:\[\.\.\.manualAcknowledged\]/);
+  assert.match(backend,/function confirmationLessons\(before,after,type,regions,claims\)/);
+  assert.match(backend,/if\(!region\)continue/);
+  assert.match(backend,/if\(!a\|\|!b\|\|a!==b\)continue/);
+  assert.match(backend,/feedback_type:"confirmed"/);
+  assert.match(backend,/Never declare clarity or suppress a warning/);
+  assert.match(backend,/manual_confirmations:confirmationClaims/);
+  assert.match(backend,/model_fine_tuned:false/);
 });
