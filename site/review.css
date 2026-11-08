@@ -53,3 +53,6 @@
 .review-warnings{border-color:#70563d;background:#29231f}
 .review-warnings strong{color:#f1d3ac}
 .review-warnings p{color:#e5c7a3}
+
+/* Source-language audit label: the Excel result is English, source data stays available. */
+.review-translation-note{font-size:12px;line-height:1.5;color:#bcc0c7;margin:11px 0 17px}
