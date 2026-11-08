@@ -141,3 +141,25 @@
   .ramp-minor-actions{justify-content:flex-start;gap:3px 17px}
 }
 @media(prefers-reduced-motion:reduce){.ramp-field-detail{scroll-behavior:auto}}
+
+/* Missing field: remove empty evidence panels and make the decision immediate. */
+.ramp-field-detail.ramp-missing{padding:19px 21px 18px}
+.ramp-field-detail.ramp-missing .ramp-field-title{
+  margin:0 0 13px!important;font-size:21px;letter-spacing:-.025em;
+  color:#f1f2f4
+}
+.ramp-source-crop[hidden],.ramp-source-caption[hidden],
+.ramp-field-detail .ramp-reason[hidden],.ramp-minor-actions .ramp-not-present[hidden]{
+  display:none!important
+}
+.ramp-field-detail.ramp-missing .ramp-detail-actions{
+  margin:0;gap:9px
+}
+.ramp-field-detail.ramp-missing .ramp-minor-actions{margin-top:8px}
+.ramp-field-detail.ramp-missing .ramp-field-input:not([hidden]){
+  margin:0 0 13px
+}
+@media(max-width:720px){
+  .ramp-field-detail.ramp-missing{padding:18px 15px 15px}
+  .ramp-field-detail.ramp-missing .ramp-field-title{font-size:20px}
+}
