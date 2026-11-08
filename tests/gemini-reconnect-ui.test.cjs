@@ -23,7 +23,7 @@ test("Process Document retries automatically, with a manual visible fallback",()
  assert.match(config,/apiUrl: "https:\/\//);
 });
 test("PWA uses refreshed assets after an earlier disconnected session",()=>{
- assert.match(html,/app\.js\?v=0\.6\.9/);
+ assert.match(html,/app\.js\?v=0\.7\.0/);
  assert.match(html,/simple\.js\?v=1\.3\.0/);
  assert.match(sw,/v55-gemini-only/);
 });
