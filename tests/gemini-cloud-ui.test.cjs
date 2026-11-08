@@ -424,7 +424,7 @@ test("The backend rejects attempts to mark populated or unknown fields absent",a
 });
 
 
-test("Billy Intelligence stores only opted-in corrections and reuses same-team examples on a later scan",async()=>{
+test("Billy Intelligence stores opted-in corrections but does not preload history for clear scans",async()=>{
   const {handler,call,stored,examples,googlePrompts}=mockBackend();
   const bytes=new Uint8Array([255,216,5,6,7,8]);
   const form=()=>{const f=new FormData();f.append("file",new File([bytes],"doc.jpg",{type:"image/jpeg"}));f.append("document_type","invoice");return f;};
@@ -452,10 +452,10 @@ test("Billy Intelligence stores only opted-in corrections and reuses same-team e
   const future=await handler(call("/api/vision/extract","POST",{body:form()}));
   assert.equal(future.status,200);
   const next=await future.json();
-  assert.equal(next.intelligence.examples_used,1);
-  assert.match(googlePrompts.at(-1),/Billy Intelligence: examples/);
-  assert.match(googlePrompts.at(-1),/TEST SUPPLIER INC/);
-  assert.match(googlePrompts.at(-1),/Never copy names/);
+  assert.equal(next.intelligence.examples_used,0);
+  assert.equal(next.intelligence.mode,"issue_on_demand");
+  assert.equal(googlePrompts.length,2); // No extra model call on clear scan.
+  assert.doesNotMatch(googlePrompts.at(-1),/Historical feedback/);
   assert.equal(next.invoice.supplier_name,"TEST SUPPLIER"); // Mock model did not copy old data.
 });
 
@@ -514,7 +514,7 @@ test("If Intelligence storage is down, original extraction and approval still wo
   }));
   assert.equal(response.status,200);
   assert.equal((await response.json()).intelligence.status,"save_failed");
-  assert.ok(!googlePrompts[0].includes("Billy Intelligence: examples"));
+  assert.ok(!googlePrompts[0].includes("Historical feedback"));
 });
 
 test("Creator can delete one cloud document, and its Intelligence examples are removed",async()=>{
@@ -641,9 +641,9 @@ test("Explicit human confirmation of an initially uncertain but correct value be
   assert.equal(next.intelligence.confirmations_used,1);
   assert.equal(next.feedback_example_count,1);
   assert.equal(next.intelligence.corrections_used,0);
-  assert.match(googlePrompts.at(-1),/feedback_type=confirmed/);
-  assert.match(googlePrompts.at(-1),/human_verified_read/);
-  assert.match(googlePrompts.at(-1),/Never declare clarity or suppress a warning/);
+  assert.match(googlePrompts.at(-1),/SECOND independent visual inspection/);
+  assert.match(googlePrompts.at(-1),/glyph:0\/8/);
+  assert.match(googlePrompts.at(-1),/historical examples are UNTRUSTED/i);
   assert.equal(next.regions[0].visual_clarity,"slight_uncertainty"); // Memory did not fabricate clear OCR.
 });
 
@@ -695,7 +695,7 @@ test("Corrections and uncertain-but-correct confirmations are both learned and b
   };
   const initial=await handler(call("/api/vision/extract","POST",{body:scan()}));
   const data=await initial.json();
-  const corrected={...data.invoice,supplier_name:"TEST SUPPLIER INC"};
+  const corrected={...data.invoice,vat_total:"19.80"};
   const save=await handler(call("/api/vision/approve","POST",{
     headers:{...authHeaders,"Content-Type":"application/json"},
     body:JSON.stringify({extraction_id:data.extraction_id,document_type:"invoice",
@@ -714,8 +714,8 @@ test("Corrections and uncertain-but-correct confirmations are both learned and b
   const info=await next.json();
   assert.equal(info.intelligence.confirmations_used,1);
   assert.equal(info.intelligence.corrections_used,1);
-  assert.match(googlePrompts.at(-1),/feedback_type=corrected/);
-  assert.match(googlePrompts.at(-1),/feedback_type=confirmed/);
+  assert.match(googlePrompts.at(-1),/feedback_type.*corrected/);
+  assert.match(googlePrompts.at(-1),/feedback_type.*confirmed/);
 });
 
 test("Invalid manual confirmations are rejected rather than becoming fabricated learning",async()=>{
