@@ -504,7 +504,7 @@ async function extract(req,principal){
     validation_warnings:warnings,usage,regions,confidence:null,
     handwriting_training_capture_enabled:false,
     handwriting_second_opinion:{status:"disabled",model_version:null,comparisons:0,disagreements:0},
-    historical_field_agreement:{},feedback_example_count:0,
+    historical_field_agreement:{},feedback_example_count:memory.length,
     intelligence:{mode:"team_examples",examples_used:memory.length,
       confirmations_used:memory.filter(item=>item.feedback_type==="confirmed").length,
       corrections_used:memory.filter(item=>item.feedback_type==="corrected").length,
