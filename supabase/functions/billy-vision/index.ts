@@ -321,7 +321,7 @@ function correctionLessons(before,after,type){
   for(let i=0;i<Math.min(before[group]?.length||0,after[group]?.length||0,100);i++){
     for(const key of keys){
       const label=group==="handwritten_entries"?after[group][i].label:null;
-      add(group+"[]."+key,before[group][i][key],after[group][i][key],label);
+      add(group+"["+i+"]."+key,before[group][i][key],after[group][i][key],label);
     }
   }
   // One document can supply multiple mistakes, but not unlimited history.
@@ -366,11 +366,10 @@ function confirmationLessons(before,after,type,regions,claims){
     if(!region)continue; // No image-localized evidence: cannot learn glyph recognition.
     const clarity=String(region.visual_clarity||"unassessed");
     if(clarity==="clear"&&!initialAlternativeDiffers(region,a))continue;
-    const normalized=path.replace(/\[\d+\]/g,"[]");
     const match=path.match(/^handwritten_entries\[(\d+)\]\./);
     const label=match?before.handwritten_entries?.[Number(match[1])]?.label:null;
     eligible.push({
-      field_path:normalized,field_label:shortLesson(label),
+      field_path:path,field_label:shortLesson(label),
       original_text:a,corrected_text:a,
       feedback_type:"confirmed",
       initial_clarity:["clear","slight_uncertainty","ambiguous","unreadable","unassessed"].includes(clarity)?
@@ -394,17 +393,18 @@ async function intelligenceHints(principal,type){
         if(selected.length>=INTELLIGENCE_MAX_EXAMPLES||
           selected.filter(item=>item.feedback_type===kind).length>=limit)break;
         if((row.feedback_type==="confirmed"?"confirmed":"corrected")!==kind)continue;
-        if(typeof row?.field_path!=="string"||!row.field_path.match(/^[a-z_]+(?:\[\]\.[a-z_]+)?$/))continue;
+        if(typeof row?.field_path!=="string"||!row.field_path.match(/^[a-z_]+(?:\[(?:\d{1,3})?\]\.[a-z_]+)?$/))continue;
         const a=shortLesson(row.original_text),b=shortLesson(row.corrected_text);
         if(!a||!b||(kind==="corrected"&&a===b)||(kind==="confirmed"&&a!==b))continue;
         const label=shortLesson(row.field_label);
-        const key=row.field_path+":"+(label||"");
+        const normalizedPath=row.field_path.replace(/\[\d+\]/g,"[]");
+        const key=normalizedPath+":"+(label||"");
         if((perField.get(key)||0)>=2)continue; // Multiple patterns, not one field dominating.
         const signature=key+":"+kind+":"+a+":"+b;
         if(seen.has(signature))continue;
         seen.add(signature);perField.set(key,(perField.get(key)||0)+1);
         selected.push({
-          field:row.field_path,label,feedback_type:kind,
+          field:normalizedPath,label,feedback_type:kind,
           previous_visual_clarity:row.initial_clarity||null,
           prior_model_read:a,human_verified_read:b
         });
