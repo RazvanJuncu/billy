@@ -137,6 +137,8 @@
     const translatedPaths=new Map(englishPairs.map(pair=>[pair.field_path,pair]));
     const previouslyVerified=new Set(
       result.intelligence_audit?.same_file?.previously_verified_paths||[]);
+    const previouslyVerifiedAbsent=new Set(
+      result.intelligence_audit?.same_file?.previously_verified_absent_paths||[]);
     const state=new Map(paths.map(path=>{
       const entry=classification(path,doc,type,regions,warnings);
       if(translatedPaths.has(path)&&entry.level==="green"){
@@ -148,11 +150,15 @@
       // Never waive red issues, changed text or new-document uncertainty.
       if(entry.level==="yellow"&&previouslyVerified.has(path)&&!translatedPaths.has(path)){
         entry.level="blue";
-        entry.reason="Previously verified by an operator on this identical file. New edits still require recheck.";
+        entry.reason=previouslyVerifiedAbsent.has(path)?
+          "Previously marked Not on document for these identical file bytes.":
+          "Previously verified by an operator on this identical file. New edits still require recheck.";
       }
       return [path,entry];
     }));
-    const humanReviewed=new Set(), manualAcknowledged=new Set(), notOnDocument=new Set();
+    const humanReviewed=new Set(), manualAcknowledged=new Set(),
+      notOnDocument=new Set([...previouslyVerifiedAbsent].filter(path=>
+        paths.includes(path)&&!substantive(valueAt(doc,path))));
     let revision=0,checkedRevision=-1,busy=false,recheckCount=0;
     let selected=null,editMode=false;
     const cropper=window.BillyQuickVerifyCrop?.create(sourceFile)||null;
