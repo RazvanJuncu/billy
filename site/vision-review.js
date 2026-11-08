@@ -287,5 +287,15 @@ function render(result,endpoint,authHeaders,sourceFile=null){
    });
  }
 }
-window.BillyReview={render,exportCSV,exportJSON,exportRawJSON,getApprovedSpreadsheetData};
+async function getLearningAudit(){
+  if(!extractId||!api||typeof getHeaders!=="function")
+    throw Error("No processed document is available to inspect.");
+  const response=await fetch(api+"/api/vision/intelligence-audit?extraction_id="+
+    encodeURIComponent(extractId),{method:"GET",headers:await getHeaders()});
+  const payload=await response.json();
+  if(!response.ok)throw Error(payload.detail||"Learning audit unavailable.");
+  return payload;
+}
+window.BillyReview={render,exportCSV,exportJSON,exportRawJSON,
+  getApprovedSpreadsheetData,getLearningAudit};
 })();
