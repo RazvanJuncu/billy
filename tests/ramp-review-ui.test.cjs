@@ -107,15 +107,11 @@ test("Blue is visually reviewed, but modified fields still require AI recheck be
   assert.match(ramp,/statusText=allResolved\(\)/);
 });
 
-test("Desktop TrOCR runs independently of Gemini and cannot auto-approve",()=>{
-  assert.match(html,/desktop-trocr\.js\?v=/);
-  assert.match(html,/ramp-review\.js\?v=/);
-  assert.match(ramp,/BillyDesktopTrOCR\.inspect/);
-  assert.match(ramp,/region\.trocr_reading=text/);
-  assert.match(ramp,/handwriting_disagreement=differs/);
-  assert.match(ramp,/level:"yellow"/);
-  assert.doesNotMatch(ramp,/previouslyVerified|intelligenceOptIn|Billy Intelligence/);
+test("Gemini-only review does not run a second browser OCR model",()=>{
+  assert.doesNotMatch(html,/desktop-trocr/i);
+  assert.doesNotMatch(ramp,/TrOCR|BillyDesktopTrOCR|compareLocalOCR|showLocalReading|handwriting_disagreement/);
   assert.doesNotMatch(backend,/billy_intelligence_examples|lookupIssueMemory|approvedIdenticalSource/);
+  assert.match(ramp,/state=new Map\(paths.map/);
 });
 test("A missing fuel unit must not mark known meter readings as critical",()=>{
   const injected=ramp.replace("  function mount(result,endpoint,getHeaders,sourceFile){",
@@ -172,28 +168,9 @@ test("Human checks remain audit metadata; no training consent or document memory
   assert.doesNotMatch(backend,/intelligence_opt_in|billy_intelligence_examples/);
 });
 
-test("Independent OCR exact agreement clears yellow, while partial and blocking warnings do not",()=>{
-  const injected=ramp.replace("  function mount(result,endpoint,getHeaders,sourceFile){",
-    "  window.__compareLocalOCR=compareLocalOCR;\n  window.__blockingWarning=blockingWarning;\n  function mount(result,endpoint,getHeaders,sourceFile){");
-  const context={window:{BillyReview:{render:()=>{}}}};
-  vm.runInNewContext(injected,context);
-  const cmp=context.window.__compareLocalOCR;
-  const blocks=context.window.__blockingWarning;
-  assert.equal(cmp("fuel_type","SHELL 80","80"),"partial");
-  assert.equal(cmp("fuel_type","SHELL 80","SHELL 80"),"match");
-  assert.equal(cmp("fuel_type","SHELL 80","100"),"different");
-  assert.equal(cmp("meter_start","71052","71052"),"match");
-  assert.equal(cmp("meter_start","12.5","125"),"different");
-  assert.equal(cmp("meter_start","71052","71053"),"different");
-  assert.equal(cmp("fuel_type","SHELL 80",""),"unusable");
-  assert.equal(blocks("meter_start",["Meter mismatch: finish minus start is 10 but delivered quantity is 14."]),true);
-  assert.equal(blocks("grand_total",["Subtotal + VAT does not match the invoice total; inspect discounts and other charges."]),true);
-  assert.equal(blocks("meter_start",["Needs verification: meter_start has ambiguous source evidence."]),false);
-  assert.match(ramp,/current.level==="yellow"&&!translatedPaths.has\(field_path\)/);
-  assert.match(ramp,/state.set\(field_path,\{level:"green"/);
-  assert.match(ramp,/!blockingWarning\(field_path,warnings\)/);
-  assert.match(ramp,/const differs=compared==="different"/);
-  assert.match(ramp,/const tag=region.trocr_comparison==="match"/);
-  assert.match(ramp,/TrOCR read: /);
-  assert.match(css,/\.ramp-local-reading\{/);
+test("Only Gemini source evidence and business rules classify fields",()=>{
+  assert.match(ramp,/function classification\(path,doc,type,regions,warnings\)/);
+  assert.match(ramp,/alternate_readings/);
+  assert.match(ramp,/Meter mismatch/);
+  assert.doesNotMatch(ramp,/compareLocalOCR|TrOCR read:|localStatus/);
 });
