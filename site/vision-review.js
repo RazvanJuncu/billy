@@ -83,7 +83,7 @@ function exportJSON(){
     translation:auditMeta?.translation||null,
     evidence_regions:auditMeta?.regions||[],
     ramp_review:window.BillyReview?.rampAudit?.()||null,
-    intelligence:approvalResult?.intelligence||null,
+    
     model:auditMeta?.model||null,approval_id:approvalResult?.approval_id||null,
     source_sha256:sha
   },null,2),"billy-approved.json","application/json");
@@ -185,20 +185,14 @@ function render(result,endpoint,authHeaders,sourceFile=null){
  const cloudReview = api.includes("/functions/v1/billy-vision");
  footer.appendChild(node("p","review-confirm-label","By clicking Submit corrections, I confirm I checked every value and unclear handwritten entry against the original document. " +
    (cloudReview ? "Approved values are stored in your team's private Billy cloud records." : "Corrections are saved to this team's local pilot feedback memory.")));
- const trainingEligible = !cloudReview && result.handwriting_training_capture_enabled === true && !!sourceFile;
- const trainingNotice = trainingEligible
-  ? "Submit & Learn securely sends only corrected, localized text crops to your team's local handwriting training queue. No model is retrained instantly. Choose Submit only to skip training."
-  : "Submit corrections saves your review. Handwriting training is off until the team explicitly enables it.";
- const footerNote = node("p","review-training-consent",trainingNotice);
- footer.appendChild(footerNote);
- approveButton=node("button","review-approve",trainingEligible?"Submit & Learn":"Submit corrections");
+ // Operator approval stores the document's reviewed values, not training crops.
+ approveButton=node("button","review-approve","Submit corrections");
  approveButton.type="button";approveButton.disabled=false;
- async function submitReview(allowTraining){
+ async function submitReview(){
    if(approved)return;
    // Ramp verification flow is a mandatory gate when active.
    if(typeof window.BillyReview?.canApprove==="function"&&!window.BillyReview.canApprove())return;
    approveButton.disabled=true;
-   if(skipTraining)skipTraining.disabled=true;
    approveButton.textContent="Saving corrections…";
    try{
      const response=await fetch(api+"/api/vision/approve",{
@@ -207,75 +201,30 @@ function render(result,endpoint,authHeaders,sourceFile=null){
        body:JSON.stringify({
          extraction_id:extractId,document_type:documentType,document:draft,confirmed:true,
          not_on_document:window.BillyReview?.rampAudit?.()?.not_on_document||[],
-         manual_confirmations:window.BillyReview?.rampAudit?.()?.manual_confirmations||[],
-         intelligence_opt_in:window.BillyReview?.intelligenceOptIn?.()===true
+         manual_confirmations:window.BillyReview?.rampAudit?.()?.manual_confirmations||[]
        })
      });
      const resultBody=await response.json();
      if(!response.ok)throw Error(resultBody.detail||"Approval was not saved");
      approved=true;approvalResult=resultBody;
-     let trainingMessage="Handwriting fine-tuning was not requested.";
-     if(allowTraining && trainingEligible){
-       approveButton.textContent="Queueing handwriting examples…";
-       const form=new FormData();
-       form.append("file",sourceFile,sourceFile.name||"document");
-       form.append("extraction_id",extractId);
-       form.append("training_consent","true");
-       try{
-         // User must deliberately choose Submit & Learn; no hidden data collection.
-         const reply=await fetch(api+"/api/handwriting/examples",{
-           method:"POST",headers:{...await getHeaders()},body:form
-         });
-         const feedback=await reply.json();
-         if(!reply.ok)throw Error(feedback.detail||"The training queue rejected this sample.");
-         trainingMessage=feedback.examples_added
-           ? feedback.examples_added+" verified crop(s) queued for team-specific TrOCR fine-tuning; model weights are unchanged until validated training runs."
-           : "Review saved, but no corrected field had a usable matching image region. No training crop was stored.";
-       }catch(error){
-         trainingMessage="Review saved, but handwriting sample collection failed: "+(error.message||"Unknown error")+
-           ". No fine-tuning is implied.";
-       }
-     }
      approveButton.textContent="Submitted · record "+resultBody.approval_id;
-     const saved=resultBody.intelligence;
-     const intelligenceInfo=saved?.status==="saved"
-       ?" Billy Intelligence saved "+saved.corrections_saved+" correction(s) and "+
-         saved.confirmations_saved+" human-confirmed uncertain reading(s); "+
-         (saved.indexed_saved??0)+" indexed for future issue retrieval."+
-         (saved.unindexed_saved?
-           " "+saved.unindexed_saved+" example(s) still lack a searchable issue classification.":"")
-       :saved?.status==="save_failed"
-         ?" The review was saved, but Billy Intelligence could not save examples."
-         :saved?.status==="no_eligible_corrections"
-           ?" No eligible corrected or human-confirmed uncertain readings were found."
-           :"";
-     notice.textContent=cloudReview
-       ?"Approved values saved in your team's private records. Original file is not archived; company Excel is not updated."+intelligenceInfo
-       :trainingMessage+" Company Excel is not connected."+intelligenceInfo;
+     notice.textContent="Approved values saved. No source images or training samples are retained by the browser.";
      exports.hidden=false;
      root.querySelectorAll(".review-grid input, .review-items input, .review-items select, .review-add-line, .line-remove").forEach(el=>{el.disabled=true;});
-     if(skipTraining)skipTraining.disabled=true;
      window.dispatchEvent(new CustomEvent("billy:document-approved",{
-       detail:{approvalId:resultBody.approval_id,documentType,intelligence:saved||null}
+       detail:{approvalId:resultBody.approval_id,documentType}
      }));
    }catch(error){
-     approveButton.textContent=trainingEligible?"Submit & Learn":"Submit corrections";
+     approveButton.textContent="Submit corrections";
      approveButton.disabled=false;
-     if(skipTraining)skipTraining.disabled=false;
      notice.textContent="Submission failed: "+(error.message||"Unknown error");
      window.dispatchEvent(new CustomEvent("billy:approval-failed",{
        detail:{message:"Submission failed: "+(error.message||"Unknown error")}
      }));
    }
  }
- approveButton.addEventListener("click",()=>submitReview(trainingEligible));
+ approveButton.addEventListener("click",submitReview);
  footer.appendChild(approveButton);
- const skipTraining = trainingEligible ? node("button","review-submit-without-training","Submit only · don't train") : null;
- if(skipTraining){
-   skipTraining.type="button";
-   skipTraining.addEventListener("click",()=>submitReview(false));
-   footer.appendChild(skipTraining);
- }
  notice=node("p","review-approval-note","Review the highlighted regions and fields before submitting.");
  footer.appendChild(notice);
  const exports=node("div","review-export");exports.hidden=true;exportPanel=exports;
@@ -290,15 +239,6 @@ function render(result,endpoint,authHeaders,sourceFile=null){
    });
  }
 }
-async function getLearningAudit(){
-  if(!extractId||!api||typeof getHeaders!=="function")
-    throw Error("No processed document is available to inspect.");
-  const response=await fetch(api+"/api/vision/intelligence-audit?extraction_id="+
-    encodeURIComponent(extractId),{method:"GET",headers:await getHeaders()});
-  const payload=await response.json();
-  if(!response.ok)throw Error(payload.detail||"Learning audit unavailable.");
-  return payload;
-}
 window.BillyReview={render,exportCSV,exportJSON,exportRawJSON,
-  getApprovedSpreadsheetData,getLearningAudit};
+  getApprovedSpreadsheetData};
 })();
