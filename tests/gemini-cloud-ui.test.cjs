@@ -1050,6 +1050,8 @@ test("Learning audit proves identical bytes were seen and compares with previous
   const previousAudit=await handler(call("/api/vision/intelligence-audit?extraction_id="+initial.extraction_id));
   const report=await previousAudit.json();
   assert.equal(report.learning.total_saved,1);
+  assert.equal(report.learning.opt_in,true);
+  assert.equal(stored.get(initial.extraction_id).review_metadata.intelligence_opt_in,true);
   assert.equal(report.learning.indexed,1);
   assert.equal(report.learning.corrections_saved,1);
 
