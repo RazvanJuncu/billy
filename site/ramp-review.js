@@ -549,9 +549,11 @@
     paint();
     // On desktop, read source-localized handwriting with an independent
     // pretrained TrOCR worker. Never upload crops, train, or auto-approve.
-    if(type==="fuel_release"&&window.BillyDesktopTrOCR?.desktop?.()){
+    if(window.BillyDesktopTrOCR?.desktop?.()){
       const local=window.BillyDesktopTrOCR.inspect({
-        file:sourceFile,regions,
+        file:sourceFile,
+        // OCR compares source-language readings only, not English translations.
+        regions:regions.filter(region=>!translatedPaths.has(region.field_path)),
         onStatus:message=>{localStatus.textContent=message;},
         onReading:({field_path,page,text})=>{
           const region=regions.find(item=>
