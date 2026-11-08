@@ -569,7 +569,7 @@
             const current=state.get(field_path);
             if(current.level==="green"){
               state.set(field_path,{level:"yellow",
-                reason:"Gemini and local TrOCR read this handwriting differently. Inspect the original."});
+                reason:"AI engine and local TrOCR read this handwriting differently. Inspect the original."});
             }
           }
           paint();
