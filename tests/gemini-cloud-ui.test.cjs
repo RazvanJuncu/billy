@@ -595,3 +595,135 @@ test("List records supports paging through older documents for deletion",async()
   assert.equal(older.next_offset,null);
   assert.equal((await handler(call("/api/vision/records?offset=-1"))).status,400);
 });
+
+test("Explicit human confirmation of an initially uncertain but correct value becomes a team learning example",async()=>{
+  const originalRegion={field_path:"grand_total",page:1,box_2d:[300,600,355,910],
+    transcription:"119.00",visual_clarity:"slight_uncertainty",script_type:"printed",
+    alternate_readings:["119.80"],visual_reason:"Faint final digits"};
+  const {handler,call,stored,examples,googlePrompts}=mockBackend({regions:[originalRegion]});
+  const file=()=>{const form=new FormData();
+    form.append("file",new File([new Uint8Array([255,216,2,4])],"scan.jpg",{type:"image/jpeg"}));
+    form.append("document_type","invoice");
+    return form;
+  };
+  const first=await handler(call("/api/vision/extract","POST",{body:file()}));
+  assert.equal(first.status,200);
+  const draft=await first.json();
+  const response=await handler(call("/api/vision/approve","POST",{
+    headers:{...authHeaders,"Content-Type":"application/json"},
+    body:JSON.stringify({extraction_id:draft.extraction_id,document_type:"invoice",
+      document:draft.invoice,confirmed:true,intelligence_opt_in:true,
+      manual_confirmations:["grand_total"]})
+  }));
+  assert.equal(response.status,200);
+  const saved=await response.json();
+  assert.equal(saved.intelligence.status,"saved");
+  assert.equal(saved.intelligence.examples_saved,1);
+  assert.equal(saved.intelligence.confirmations_saved,1);
+  assert.equal(saved.intelligence.corrections_saved,0);
+  assert.equal(examples.length,1);
+  assert.equal(examples[0].feedback_type,"confirmed");
+  assert.equal(examples[0].initial_clarity,"slight_uncertainty");
+  assert.equal(examples[0].original_text,"119.00");
+  assert.equal(examples[0].corrected_text,"119.00");
+  assert.equal(stored.get(draft.extraction_id).extracted_data.grand_total,"119.00");
+  assert.deepEqual(Array.from(stored.get(draft.extraction_id).review_metadata.manual_confirmations),["grand_total"]);
+  const future=await handler(call("/api/vision/extract","POST",{body:file()}));
+  const next=await future.json();
+  assert.equal(next.intelligence.confirmations_used,1);
+  assert.equal(next.intelligence.corrections_used,0);
+  assert.match(googlePrompts.at(-1),/feedback_type=confirmed/);
+  assert.match(googlePrompts.at(-1),/human_verified_read/);
+  assert.match(googlePrompts.at(-1),/Never declare clarity or suppress a warning/);
+  assert.equal(next.regions[0].visual_clarity,"slight_uncertainty"); // Memory did not fabricate clear OCR.
+});
+
+test("Unflagged green fields, sensitive IDs, absent fields and opt-outs do not train positive memory",async()=>{
+  const onlyClear=[
+    {field_path:"grand_total",page:1,box_2d:[100,100,150,200],
+      transcription:"119.00",visual_clarity:"clear",script_type:"printed",
+      alternate_readings:[],visual_reason:null},
+    {field_path:"invoice_number",page:1,box_2d:[200,200,230,430],
+      transcription:"INV-42",visual_clarity:"ambiguous",script_type:"printed",
+      alternate_readings:["INV-47"],visual_reason:"Ink"}
+  ];
+  const {handler,call,examples}=mockBackend({regions:onlyClear});
+  const file=()=>{const f=new FormData();
+    f.append("file",new File([new Uint8Array([255,216,3])],"a.jpg",{type:"image/jpeg"}));
+    f.append("document_type","invoice");return f;
+  };
+  const fresh=await handler(call("/api/vision/extract","POST",{body:file()}));
+  const data=await fresh.json();
+  const response=await handler(call("/api/vision/approve","POST",{
+    headers:{...authHeaders,"Content-Type":"application/json"},
+    body:JSON.stringify({extraction_id:data.extraction_id,document_type:"invoice",
+      document:data.invoice,confirmed:true,intelligence_opt_in:true,
+      manual_confirmations:["grand_total","invoice_number","supplier_name"]})
+  }));
+  assert.equal(response.status,200);
+  assert.equal((await response.json()).intelligence.status,"no_eligible_corrections");
+  assert.equal(examples.length,0);
+  const another=await handler(call("/api/vision/extract","POST",{body:file()}));
+  const draft=await another.json();
+  const withheld=await handler(call("/api/vision/approve","POST",{
+    headers:{...authHeaders,"Content-Type":"application/json"},
+    body:JSON.stringify({extraction_id:draft.extraction_id,document_type:"invoice",
+      document:draft.invoice,confirmed:true,intelligence_opt_in:false,
+      manual_confirmations:["invoice_number"]})
+  }));
+  assert.equal((await withheld.json()).intelligence.status,"not_requested");
+  assert.equal(examples.length,0);
+});
+
+test("Corrections and uncertain-but-correct confirmations are both learned and both used",async()=>{
+  const question={field_path:"grand_total",page:1,box_2d:[200,200,300,300],
+    transcription:"119.00",visual_clarity:"ambiguous",script_type:"printed",
+    alternate_readings:["119.80"],visual_reason:"Ink overlap"};
+  const {handler,call,examples,googlePrompts}=mockBackend({regions:[question]});
+  const scan=()=>{const form=new FormData();
+    form.append("file",new File([new Uint8Array([255,216,8])],"s.jpg",{type:"image/jpeg"}));
+    form.append("document_type","invoice");return form;
+  };
+  const initial=await handler(call("/api/vision/extract","POST",{body:scan()}));
+  const data=await initial.json();
+  const corrected={...data.invoice,supplier_name:"TEST SUPPLIER INC"};
+  const save=await handler(call("/api/vision/approve","POST",{
+    headers:{...authHeaders,"Content-Type":"application/json"},
+    body:JSON.stringify({extraction_id:data.extraction_id,document_type:"invoice",
+      document:corrected,confirmed:true,intelligence_opt_in:true,
+      manual_confirmations:["grand_total","supplier_name"]})
+  }));
+  const result=await save.json();
+  assert.equal(save.status,200);
+  assert.equal(result.intelligence.examples_saved,2);
+  assert.equal(result.intelligence.corrections_saved,1);
+  assert.equal(result.intelligence.confirmations_saved,1);
+  assert.equal(examples.length,2);
+  assert.deepEqual(Array.from(new Set(examples.map(item=>item.feedback_type))).sort(),
+    ["confirmed","corrected"]);
+  const next=await handler(call("/api/vision/extract","POST",{body:scan()}));
+  const info=await next.json();
+  assert.equal(info.intelligence.confirmations_used,1);
+  assert.equal(info.intelligence.corrections_used,1);
+  assert.match(googlePrompts.at(-1),/feedback_type=corrected/);
+  assert.match(googlePrompts.at(-1),/feedback_type=confirmed/);
+});
+
+test("Invalid manual confirmations are rejected rather than becoming fabricated learning",async()=>{
+  const {handler,call,examples}=mockBackend();
+  const form=new FormData();
+  form.append("file",new File([new Uint8Array([255,216,1])],"a.jpg",{type:"image/jpeg"}));
+  form.append("document_type","invoice");
+  const scanned=await handler(call("/api/vision/extract","POST",{body:form}));
+  const docData=await scanned.json();
+  for(const fields of [["grand_total","grand_total"],["unknown_field"]]){
+    const response=await handler(call("/api/vision/approve","POST",{
+      headers:{...authHeaders,"Content-Type":"application/json"},
+      body:JSON.stringify({extraction_id:docData.extraction_id,document_type:"invoice",
+        document:docData.invoice,confirmed:true,intelligence_opt_in:true,
+        manual_confirmations:fields})
+    }));
+    assert.equal(response.status,400);
+  }
+  assert.equal(examples.length,0);
+});
