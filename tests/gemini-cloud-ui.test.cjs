@@ -651,7 +651,7 @@ test("Explicit human confirmation of an initially uncertain but correct value be
   assert.equal(next.regions[0].visual_clarity,"slight_uncertainty"); // Memory did not fabricate clear OCR.
 });
 
-test("Unflagged green fields, sensitive IDs, absent fields and opt-outs do not train positive memory",async()=>{
+test("Clear fields become positive feedback with opt-in; sensitive IDs, absent fields and opt-outs stay excluded",async()=>{
   const onlyClear=[
     {field_path:"grand_total",page:1,box_2d:[100,100,150,200],
       transcription:"119.00",visual_clarity:"clear",script_type:"printed",
@@ -674,9 +674,20 @@ test("Unflagged green fields, sensitive IDs, absent fields and opt-outs do not t
       manual_confirmations:["grand_total","invoice_number","supplier_name"]})
   }));
   assert.equal(response.status,200);
-  assert.equal((await response.json()).intelligence.status,"no_eligible_corrections");
-  assert.equal(examples.length,0);
+  const feedback=(await response.json()).intelligence;
+  assert.equal(feedback.status,"saved");
+  assert.equal(feedback.examples_saved,2); // Clear grand total plus unlocalized supplier name.
+  assert.equal(feedback.indexed_saved,1); // Only the field with visual evidence is searchable.
+  assert.equal(examples.length,2);
+  assert.ok(examples.some(row=>row.field_path==="grand_total"&&row.issue_key==="quality:printed"));
+  assert.ok(examples.some(row=>row.field_path==="supplier_name"&&row.issue_key===null));
+  assert.ok(!examples.some(row=>row.field_path==="invoice_number")); // Sensitive IDs excluded.
   const another=await handler(call("/api/vision/extract","POST",{body:file()}));
+  const repeat=await another.clone().json();
+  assert.equal(repeat.intelligence_audit.same_file.previous_approved_found,true);
+  assert.ok(repeat.intelligence_audit.same_file.previously_verified_paths.includes("grand_total"));
+  assert.ok(repeat.intelligence_audit.same_file.previously_verified_paths.includes("supplier_name"));
+  assert.ok(!repeat.intelligence_audit.same_file.previously_verified_paths.includes("vat_total"));
   const draft=await another.json();
   const withheld=await handler(call("/api/vision/approve","POST",{
     headers:{...authHeaders,"Content-Type":"application/json"},
@@ -685,7 +696,7 @@ test("Unflagged green fields, sensitive IDs, absent fields and opt-outs do not t
       manual_confirmations:["invoice_number"]})
   }));
   assert.equal((await withheld.json()).intelligence.status,"not_requested");
-  assert.equal(examples.length,0);
+  assert.equal(examples.length,2); // Opt-out did not add any more examples.
 });
 
 test("Corrections and uncertain-but-correct confirmations are both learned and both used",async()=>{
@@ -708,10 +719,11 @@ test("Corrections and uncertain-but-correct confirmations are both learned and b
   }));
   const result=await save.json();
   assert.equal(save.status,200);
-  assert.equal(result.intelligence.examples_saved,2);
+  assert.equal(result.intelligence.examples_saved,3);
   assert.equal(result.intelligence.corrections_saved,1);
-  assert.equal(result.intelligence.confirmations_saved,1);
-  assert.equal(examples.length,2);
+  assert.equal(result.intelligence.confirmations_saved,2);
+  assert.equal(result.intelligence.indexed_saved,2); // Unlocalized supplier stays unindexed.
+  assert.equal(examples.length,3);
   assert.deepEqual(Array.from(new Set(examples.map(item=>item.feedback_type))).sort(),
     ["confirmed","corrected"]);
   const next=await handler(call("/api/vision/extract","POST",{body:scan()}));
