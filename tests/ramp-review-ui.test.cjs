@@ -181,10 +181,22 @@ test("Human checks create a separate Intelligence signal, not a calibrated AI co
   assert.match(ramp,/manual_confirmations:\[\.\.\.humanReviewed\]/);
   assert.match(ramp,/ambiguity_acknowledgements:\[\.\.\.manualAcknowledged\]/);
   assert.match(backend,/function confirmationLessons\(before,after,type,regions,claims\)/);
-  assert.match(backend,/if\(!region\)continue/);
+  assert.match(backend,/const clarity=String\(region\?\.visual_clarity\|\|"unassessed"\)/);
+  assert.doesNotMatch(backend,/if\(!region\)continue/);
   assert.match(backend,/if\(!a\|\|!b\|\|a!==b\)continue/);
   assert.match(backend,/feedback_type:"confirmed"/);
   assert.match(backend,/Never assert certainty based on historical agreement/);
   assert.match(backend,/manual_confirmations:confirmationClaims/);
   assert.match(backend,/model_fine_tuned:false/);
+});
+
+test("Only matching values on identical files can turn yellow into previously verified blue",()=>{
+  assert.match(backend,/function previouslyVerifiedPaths\(priorRows,fresh,type\)/);
+  assert.match(backend,/previously_verified_paths:previouslyVerifiedPaths/);
+  assert.match(backend,/now!==fieldAtPath\(latest,path,type\)/);
+  assert.match(ramp,/entry.level==="yellow"&&previouslyVerified.has\(path\)/);
+  assert.match(ramp,/entry.level="blue"/);
+  assert.match(ramp,/Previously verified by an operator on this identical file/);
+  assert.match(ramp,/New edits still require recheck/);
+  assert.doesNotMatch(ramp,/entry.level!=="red"&&previouslyVerified.has\(path\)/);
 });
