@@ -163,3 +163,10 @@
   .ramp-field-detail.ramp-missing{padding:18px 15px 15px}
   .ramp-field-detail.ramp-missing .ramp-field-title{font-size:20px}
 }
+
+/* Repeat-document provenance is visible only when an exact SHA-256 was approved earlier. */
+.ramp-intelligence-history{
+  font-size:11px;line-height:1.6;color:#b4bec7;
+  margin:12px 0 0;padding-top:11px;
+  border-top:1px solid #363b40
+}
