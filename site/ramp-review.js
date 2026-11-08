@@ -135,30 +135,15 @@
     const translation=result.translation||null;
     const englishPairs=Array.isArray(translation?.translations)?translation.translations:[];
     const translatedPaths=new Map(englishPairs.map(pair=>[pair.field_path,pair]));
-    const previouslyVerified=new Set(
-      result.intelligence_audit?.same_file?.previously_verified_paths||[]);
-    const previouslyVerifiedAbsent=new Set(
-      result.intelligence_audit?.same_file?.previously_verified_absent_paths||[]);
     const state=new Map(paths.map(path=>{
       const entry=classification(path,doc,type,regions,warnings);
       if(translatedPaths.has(path)&&entry.level==="green"){
         entry.level="yellow";
         entry.reason="Machine-translated field: compare the English meaning with the original wording.";
       }
-      // Only a yellow value previously checked on the exact same file AND
-      // still identical to the last approval can reuse the operator's verdict.
-      // Never waive red issues, changed text or new-document uncertainty.
-      if(entry.level==="yellow"&&previouslyVerified.has(path)&&!translatedPaths.has(path)){
-        entry.level="blue";
-        entry.reason=previouslyVerifiedAbsent.has(path)?
-          "Previously marked Not on document for these identical file bytes.":
-          "Previously verified by an operator on this identical file. New edits still require recheck.";
-      }
       return [path,entry];
     }));
-    const humanReviewed=new Set(), manualAcknowledged=new Set(),
-      notOnDocument=new Set([...previouslyVerifiedAbsent].filter(path=>
-        paths.includes(path)&&!substantive(valueAt(doc,path))));
+    const humanReviewed=new Set(),manualAcknowledged=new Set(),notOnDocument=new Set();
     let revision=0,checkedRevision=-1,busy=false,recheckCount=0;
     let selected=null,editMode=false;
     const cropper=window.BillyQuickVerifyCrop?.create(sourceFile)||null;
@@ -176,7 +161,7 @@
     const intro=create("div","ramp-header");
     intro.append(
       create("h3","ramp-heading","Document check"),
-      create("p","ramp-intro","Yellow/red = needs attention. Blue ✓ = operator-verified (now or on this identical file). Green = no flagged issue, not proof of accuracy.")
+      create("p","ramp-intro","Yellow/red = needs attention. Blue ✓ = operator-checked. Green = no flagged issue, not proof of accuracy.")
     );
     compact.append(intro);
     if(translation?.status==="translated"){
@@ -235,30 +220,10 @@
     toggleEvidence.type="button";
     extra.append(toggleEvidence);
     compact.append(extra);
-    const intelligence=create("section","ramp-intelligence");
-    const intelTitle=create("strong","ramp-intelligence-heading","Billy Intelligence");
-    const intelLabel=create("label","ramp-intelligence-consent");
-    const intelCheckbox=create("input","ramp-intelligence-check");
-    intelCheckbox.type="checkbox";
-    intelCheckbox.checked=false; // Explicit opt-in per approved document; never persist by default.
-    const intelText=create("span","",
-      "Learn from my corrections and confirmations (team-only text examples).");
-    intelLabel.append(intelCheckbox,intelText);
-    intelligence.append(intelTitle,intelLabel);
-    const duplicate=result.intelligence_audit?.same_file;
-    if(duplicate?.previous_approved_found){
-      const differences=duplicate.comparison;
-      const notice=create("p","ramp-intelligence-history",
-        "Identical file previously approved "+duplicate.prior_approved_count+
-        " time(s). Fresh extraction differs in "+
-        (differences?.different_fields??"?")+" field(s); entries: "+
-        (differences?.fresh_extracted_entries??"?")+" now vs "+
-        (differences?.previously_approved_entries??"?")+
-        " previously. This is comparison, not model training.");
-      intelligence.append(notice);
-    }
-    compact.append(intelligence);
-    window.BillyReview.intelligenceOptIn=()=>intelCheckbox.checked;
+    const localStatus=create("p","ramp-local-ocr-status","");
+    localStatus.setAttribute("role","status");
+    localStatus.setAttribute("aria-live","polite");
+    compact.append(localStatus);
     const localInput=path=>[...advanced.querySelectorAll("[data-evidence-path]")]
       .find(el=>el.dataset.evidencePath===path);
     let syncing=false;
@@ -582,12 +547,47 @@
       paint();feedback.textContent=message;
     });
     paint();
+    // On desktop, read source-localized handwriting with an independent
+    // pretrained TrOCR worker. Never upload crops, train, or auto-approve.
+    if(type==="fuel_release"&&window.BillyDesktopTrOCR?.desktop?.()){
+      const local=window.BillyDesktopTrOCR.inspect({
+        file:sourceFile,regions,
+        onStatus:message=>{localStatus.textContent=message;},
+        onReading:({field_path,page,text})=>{
+          const region=regions.find(item=>
+            item.field_path===field_path&&item.page===page);
+          if(!region||!state.has(field_path))return;
+          region.trocr_reading=text;
+          const value=valueAt(doc,field_path);
+          const norm=value=>String(value??"").trim().toLowerCase().replace(/\s+/g,"");
+          const differs=!!norm(value)&&!!norm(text)&&norm(value)!==norm(text);
+          region.handwriting_disagreement=differs;
+          if(differs){
+            if(!region.alternate_readings.includes(text))
+              region.alternate_readings=[...region.alternate_readings,text].slice(0,3);
+            if(region.visual_clarity==="clear")region.visual_clarity="slight_uncertainty";
+            const current=state.get(field_path);
+            if(current.level==="green"){
+              state.set(field_path,{level:"yellow",
+                reason:"Gemini and local TrOCR read this handwriting differently. Inspect the original."});
+            }
+          }
+          paint();
+          if(selected===field_path&&detail.hidden===false)
+            reason.textContent=state.get(field_path).reason+
+              " Local TrOCR reading: "+text.slice(0,120);
+        }
+      });
+      disposeActiveCrop=()=>{
+        local?.cancel?.();
+        cropper?.dispose?.();
+      };
+    }
   }
   window.BillyReview.render=function(result,endpoint,getHeaders,sourceFile){
     if(disposeActiveCrop){disposeActiveCrop();disposeActiveCrop=null;}
     window.BillyReview.canApprove=null;
     window.BillyReview.rampAudit=null;
-    window.BillyReview.intelligenceOptIn=null;
     originalRender(result,endpoint,getHeaders,sourceFile);
     mount(result,endpoint,getHeaders,sourceFile);
   };
