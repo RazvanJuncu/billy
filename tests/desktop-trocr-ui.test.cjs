@@ -114,13 +114,13 @@ test("Review stays hidden until BOTH extraction and TrOCR settle",async()=>{
       BillyAccounts:{sessionHeaders:()=>({})}},
     $:get,Promise
   };
-  vm.runInNewContext(fragment+"\\nthis.triggerRender=renderResult;",sandbox);
+  vm.runInNewContext(fragment+"\nthis.triggerRender=renderResult;",sandbox);
   const renderPromise=sandbox.triggerRender();
   assert.equal(get("formattedOutput").hidden,true);
   assert.equal(called,1);
   release();
   await renderPromise;
   assert.equal(get("formattedOutput").hidden,false);
-  assert.match(controller,/const done=Promise.race\\(\\[task,timeout\\]\\)/);
-  assert.match(controller,/return \\{enabled:true,cancel:run.cancel,done\\}/);
+  assert.match(controller,/const done=Promise.race\(\[task,timeout\]\)/);
+  assert.match(controller,/return \{enabled:true,cancel:run.cancel,done\}/);
 });
