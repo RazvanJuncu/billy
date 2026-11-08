@@ -715,6 +715,8 @@ async function learningAudit(req,principal){
     extraction_id:id,document_type:row.document_type,state:row.state,
     audit:row.intelligence_audit||{},
     learning:{
+      opt_in:typeof row.review_metadata?.intelligence_opt_in==="boolean"?
+        row.review_metadata.intelligence_opt_in:null,
       confirmed_clicked:confirmed,
       total_saved:saved.length,
       corrections_saved:saved.filter(item=>item.feedback_type==="corrected").length,
@@ -1018,7 +1020,8 @@ async function approve(req,principal){
   },{
     state:"approved",reviewed_data:checked,validation_warnings:warnings,
     review_metadata:{not_on_document:absentPaths,
-      manual_confirmations:confirmationClaims,origin:"operator_confirmation"},
+      manual_confirmations:confirmationClaims,intelligence_opt_in:consent,
+      origin:"operator_confirmation"},
     approved_at:new Date().toISOString(),approved_by:principal.user_id
   });
   if(!Array.isArray(updated)||updated.length!==1)return error("This document was already approved.",409);
@@ -1061,7 +1064,8 @@ async function approve(req,principal){
   return json({status:"approved",approval_id:source.id,document_type:data.document_type,
     correction_count:corrections,validation_warnings:warnings,
     review_metadata:{not_on_document:absentPaths,
-      manual_confirmations:confirmationClaims,origin:"operator_confirmation"},
+      manual_confirmations:confirmationClaims,intelligence_opt_in:consent,
+      origin:"operator_confirmation"},
     intelligence:memory,posted_to_excel:false});
 }
 async function listRecords(principal,req) {
