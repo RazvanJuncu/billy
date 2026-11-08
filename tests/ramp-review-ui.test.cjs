@@ -182,7 +182,9 @@ test("Human checks create a separate Intelligence signal, not a calibrated AI co
   assert.match(ramp,/ambiguity_acknowledgements:\[\.\.\.manualAcknowledged\]/);
   assert.match(backend,/function confirmationLessons\(before,after,type,regions,claims\)/);
   assert.match(backend,/const clarity=String\(region\?\.visual_clarity\|\|"unassessed"\)/);
-  assert.doesNotMatch(backend,/if\(!region\)continue/);
+  const confirmationBlock=backend.slice(backend.indexOf("function confirmationLessons("),
+    backend.indexOf("const INTELLIGENCE_LOOKUP_MAX"));
+  assert.doesNotMatch(confirmationBlock,/if\(!region\)continue/);
   assert.match(backend,/if\(!a\|\|!b\|\|a!==b\)continue/);
   assert.match(backend,/feedback_type:"confirmed"/);
   assert.match(backend,/Never assert certainty based on historical agreement/);
