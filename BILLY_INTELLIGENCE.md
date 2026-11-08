@@ -1,57 +1,77 @@
-# Billy Intelligence v1 — Team Correction Memory
+# Billy Intelligence v2 — Correction and Human Confirmation Memory
 
 ## Purpose
-Billy Intelligence helps the existing Gemini extractor learn **from explicitly shared
-human corrections**, without fine-tuning Gemini or silently copying prior documents.
+Billy Intelligence gives the existing AI engine **two kinds of explicitly shared,
+verified feedback** without modifying the model weights:
 
-## Current workflow
-1. Gemini extracts an Invoice or Fuel Release using the visible document.
-2. The operator reviews, corrects, rechecks, and approves the document.
-3. On Ramp Review, **Learn from my corrections** is **unchecked by default**.
-4. When the operator explicitly opts in and approves, the server compares the
-   immutable original Gemini fields with the final approved fields.
-5. Eligible **changed, non-empty text pairs** are saved in
-   `public.billy_intelligence_examples` for the same organization.
-6. On subsequent documents of the same type, the server retrieves up to six
-   recent, varied examples. They become **untrusted few-shot hints** in the
-   Gemini extraction prompt. The current document image remains the source of truth.
+1. **Corrected**: the initial AI reading and the operator-approved reading differ.
+2. **Confirmed**: the AI proposed a nonempty reading, initial image-region evidence
+   was uncertain (faint, ambiguous, unreadable, unassessed, or had a genuinely
+   competing alternative), and the operator explicitly checked and approved
+   **the same value**.
 
-Billy Intelligence does **not** modify Gemini model weights, train TrOCR,
-archive images, or automatically improve every field. Improvements in accuracy
-must be established by benchmark tests, not assumed.
+Simply approving an already-green field does not create a confirmation example.
+An absent field does not create a positive reading example. Corrections and
+confirmations are recorded as separate feedback types for audit.
 
-## Privacy and security
-- Examples are shared **only within the same Billy organization**.
-- Server-side membership checks remain mandatory.
-- The examples table has RLS enabled, no read/write access for `anon` or
-  `authenticated`; only the authenticated server's service role can use it.
-- No original PDFs, images, complete invoice bodies, or signatures are stored
-  in the Intelligence examples table.
-- Some corrected text can still be operational or personally sensitive.
-  Obtain your company's authorization before opting in.
-- No examples are created from an unmodified/merely confirmed field.
-- Unique invoice and release numbers, tax IDs, customer names, flight numbers,
-  fueler and receiver names are excluded from automatic lesson creation.
-- Absent `null` fields are not saved as training text; their operator
-  confirmation remains in `document_records.review_metadata`.
-- Use a maximum of six compact examples per Gemini request, selected from
-  the same organization **and document type**.
+## Opt-in workflow
+1. AI engine extracts an Invoice or Fuel Release and returns image-region evidence.
+2. Ramp Review highlights doubtful fields. Human corrections and explicit confirmations
+   appear in blue; unresolved items still require recheck.
+3. Operator can choose **Learn from my corrections and confirmations** (unchecked
+   by default) before final approval.
+4. Server compares the original stored extraction with the approved document.
+   It validates confirmations against the original, initially uncertain
+   and image-localized regions, and does not simply trust the green UI state.
+5. Eligible text snippets are stored privately in
+   `public.billy_intelligence_examples`. Each entry includes
+   `feedback_type`, `initial_clarity`, source document ID, field path,
+   original AI reading, approved reading, organization and operator.
+6. Future scans retrieve up to eight distinct snippets from the same
+   organization and document type, balancing corrected and confirmed examples.
+   For line items/handwritten fields, the prompt generalizes indexed paths to
+   e.g. `handwritten_entries[].transcription`.
+7. The model treats examples as **untrusted context**, not current-document
+   facts. It must read the current image independently and keep visual warnings
+   when glyphs are actually difficult to read.
+
+## What this is / is not
+- **Active contextual learning:** previously confirmed values really are
+  retrievable examples in the next AI prompt.
+- **Not model training:** no Gemini weights are updated and no TrOCR training
+  jobs are scheduled.
+- **Not automatic certainty:** recurring matches do not force future yellow
+  fields to green, because a fresh image may still be ambiguous.
+- **Not a visual handwriting training set:** original scans are not archived
+  by Intelligence. Text hints cannot teach the vision model new pixel-level
+  representations. True visual training would need consented image crops with
+  verified transcriptions, benchmarked separately.
+
+## Privacy / safety
+- Examples are explicitly opted in, organization-scoped, and server-authorized.
+- RLS is on, with no direct `anon` or `authenticated` table grants.
+- No source scans/PDFs or full invoice body are stored in the examples table.
+- Personal IDs, tax IDs, customer names, invoice/release numbers, signers,
+  flight numbers etc. are excluded from automatic lesson creation.
+- Text examples may still be sensitive; obtain your organization's approval.
+- Deleting a source record cascades to its associated Intelligence entries.
+- Keep meter arithmetic and visual uncertainty warnings independently enforced.
+- Add administrative example review/deletion, retention policy and opt-in
+  governance before processing production company documents.
 
 ## Observability
-- Extraction response: `intelligence.examples_used`.
-- Approval response: `intelligence.status` and `examples_saved`.
-- Statuses include `not_requested`, `no_eligible_corrections`,
-  `saved`, `partially_saved`, and `save_failed`.
-- If Intelligence retrieval is temporarily unavailable, regular processing
-  continues without hints. If saving lessons fails, normal approval remains
-  valid and the error is surfaced honestly.
+- Extraction: `intelligence.examples_used`,
+  `intelligence.corrections_used`, `intelligence.confirmations_used`.
+- Approval: `intelligence.examples_saved`,
+  `intelligence.corrections_saved`, `intelligence.confirmations_saved`.
+- Approval statuses: `not_requested`, `no_eligible_corrections`,
+  `saved`, `partially_saved`, `save_failed`.
+- When Intelligence storage/retrieval is unavailable, normal extraction and
+  approval continue; failures are reported instead of pretending learning succeeded.
 
-## Current limitations / next iterations
-- Similarity matching is limited to the document type and compact field
-  corrections. There is no embedding index, handwriting image training,
-  or template-specific similarity score yet.
-- Lessons are read as text hints, **not** a verified OCR confidence score.
-- Before production use, add organization-admin controls to review and delete
-  examples, a configurable retention policy, explicit company privacy approval,
-  and benchmark comparisons against a held-out dataset.
-- Keep existing meter arithmetic and visual uncertainty checks mandatory.
+## Validation / roadmap
+Compare extraction accuracy and warning precision on a held-out collection of
+same-type documents before/after memory is introduced. Track particularly
+false-green rates and whether confirmed values become correct on new forms.
+A later Billy Intelligence version could add consented image-region training,
+form-template retrieval, quality scores, and team-admin controls.
