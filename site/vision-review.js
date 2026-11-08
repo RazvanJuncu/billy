@@ -171,6 +171,7 @@ function render(result,endpoint,authHeaders,sourceFile=null){
        body:JSON.stringify({
          extraction_id:extractId,document_type:documentType,document:draft,confirmed:true,
          not_on_document:window.BillyReview?.rampAudit?.()?.not_on_document||[],
+         manual_confirmations:window.BillyReview?.rampAudit?.()?.manual_confirmations||[],
          intelligence_opt_in:window.BillyReview?.intelligenceOptIn?.()===true
        })
      });
@@ -202,11 +203,12 @@ function render(result,endpoint,authHeaders,sourceFile=null){
      approveButton.textContent="Submitted · record "+resultBody.approval_id;
      const saved=resultBody.intelligence;
      const intelligenceInfo=saved?.status==="saved"
-       ?" Billy Intelligence learned "+saved.examples_saved+" confirmed correction(s)."
+       ?" Billy Intelligence saved "+saved.corrections_saved+" correction(s) and "+
+         saved.confirmations_saved+" human-confirmed uncertain reading(s)."
        :saved?.status==="save_failed"
          ?" The review was saved, but Billy Intelligence could not save examples."
          :saved?.status==="no_eligible_corrections"
-           ?" No corrected text was eligible for Billy Intelligence."
+           ?" No eligible corrected or human-confirmed uncertain readings were found."
            :"";
      notice.textContent=cloudReview
        ?"Approved values saved in your team's private records. Original file is not archived; company Excel is not updated."+intelligenceInfo
