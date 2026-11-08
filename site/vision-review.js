@@ -234,8 +234,7 @@ function render(result,endpoint,authHeaders,sourceFile=null){
  if(window.BillyRegions?.mount){
    window.BillyRegions.mount({
      root, file:sourceFile, regions:result.regions||[],
-     agreement:result.historical_field_agreement||{},
-     secondOpinion:result.handwriting_second_opinion||null
+     agreement:result.historical_field_agreement||{}
    });
  }
 }
