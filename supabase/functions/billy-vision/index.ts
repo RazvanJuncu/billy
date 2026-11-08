@@ -1017,7 +1017,8 @@ async function approve(req,principal){
   });
   if(!Array.isArray(updated)||updated.length!==1)return error("This document was already approved.",409);
   const memory={opted_in:consent,examples_saved:0,corrections_saved:0,
-    confirmations_saved:0,status:consent?"no_eligible_corrections":"not_requested"};
+    confirmations_saved:0,indexed_saved:0,unindexed_saved:0,
+    status:consent?"no_eligible_corrections":"not_requested"};
   if(consent){
     // Translated prose is not a visual glyph correction. Don't teach issue
     // memory a false cross-language 0/9 example from English wording edits.
@@ -1041,6 +1042,9 @@ async function approve(req,principal){
           rows.filter(row=>row.feedback_type==="corrected").length:0;
         memory.confirmations_saved=Array.isArray(rows)?
           rows.filter(row=>row.feedback_type==="confirmed").length:0;
+        memory.indexed_saved=Array.isArray(rows)?
+          rows.filter(row=>!!row.issue_key).length:0;
+        memory.unindexed_saved=memory.examples_saved-memory.indexed_saved;
         memory.status=memory.examples_saved===lessons.length?"saved":"partially_saved";
       }catch(_error){
         memory.status="save_failed";
