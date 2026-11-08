@@ -131,7 +131,17 @@
     const regions=Array.isArray(result.regions)?result.regions:[];
     const warnings=Array.isArray(result.validation_warnings)?result.validation_warnings:[];
     const paths=fieldsFor(doc,type);
-    const state=new Map(paths.map(path=>[path,classification(path,doc,type,regions,warnings)]));
+    const translation=result.translation||null;
+    const englishPairs=Array.isArray(translation?.translations)?translation.translations:[];
+    const translatedPaths=new Map(englishPairs.map(pair=>[pair.field_path,pair]));
+    const state=new Map(paths.map(path=>{
+      const entry=classification(path,doc,type,regions,warnings);
+      if(translatedPaths.has(path)&&entry.level==="green"){
+        entry.level="yellow";
+        entry.reason="Machine-translated field: compare the English meaning with the original wording.";
+      }
+      return [path,entry];
+    }));
     const humanReviewed=new Set(), manualAcknowledged=new Set(), notOnDocument=new Set();
     let revision=0,checkedRevision=-1,busy=false,recheckCount=0;
     let selected=null;
@@ -151,6 +161,18 @@
       create("p","ramp-intro","Yellow/red = needs attention. Blue ✓ = checked by operator. Green = no flagged issue, not proof of accuracy.")
     );
     compact.append(intro);
+    if(translation?.status==="translated"){
+      const info=create("p","ramp-translation-note",
+        "Translated "+englishPairs.length+" text field(s) from "+
+        String(translation.source_language||"unknown").toUpperCase()+
+        " to English · original wording retained for review.");
+      compact.append(info);
+    }else if(translation?.status==="not_applied"&&
+      !["en","und"].includes(translation.source_language)){
+      compact.append(create("p","ramp-translation-note",
+        "Detected "+String(translation.source_language).toUpperCase()+
+        " source text. No verified English translations were extracted; review the original."));
+    }
     const jar=create("div","ramp-jar");
     jar.setAttribute("role","group");
     jar.setAttribute("aria-label","Document fields. Select a yellow or red segment to verify it.");
@@ -307,7 +329,10 @@
       fieldTitle.textContent=labelFor(path,type,doc);
       fieldInput.value=valueAt(doc,path)??"";
       fieldNotPresent.textContent=notOnDocument.has(path)?"Not on document ✓":"Not on document";
-      reason.textContent=entry.reason;
+      const pair=translatedPaths.get(path);
+      reason.textContent=entry.reason+(pair?
+        " Original ("+String(translation.source_language||"source").toUpperCase()+
+        "): "+pair.source_text+". English result: "+pair.english_text+".":"");
       fieldConfirm.textContent=entry.level==="yellow"&&checkedRevision===revision&&humanReviewed.has(path)
         ?"Confirm despite unclear evidence":"Confirm this value";
       detail.hidden=false;
