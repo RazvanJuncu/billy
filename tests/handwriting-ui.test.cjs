@@ -12,8 +12,8 @@ const worker=read("billy/handwriting_worker.py");
 const inference=read("billy/handwriting_inference.py");
 
 test("Hosted Billy never uploads handwriting crops for training",()=>{
-  assert.match(review,/api\+"\\/api\\/vision\\/approve"/);
-  assert.doesNotMatch(review,/Submit & Learn|Submit only|training_consent|api\\/handwriting\\/examples/);
+  assert.ok(review.includes('api+"/api/vision/approve"'));
+  assert.doesNotMatch(review,/Submit & Learn|Submit only|training_consent|handwriting\/examples/);
   assert.doesNotMatch(review,/handwriting_training_capture_enabled/);
   assert.doesNotMatch(review,/allowTraining|trainingEligible/);
 });
