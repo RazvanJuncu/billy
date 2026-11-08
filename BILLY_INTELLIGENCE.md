@@ -1,77 +1,76 @@
-# Billy Intelligence v2 — Correction and Human Confirmation Memory
+# Billy Intelligence v3 — Cross-Field Issue Memory
 
-## Purpose
-Billy Intelligence gives the existing AI engine **two kinds of explicitly shared,
-verified feedback** without modifying the model weights:
+Billy Intelligence uses **verified opt-in operator feedback**. It does not modify
+AI model weights, archive whole documents, or certify uncertain OCR as correct.
 
-1. **Corrected**: the initial AI reading and the operator-approved reading differ.
-2. **Confirmed**: the AI proposed a nonempty reading, initial image-region evidence
-   was uncertain (faint, ambiguous, unreadable, unassessed, or had a genuinely
-   competing alternative), and the operator explicitly checked and approved
-   **the same value**.
+## What's new in v3
 
-Simply approving an already-green field does not create a confirmation example.
-An absent field does not create a positive reading example. Corrections and
-confirmations are recorded as separate feedback types for audit.
+Previous versions matched memory mostly by document type and field path. V3
+identifies **issues**, independent of source field:
+- `glyph:0/9`, `glyph:1/7`, `glyph:3/8`, `glyph:0/O`, etc.
+- `quality:handwritten`, `quality:printed`, `quality:mixed` or
+  `quality:unknown` when the scan is visually ambiguous without a clean
+  two-candidate glyph mismatch.
 
-## Opt-in workflow
-1. AI engine extracts an Invoice or Fuel Release and returns image-region evidence.
-2. Ramp Review highlights doubtful fields. Human corrections and explicit confirmations
-   appear in blue; unresolved items still require recheck.
-3. Operator can choose **Learn from my corrections and confirmations** (unchecked
-   by default) before final approval.
-4. Server compares the original stored extraction with the approved document.
-   It validates confirmations against the original, initially uncertain
-   and image-localized regions, and does not simply trust the green UI state.
-5. Eligible text snippets are stored privately in
-   `public.billy_intelligence_examples`. Each entry includes
-   `feedback_type`, `initial_clarity`, source document ID, field path,
-   original AI reading, approved reading, organization and operator.
-6. Future scans retrieve up to eight distinct snippets from the same
-   organization and document type, balancing corrected and confirmed examples.
-   For line items/handwritten fields, the prompt generalizes indexed paths to
-   e.g. `handwritten_entries[].transcription`.
-7. The model treats examples as **untrusted context**, not current-document
-   facts. It must read the current image independently and keep visual warnings
-   when glyphs are actually difficult to read.
+For example, if a confirmed Fuel Release meter had a `0/9` confusion, that
+example can be retrieved when an *Invoice* total has the same `0/9`
+ambiguity. **No provider_name, meter_start or document_type filter is applied
+to the issue lookup.** Organization membership is always enforced.
 
-## What this is / is not
-- **Active contextual learning:** previously confirmed values really are
-  retrievable examples in the next AI prompt.
-- **Not model training:** no Gemini weights are updated and no TrOCR training
-  jobs are scheduled.
-- **Not automatic certainty:** recurring matches do not force future yellow
-  fields to green, because a fresh image may still be ambiguous.
-- **Not a visual handwriting training set:** original scans are not archived
-  by Intelligence. Text hints cannot teach the vision model new pixel-level
-  representations. True visual training would need consented image crops with
-  verified transcriptions, benchmarked separately.
+## Actual processing flow
 
-## Privacy / safety
-- Examples are explicitly opted in, organization-scoped, and server-authorized.
-- RLS is on, with no direct `anon` or `authenticated` table grants.
-- No source scans/PDFs or full invoice body are stored in the examples table.
-- Personal IDs, tax IDs, customer names, invoice/release numbers, signers,
-  flight numbers etc. are excluded from automatic lesson creation.
-- Text examples may still be sensitive; obtain your organization's approval.
-- Deleting a source record cascades to its associated Intelligence entries.
-- Keep meter arithmetic and visual uncertainty warnings independently enforced.
-- Add administrative example review/deletion, retention policy and opt-in
-  governance before processing production company documents.
+1. **First pass:** the AI engine extracts the new document **without historical
+   examples**, returning values, localized regions and potential alternatives.
+2. **Issue detector:** the server derives a bounded, deterministic issue key
+   from an extracted value and its proposed alternatives; at most four issue
+   queries per document. A clear scan triggers zero issue lookups.
+3. **Tenant-scoped lookup:** an indexed Supabase query filters by
+   `organization_id` and `issue_key`, never another team's data. The
+   returned prompt context is capped at five verified text examples.
+4. **Second visual inspection (conditional):** *only if memory matches*, Billy
+   calls the AI engine once more, with the current document image and a
+   small set of historical same-issue snippets. This pass can report another
+   possible reading or uncertainty.
+5. **Operator review:** The second pass **does not overwrite** the initial
+   extraction, change a value to green or remove an uncertainty warning.
+   It may add an alternative and a visible warning for operator review.
+6. **Approval and learning:** With the opt-in checkbox checked, Billy stores
+   `corrected` pairs and eligible `confirmed` uncertain readings, tagged
+   with `issue_key`, `issue_kind`, optional alternative and script type.
 
-## Observability
-- Extraction: `intelligence.examples_used`,
-  `intelligence.corrections_used`, `intelligence.confirmations_used`.
-- Approval: `intelligence.examples_saved`,
-  `intelligence.corrections_saved`, `intelligence.confirmations_saved`.
-- Approval statuses: `not_requested`, `no_eligible_corrections`,
-  `saved`, `partially_saved`, `save_failed`.
-- When Intelligence storage/retrieval is unavailable, normal extraction and
-  approval continue; failures are reported instead of pretending learning succeeded.
+## Privacy, costs and limits
 
-## Validation / roadmap
-Compare extraction accuracy and warning precision on a held-out collection of
-same-type documents before/after memory is introduced. Track particularly
-false-green rates and whether confirmed values become correct on new forms.
-A later Billy Intelligence version could add consented image-region training,
-form-template retrieval, quality scores, and team-admin controls.
+- Learning remains **opt-in per approved document**.
+- The table uses RLS and has **no direct `anon` or `authenticated` access**.
+  Only the authenticated Edge Function service role queries examples.
+- Example lookup is **cross-field and cross-document-type within one organization**.
+- Excluded sensitive field types remain excluded from automatic lesson creation.
+  Examples can still contain operationally sensitive text; gain company approval.
+- Up to four bounded SQL queries and **one additional model call** may occur
+  per document with ambiguous evidence and applicable memory.
+- Backend returns `intelligence.mode=issue_on_demand`,
+  `lookup_status`, `issue_keys`, `examples_used` and safe second-pass
+  assessments for testing/audit.
+- Failure of issue lookup or review does not prevent ordinary extraction.
+  In such cases, `lookup_status=unavailable` and original uncertainty remains.
+
+## Important limitation: no archived visual examples yet
+
+V3 is a **visual-issue classifier with text memory and an on-demand visual
+second pass**. It is not yet a visual *image-to-image* retrieval system. Billy
+does **not** retain handwriting crops or compare glyph pixels from previous
+documents. Doing so would require consented cropped assets, company-approved
+retention/deletion controls, access auditing and a visual similarity index.
+
+Because retrieved snippets are untrusted data, Gemini is instructed to treat
+them as examples rather than commands, to read the *current* document
+independently and not to copy prior totals, registrations or other values.
+
+## Next validation steps
+
+- Benchmark `0/9`, `1/7`, `3/8`, `O/0` false-positive/false-green rates on
+  untouched documents versus v2.
+- Verify latency and token costs of conditional second-pass calls.
+- Test actual live AI responses and a long, mixed document history.
+- Before production use, add organization-admin memory review/deletion,
+  retention settings, and explicit company policy for any future visual crops.
