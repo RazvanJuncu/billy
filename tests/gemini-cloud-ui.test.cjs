@@ -631,6 +631,7 @@ test("Explicit human confirmation of an initially uncertain but correct value be
   const future=await handler(call("/api/vision/extract","POST",{body:file()}));
   const next=await future.json();
   assert.equal(next.intelligence.confirmations_used,1);
+  assert.equal(next.feedback_example_count,1);
   assert.equal(next.intelligence.corrections_used,0);
   assert.match(googlePrompts.at(-1),/feedback_type=confirmed/);
   assert.match(googlePrompts.at(-1),/human_verified_read/);
