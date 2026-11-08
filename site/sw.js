@@ -1,5 +1,5 @@
 /* Billy offline scanner shell. OCR remains a separately connected backend. */
-const CACHE = "billydpi-orbit-v53-desktop-trocr-agreement";
+const CACHE = "billydpi-orbit-v54-dual-ocr-ready";
 const ASSETS = ["./","./index.html","./styles.css","./brand.css","./billydpi-logo.svg","./upload-new-mark.svg","./review.css","./excel-preview.css","./ramp-review.css","./vision-regions.css","./accounts.css","./document-type.css","./simple.css","./quickscan.css","./quickscan.js","./snap.css","./snap.webmanifest","./install.html","./install.css","./install.js","./simple.js","./preloader.css","./preloader.js","./account-config.js","./accounts.js","./vision-regions.js","./vision-review.js","./excel-preview.js","./quickverify-crop.js","./desktop-trocr.js","./desktop-trocr-worker.js","./ramp-review.js","./app.js","./workspace.js","./scanner.js","./perspective.js","./manifest.webmanifest","./favicon.svg","./icon-192.png","./icon-512.png"];
 self.addEventListener("install",event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting()));
