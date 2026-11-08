@@ -174,3 +174,7 @@
 /* On-device OCR status is deliberately quiet: no extra panels or AI confidence. */
 .ramp-local-ocr-status{font-size:12px;color:var(--muted,#9ba4ac);line-height:1.45;margin:0;padding:0 3px}
 .ramp-local-ocr-status:empty{display:none}
+
+/* Independent local OCR result, always shown without implying calibrated confidence. */
+.ramp-local-reading{font-size:13px;color:#d6d9df;line-height:1.5;margin:0 0 16px;overflow-wrap:anywhere}
+.ramp-local-reading[hidden]{display:none!important}
