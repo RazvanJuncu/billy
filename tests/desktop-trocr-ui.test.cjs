@@ -5,6 +5,7 @@ const path=require("node:path");
 const vm=require("node:vm");
 const read=p=>fs.readFileSync(path.join(__dirname,"..",p),"utf8");
 const controller=read("site/desktop-trocr.js");
+const app=read("site/app.js");
 const worker=read("site/desktop-trocr-worker.js");
 const crop=read("site/quickverify-crop.js");
 const ramp=read("site/ramp-review.js");
@@ -51,7 +52,7 @@ test("Local TrOCR respects desktop-only gating and never auto-writes the review"
     },
     navigator:{userAgent:"Mozilla/5.0 (Windows NT 10.0; Win64; x64)",platform:"Win32",maxTouchPoints:0},
     Worker:WorkerMock,
-    console,Promise,Map,Set,Error
+    console,Promise,Map,Set,Error,setTimeout,clearTimeout
   };
   vm.runInNewContext(controller,context);
   const agent=context.window.BillyDesktopTrOCR;
@@ -59,7 +60,7 @@ test("Local TrOCR respects desktop-only gating and never auto-writes the review"
   const job=agent.inspect({file:{name:"test.jpg"},regions:[region],
     onStatus:m=>status.push(m),onReading:r=>callbacks.push(r)});
   assert.equal(job.enabled,true);
-  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal((await job.done).status,"completed");
   assert.equal(workers,1);
   assert.equal(crops,1);
   assert.equal(disposed,1);
@@ -72,7 +73,9 @@ test("Local TrOCR respects desktop-only gating and never auto-writes the review"
   assert.doesNotMatch(ramp,/doc\[field_path\]=text|setAt\(doc,field_path,text\)/);
   context.navigator.userAgent="iPhone";
   assert.equal(agent.desktop(),false);
-  assert.equal(agent.inspect({file:{},regions:[region]}).enabled,false);
+  const skipped=agent.inspect({file:{},regions:[region]});
+  assert.equal(skipped.enabled,false);
+  assert.equal((await skipped.done).status,"skipped");
   assert.equal(workers,1);
 });
 
@@ -85,4 +88,39 @@ test("No photo-learning or identical-file approval recall remains in the web flo
   assert.doesNotMatch(simple,/simpleInspectLearning|renderLearningAudit/);
   assert.doesNotMatch(ramp,/previouslyVerified|intelCheckbox|Billy Intelligence/);
   assert.doesNotMatch(html,/Inspect Billy Intelligence/);
+});
+
+test("Review stays hidden until BOTH extraction and TrOCR settle",async()=>{
+  const begin=app.indexOf("async function renderResult() {");
+  const end=app.indexOf("async function scanInvoice() {",begin);
+  assert.ok(begin>=0&&end>begin);
+  const fragment=app.slice(begin,end);
+  assert.match(fragment,/await window.BillyReview.render/);
+  const scan=app.slice(end,app.indexOf("function downloadFile(",end));
+  assert.ok(scan.indexOf("await renderResult();")>=0);
+  assert.ok(scan.indexOf("await renderResult();")<scan.indexOf('new CustomEvent("billy:ocr-ready"'));
+  let release;
+  const gate=new Promise(resolve=>{release=resolve;});
+  let called=0;
+  const elements=new Map();
+  const get=id=>{
+    if(!elements.has(id))elements.set(id,{hidden:false});
+    return elements.get(id);
+  };
+  const sandbox={
+    state:{result:{invoice:{grand_total:"100"}},api:"test-api",file:{name:"doc.jpg"}},
+    setStage:()=>{},document:{querySelector:()=>({classList:{add:()=>{}}})},
+    window:{BillyReview:{render:()=>{called++;return gate;}},
+      BillyAccounts:{sessionHeaders:()=>({})}},
+    $:get,Promise
+  };
+  vm.runInNewContext(fragment+"\\nthis.triggerRender=renderResult;",sandbox);
+  const renderPromise=sandbox.triggerRender();
+  assert.equal(get("formattedOutput").hidden,true);
+  assert.equal(called,1);
+  release();
+  await renderPromise;
+  assert.equal(get("formattedOutput").hidden,false);
+  assert.match(controller,/const done=Promise.race\\(\\[task,timeout\\]\\)/);
+  assert.match(controller,/return \\{enabled:true,cancel:run.cancel,done\\}/);
 });
