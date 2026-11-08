@@ -171,6 +171,11 @@
       auditLine(target,"Identical file","Not recorded",
         "This extraction preceded detailed learning diagnostics.");
     }
+    if(same&&Array.isArray(same.previously_verified_paths)){
+      auditLine(target,"Previously verified on identical file",
+        same.previously_verified_paths.length+" matching field(s)",
+        "Only prior operator-checked values matching this exact file and latest approved values qualify; red warnings still need review.");
+    }
     if(comparison){
       auditLine(target,"Compared with previous approval",
         comparison.different_fields+" changed field(s) · "+
@@ -196,7 +201,7 @@
         "The operator did not enable learning for this approval; no new examples can be saved.":
         "Per-document consent is required before Billy stores learning examples.");
     auditLine(target,"Operator confirmations",memory.confirmed_clicked??0,
-      "A confirmation is not necessarily eligible to become a searchable example.");
+      "Each deliberate confirmation is recorded. Personal identifiers and empty readings are not used as cross-document text examples.");
     auditLine(target,"Saved / searchable examples",
       (memory.total_saved??0)+" saved · "+(memory.indexed??0)+" indexed",
       memory.unindexed?
@@ -204,7 +209,7 @@
         "Indexed examples are retrievable when a future scan detects the matching issue.");
     const footer=document.createElement("p");
     footer.className="simple-audit-footnote";
-    footer.textContent="Billy uses stored examples as context. Model weights are not updated, and recurring yellow fields must still be checked.";
+    footer.textContent="Same-file verified fields may be blue on a repeat. New documents remain subject to source checks. Model weights are not updated.";
     target.append(footer);
   }
 
