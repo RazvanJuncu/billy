@@ -34,7 +34,7 @@ function mockBackend(opts={}) {
   const stored=new Map(), calls=[], examples=[...(opts.preloadedExamples||[])], googlePrompts=[];
   let handler;
   const googleResponse=()=>new Response(JSON.stringify({
-    candidates:[{content:{parts:[{text:JSON.stringify({...opts.fuelDoc||doc,regions:opts.regions||regions})}]}}],
+    candidates:[{content:{parts:[{text:JSON.stringify({...opts.fuelDoc||doc,regions:opts.regions||regions,document_language:opts.language||"en",english_translations:opts.englishTranslations||[]})}]}}],
     usageMetadata:{promptTokenCount:1000,candidatesTokenCount:120,totalTokenCount:1120}
   }),{status:200,headers:{"Content-Type":"application/json"}});
   const mockFetch=async (input, init={})=>{
