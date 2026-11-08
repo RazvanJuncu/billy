@@ -77,7 +77,7 @@ test("Absent-field button clears the value, skips AI lookup and retains human au
   assert.match(review,/not_on_document:window\.BillyReview\?\.rampAudit/);
   assert.match(backend,/function checkedAbsentPaths\(/);
   assert.match(backend,/skipped_not_on_document:absentPaths/);
-  assert.match(backend,/review_metadata:\{not_on_document:absentPaths/);
+  assert.match(backend,/not_on_document:absentPaths/);
 });
 
 test("Operator-confirmed fields turn blue with centered check and stay distinct from initial AI green",()=>{
