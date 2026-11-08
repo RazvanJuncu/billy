@@ -1,4 +1,5 @@
-/* Read-only spreadsheet preview for approved CSV exports. No external Excel write. */
+/* Billy approved-data preview: document details ONCE, followed by item rows.
+   Text-only DOM rendering; never interpret content extracted from documents as HTML. */
 (() => {
   "use strict";
   const make=(tag,cls,text)=>{
@@ -7,76 +8,67 @@
     if(text!==undefined)el.textContent=text;
     return el;
   };
-  function columnLetter(index){
-    let n=index+1, letters="";
-    while(n>0){n--;letters=String.fromCharCode(65+n%26)+letters;n=Math.floor(n/26);}
-    return letters;
+  function display(value){return value===null||value===undefined?"":String(value);}
+  function renderTable(parent,{title,columns,rows,kind}){
+    const section=make("section","excel-preview-section excel-preview-"+kind);
+    const heading=make("div","excel-preview-section-heading");
+    heading.append(make("h4","excel-preview-section-title",title));
+    if(kind==="entries")heading.append(make("span","excel-preview-section-count",
+      rows.length+" "+(rows.length===1?"entry":"entries")));
+    section.append(heading);
+    const viewport=make("div","excel-preview-scroll excel-preview-"+kind+"-scroll");
+    viewport.tabIndex=0;
+    viewport.setAttribute("role","region");
+    viewport.setAttribute("aria-label",title+" table; scroll to inspect all fields");
+    const table=make("table","excel-preview-table");
+    table.append(make("caption","excel-preview-caption",title));
+    const head=make("thead"),headRow=make("tr");
+    columns.forEach(column=>{
+      const th=make("th","excel-preview-field-name",column.label||column.key);
+      th.scope="col";
+      headRow.append(th);
+    });
+    head.append(headRow);table.append(head);
+    const body=make("tbody");
+    rows.forEach(row=>{
+      const tr=make("tr");
+      columns.forEach((column,i)=>{
+        const val=display(row?.[i]);
+        const cell=make("td","excel-preview-data-cell",val);
+        if(!val)cell.classList.add("excel-preview-blank");
+        else cell.title=val;
+        tr.append(cell);
+      });
+      body.append(tr);
+    });
+    table.append(body);viewport.append(table);section.append(viewport);
+    parent.append(section);
   }
   function render(container,sheet){
     if(!container)return;
     container.replaceChildren();
-    if(!sheet||!Array.isArray(sheet.columns)||!sheet.columns.length||
-       !Array.isArray(sheet.rows)){
-      container.hidden=true;
-      return;
+    if(!sheet||!Array.isArray(sheet.details)||!sheet.entries||
+       !Array.isArray(sheet.entries.columns)||!Array.isArray(sheet.entries.rows)){
+      container.hidden=true;return;
     }
     container.hidden=false;
     const heading=make("div","excel-preview-heading");
-    const title=make("h3","excel-preview-title","Excel Preview");
-    const subtitle=make("p","excel-preview-subtitle",
-      "Approved values · Same column order and rows as Export CSV");
-    heading.append(title,subtitle);
+    heading.append(
+      make("h3","excel-preview-title","Excel Preview"),
+      make("p","excel-preview-subtitle","Document details once · Individual entries below")
+    );
     container.append(heading);
-    const viewport=make("div","excel-preview-scroll");
-    viewport.tabIndex=0;
-    viewport.setAttribute("role","region");
-    viewport.setAttribute("aria-label","Excel-compatible approved document preview, scroll horizontally");
-    const table=make("table","excel-preview-table");
-    const caption=make("caption","excel-preview-caption",
-      "Approved values arranged as an Excel-compatible CSV spreadsheet");
-    table.append(caption);
-    const thead=make("thead");
-    const top=make("tr");
-    const corner=make("th","excel-preview-row-number excel-preview-corner","");
-    corner.scope="col";
-    top.append(corner);
-    sheet.columns.forEach((col,i)=>{
-      const th=make("th","excel-preview-column-letter",columnLetter(i));
-      th.scope="col";
-      th.title=col.label||col.key;
-      top.append(th);
+    renderTable(container,{
+      title:"Document details",kind:"details",
+      columns:[{key:"label",label:"Field"},{key:"value",label:"Value"}],
+      rows:sheet.details.map(field=>[field.label,field.value])
     });
-    thead.append(top);
-    table.append(thead);
-    const tbody=make("tbody");
-    const headerRow=make("tr","excel-preview-header-row");
-    const headerNumber=make("th","excel-preview-row-number","1");
-    headerNumber.scope="row";
-    headerRow.append(headerNumber);
-    sheet.columns.forEach(col=>{
-      const th=make("th","excel-preview-field-name",String(col.key||""));
-      th.scope="col";
-      th.title=col.label||col.key||"";
-      headerRow.append(th);
-    });
-    tbody.append(headerRow);
-    sheet.rows.forEach((row,index)=>{
-      const tr=make("tr");
-      const count=make("th","excel-preview-row-number",String(index+2));
-      count.scope="row";
-      tr.append(count);
-      sheet.columns.forEach((col,colIndex)=>{
-        const value=row?.[colIndex];
-        const cell=make("td","excel-preview-data-cell",value==null?"":String(value));
-        if(value!==null&&value!==undefined)cell.title=String(value);
-        if(value===null||value===undefined||value==="")cell.classList.add("excel-preview-blank");
-        tr.append(cell);
+    if(sheet.entries.rows.length){
+      renderTable(container,{
+        title:sheet.entries.title,kind:"entries",
+        columns:sheet.entries.columns,rows:sheet.entries.rows
       });
-      tbody.append(tr);
-    });
-    table.append(tbody);
-    viewport.append(table);
-    container.append(viewport);
+    }
   }
-  window.BillyExcelPreview={render,columnLetter};
+  window.BillyExcelPreview={render};
 })();
