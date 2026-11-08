@@ -109,8 +109,12 @@ function mockBackend(opts={}) {
         Object.assign(existing,JSON.parse(init.body));
         return new Response(JSON.stringify([{id}]),{status:200});
       }
-      const id=url.searchParams.get("id");
-      const list=[...stored.values()].filter(item=>!id||"eq."+item.id===id);
+      const filters=["id","organization_id","created_by","source_sha256","document_type","state"];
+      let list=[...stored.values()].filter(item=>filters.every(field=>{
+        const expected=url.searchParams.get(field);
+        return !expected||expected==="eq."+item[field];
+      }));
+      if(url.searchParams.get("order")==="created_at.desc")list=list.reverse();
       const offset=Number(url.searchParams.get("offset")||0);
       const limit=Number(url.searchParams.get("limit")||list.length);
       return new Response(JSON.stringify(list.slice(offset,offset+limit)),{status:200});
