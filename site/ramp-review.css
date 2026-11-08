@@ -170,3 +170,7 @@
   margin:12px 0 0;padding-top:11px;
   border-top:1px solid #363b40
 }
+
+/* On-device OCR status is deliberately quiet: no extra panels or AI confidence. */
+.ramp-local-ocr-status{font-size:12px;color:var(--muted,#9ba4ac);line-height:1.45;margin:0;padding:0 3px}
+.ramp-local-ocr-status:empty{display:none}
