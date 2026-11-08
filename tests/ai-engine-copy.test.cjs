@@ -20,7 +20,7 @@ test("User-facing Billy copy uses AI engine rather than mentioning the vendor",(
   assert.match(app,/AI engine connected/);
   assert.match(ramp,/The AI engine is checking your values/);
   assert.match(review,/Download original AI engine JSON \(unverified\)/);
-  assert.match(regions,/AI engine: /);
+  assert.match(regions,/Document evidence/);
   assert.doesNotMatch(regions,/TrOCR|trocr|AI engine \\+ local /);
   assert.doesNotMatch(regions,/Gemini finished|Gemini: |Gemini extraction|Gemini \+ local/);
 });
