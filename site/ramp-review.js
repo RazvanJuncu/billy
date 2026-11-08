@@ -192,7 +192,7 @@
     intelCheckbox.type="checkbox";
     intelCheckbox.checked=false; // Explicit opt-in per approved document; never persist by default.
     const intelText=create("span","",
-      "Learn from my corrections (team-only text examples; no image archive).");
+      "Learn from my corrections and confirmations (team-only text examples).");
     intelLabel.append(intelCheckbox,intelText);
     intelligence.append(intelTitle,intelLabel);
     compact.append(intelligence);
