@@ -201,7 +201,8 @@ function render(result,endpoint,authHeaders,sourceFile=null){
        body:JSON.stringify({
          extraction_id:extractId,document_type:documentType,document:draft,confirmed:true,
          not_on_document:window.BillyReview?.rampAudit?.()?.not_on_document||[],
-         manual_confirmations:window.BillyReview?.rampAudit?.()?.manual_confirmations||[]
+         manual_confirmations:window.BillyReview?.rampAudit?.()?.manual_confirmations||[],
+          confidence_engine:window.BillyReview?.rampAudit?.()?.confidence_engine||null
        })
      });
      const resultBody=await response.json();
