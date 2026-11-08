@@ -584,6 +584,34 @@ async function recheck(req,principal) {
     note:"AI results are visual assessments; the operator remains responsible for verification. No values were modified."
   });
 }
+// The confidence audit is untrusted, operator-client metadata. It never
+// changes OCR, AI confidence or approval rights; it contains no document
+// values or image crops. 'Unreviewed' is NOT a ground-truth correct label.
+function cleanConfidenceAudit(value,type){
+  if(!value||typeof value!=="object"||Array.isArray(value)||
+     value.version!=="1.0"||!Array.isArray(value.field_reviews)||
+     value.field_reviews.length>180)return null;
+  const initialLevels=new Set(["green","yellow","red","new"]);
+  const finalLevels=new Set(["green","yellow","red","blue","unknown"]);
+  const actions=new Set(["unreviewed","confirmed","corrected","absent"]);
+  const seen=new Set(),fields=[];
+  for(const item of value.field_reviews){
+    if(!item||typeof item!=="object"||Array.isArray(item)||
+       typeof item.field_path!=="string"||item.field_path.length>90||
+       !editPath(type,item.field_path)||seen.has(item.field_path)||
+       !initialLevels.has(item.initial_level)||
+       !finalLevels.has(item.final_level)||
+       !actions.has(item.action)||
+       typeof item.initial_signal!=="string"||
+       !/^[a-z_]{2,40}$/.test(item.initial_signal))return null;
+    seen.add(item.field_path);
+    fields.push({
+      field_path:item.field_path,initial_level:item.initial_level,
+      initial_signal:item.initial_signal,final_level:item.final_level,action:item.action
+    });
+  }
+  return {version:"1.0",source:"client_observed",field_reviews:fields};
+}
 async function approve(req,principal){
   let data;
   try{data=await req.json();}catch{return error("Invalid approval JSON.",400);}
@@ -615,6 +643,12 @@ async function approve(req,principal){
   }catch{return error("Invalid human confirmation list.",400);}
   const corrections=Object.keys(checked).filter(k=>JSON.stringify(checked[k])!==JSON.stringify(source.extracted_data?.[k])).length;
   const warnings=validate(checked,data.document_type,source.regions_data||[]);
+  const confidenceAudit=cleanConfidenceAudit(data.confidence_engine,data.document_type);
+  const reviewMetadata={
+    not_on_document:absentPaths,manual_confirmations:confirmationClaims,
+    origin:"operator_confirmation",
+    ...(confidenceAudit?{confidence_engine:confidenceAudit}:{})
+  };
   // Compare-and-swap makes repeated approvals return 409 instead of overwriting.
   const updated=await database(principal,"PATCH","document_records",{
     "select":"id",
@@ -622,16 +656,13 @@ async function approve(req,principal){
     "created_by":"eq."+principal.user_id,"state":"eq.extracted"
   },{
     state:"approved",reviewed_data:checked,validation_warnings:warnings,
-    review_metadata:{not_on_document:absentPaths,
-      manual_confirmations:confirmationClaims,
-      origin:"operator_confirmation"},
+    review_metadata:reviewMetadata,
     approved_at:new Date().toISOString(),approved_by:principal.user_id
   });
   if(!Array.isArray(updated)||updated.length!==1)return error("This document was already approved.",409);
   return json({status:"approved",approval_id:source.id,document_type:data.document_type,
     correction_count:corrections,validation_warnings:warnings,
-    review_metadata:{not_on_document:absentPaths,
-      manual_confirmations:confirmationClaims,origin:"operator_confirmation"},
+    review_metadata:reviewMetadata,
     posted_to_excel:false});
 }
 async function listRecords(principal,req) {
