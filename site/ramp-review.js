@@ -342,7 +342,7 @@
       fieldInput.hidden=!enabled;
       currentValue.hidden=enabled||missing;
       currentCaption.hidden=enabled||missing;
-      fieldConfirm.textContent=enabled?"Save value":missing?"Enter value":"Correct";
+      fieldConfirm.textContent=enabled?(missing?"Save value":"Save correction"):missing?"Enter value":"Correct";
       fieldConfirm.disabled=!enabled&&!missing&&!substantive(valueAt(doc,selected));
       fieldEdit.textContent=enabled?"Cancel edit":missing?"Not on document":"Edit";
       if(enabled)fieldInput.focus();
