@@ -26,6 +26,11 @@ function getApprovedSpreadsheetData(){
   const details=fieldKeys
     .filter(([key])=>draft[key]!==null&&draft[key]!==undefined&&String(draft[key]).trim()!=="")
     .map(([key,label])=>({key,label,value:draft[key]}));
+  // Free-text notes are part of the approved extraction, not disposable extras.
+  if(Array.isArray(draft.notes))draft.notes.forEach((value,index)=>{
+    if(value!==null&&value!==undefined&&String(value).trim()!=="")
+      details.push({key:"notes["+index+"]",label:"Note "+(index+1),value});
+  });
   const sourceRows=documentType==="fuel_release"?draft.handwritten_entries:draft.lines;
   const columns=lineKeys.map(([key,label])=>({key,label}));
   const rows=(Array.isArray(sourceRows)?sourceRows:[]).map(item=>
