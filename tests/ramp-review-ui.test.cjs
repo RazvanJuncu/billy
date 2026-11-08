@@ -131,7 +131,7 @@ test("A missing fuel unit must not mark known meter readings as critical",()=>{
   assert.equal(absent.level,"yellow");
   assert.match(absent.reason,/Not on document/);
   const meterWarnings=[...unitWarning,"Meter arithmetic matches (14), but verify both original meter readings visually. Arithmetic is not proof of OCR accuracy."];
-  assert.equal(classify("meter_start",doc,"fuel_release",[clear("meter_start")],meterWarnings).level,"yellow");
+  assert.equal(classify("meter_start",doc,"fuel_release",[clear("meter_start")],meterWarnings).level,"green");
   assert.notEqual(classify("meter_start",doc,"fuel_release",[clear("meter_start")],meterWarnings).level,"red");
 });
 
@@ -173,4 +173,37 @@ test("Only Gemini source evidence and business rules classify fields",()=>{
   assert.match(ramp,/alternate_readings/);
   assert.match(ramp,/Meter mismatch/);
   assert.doesNotMatch(ramp,/compareLocalOCR|TrOCR read:|localStatus/);
+});
+
+test("Confidence Engine v1 ignores positive meter equality but retains real risks",()=>{
+  const injected=ramp.replace("  function mount(result,endpoint,getHeaders,sourceFile){",
+    "  window.__testClassify=classification;\n  function mount(result,endpoint,getHeaders,sourceFile){");
+  const ctx={window:{BillyReview:{render:()=>{}}}};
+  vm.runInNewContext(injected,ctx);
+  const classify=ctx.window.__testClassify;
+  const doc={meter_start:"71058",meter_finish:"71072",delivered_quantity:"14",
+    quantity_unit:"L",aircraft_registration:"1719P",fueler_name:"EB"};
+  const region=(field_path,visual_clarity="clear",alternate_readings=[])=>
+    ({field_path,visual_clarity,alternate_readings,visual_reason:"Original evidence"});
+  const consistent=["Meter arithmetic matches (14), but verify both original meter readings visually. Arithmetic is not proof of OCR accuracy."];
+  for(const field of ["meter_start","meter_finish","delivered_quantity"]){
+    const result=classify(field,doc,"fuel_release",[region(field)],consistent);
+    assert.equal(result.level,"green");
+    assert.equal(result.signal,"no_flag");
+  }
+  assert.equal(classify("meter_start",doc,"fuel_release",
+    [region("meter_start","slight_uncertainty")],consistent).level,"yellow");
+  assert.equal(classify("meter_start",doc,"fuel_release",[],consistent).level,"yellow");
+  assert.equal(classify("meter_start",doc,"fuel_release",
+    [region("meter_start","clear",["71053"])],consistent).signal,"competing_reading");
+  assert.equal(classify("meter_start",doc,"fuel_release",
+    [region("meter_start","clear")],
+    ["Meter mismatch: finish minus start is 14 but delivered quantity is 15."]).level,"red");
+  assert.equal(classify("delivered_quantity",{...doc,delivered_quantity:null},"fuel_release",
+    [],consistent).level,"red");
+  assert.equal(classify("meter_start",{...doc,meter_start:"12.5"},"fuel_release",
+    [region("meter_start","clear",["125"])],[]).level,"yellow");
+  assert.match(ramp,/initialState=new Map/);
+  assert.match(ramp,/confidence_engine:\{/);
+  assert.match(ramp,/ai_assessment_not_a_calibrated_confidence:true/);
 });
