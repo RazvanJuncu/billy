@@ -127,7 +127,6 @@
     const exportable = approved;
     $("simpleExportCsv").disabled = !exportable;
     $("simpleExportJson").disabled = !exportable;
-    $("simpleInspectLearning").disabled = !exportable;
     $("simpleUploadNote").textContent = exportable
       ? "Approved fields are saved to your Billy team records when connected to cloud. The original file and company Excel are not updated."
       : "Review and approve the document before exporting.";
@@ -136,81 +135,6 @@
     const sheet=exportable?window.BillyReview?.getApprovedSpreadsheetData?.():null;
     window.BillyExcelPreview?.render($("simpleExcelPreview"),sheet);
     if(!window.BillyExcelPreview)$("simpleExcelPreview").hidden=true;
-  }
-
-  function auditLine(parent,label,value,detail){
-    const row=document.createElement("div");
-    row.className="simple-audit-row";
-    const name=document.createElement("span"),result=document.createElement("strong");
-    name.textContent=label;
-    result.textContent=String(value);
-    row.append(name,result);
-    if(detail){
-      const help=document.createElement("p");
-      help.textContent=detail;row.append(help);
-    }
-    parent.append(row);
-  }
-  function renderLearningAudit(data){
-    const target=$("simpleLearningAudit");
-    target.replaceChildren();
-    const stored=data?.audit||{},same=stored.same_file||null,
-      comparison=same?.comparison||null,lookup=stored.retrieval||null,
-      memory=data?.learning||{};
-    const caption=document.createElement("p");
-    caption.className="simple-audit-intro";
-    caption.textContent="Verified database and extraction trace · No model training implied.";
-    target.append(caption);
-    if(same){
-      auditLine(target,"Identical file",
-        same.lookup_status==="unavailable"?"Lookup unavailable":
-        same.prior_approved_count?String(same.prior_approved_count)+" earlier approval(s)":
-        "First recorded approval",
-        "SHA-256 comparison of identical file bytes, not AI learning.");
-    }else{
-      auditLine(target,"Identical file","Not recorded",
-        "This extraction preceded detailed learning diagnostics.");
-    }
-    if(same&&Array.isArray(same.previously_verified_paths)){
-      auditLine(target,"Previously verified on identical file",
-        same.previously_verified_paths.length+" matching field(s)",
-        "Only prior operator-checked values matching this exact file and latest approved values qualify; red warnings still need review.");
-    }
-    if(comparison){
-      auditLine(target,"Compared with previous approval",
-        comparison.different_fields+" changed field(s) · "+
-        comparison.missing_from_fresh+" missing value(s)");
-      auditLine(target,"Extracted entry count",
-        comparison.fresh_extracted_entries+" now / "+
-        comparison.previously_approved_entries+" previously");
-    }
-    if(lookup){
-      auditLine(target,"Memory retrieval",
-        lookup.status==="unavailable"?"Unavailable":
-        lookup.examples_found+" matching example(s)",
-        "Only the examples found and supplied for verification can influence this scan.");
-      auditLine(target,"Additional visual inspection",
-        lookup.provider_second_pass?"Requested":"Not requested");
-    }else{
-      auditLine(target,"Memory retrieval","Not recorded",
-        "Earlier scans did not persist retrieval diagnostics.");
-    }
-    auditLine(target,"Learning opted in",
-      memory.opt_in===true?"Yes":memory.opt_in===false?"No":"Not recorded",
-      memory.opt_in===false?
-        "The operator did not enable learning for this approval; no new examples can be saved.":
-        "Per-document consent is required before Billy stores learning examples.");
-    auditLine(target,"Operator confirmations",memory.confirmed_clicked??0,
-      "Each deliberate confirmation is recorded. Personal identifiers and empty readings are not used as cross-document text examples.");
-    auditLine(target,"Saved / searchable examples",
-      (memory.total_saved??0)+" saved · "+(memory.indexed??0)+" indexed",
-      memory.unindexed?
-        memory.unindexed+" saved example(s) have no issue classification and cannot be found by issue-key search.":
-        "Indexed examples are retrievable when a future scan detects the matching issue.");
-    const footer=document.createElement("p");
-    footer.className="simple-audit-footnote";
-    footer.textContent="Same-file verified fields may be blue on a repeat. New documents remain subject to source checks. Model weights are not updated.";
-    target.append(footer);
   }
 
   function recordFile(file) {
@@ -454,23 +378,6 @@
   });
   bind("simpleExportCsv", () => window.BillyReview?.exportCSV());
   bind("simpleExportJson", () => window.BillyReview?.exportJSON());
-  bind("simpleInspectLearning", async () => {
-    const panel=$("simpleLearningAudit"),button=$("simpleInspectLearning");
-    if(!panel.hidden){
-      panel.hidden=true;button.setAttribute("aria-expanded","false");
-      return;
-    }
-    panel.hidden=false;button.setAttribute("aria-expanded","true");
-    panel.textContent="Reading Billy Intelligence audit…";
-    button.disabled=true;
-    try{
-      const report=await window.BillyReview?.getLearningAudit?.();
-      if(!report)throw Error("Learning audit is unavailable.");
-      renderLearningAudit(report);
-    }catch(error){
-      panel.textContent="Could not inspect Billy Intelligence: "+(error?.message||"Unknown error");
-    }finally{button.disabled=!approved;}
-  });
   bind("simpleReviewAgain", () => showScreen("review"));
   bind("simpleReviewToUpload", () => { if (approved) showScreen("upload"); });
   bind("simpleNewFromUpload", () => {
@@ -525,9 +432,6 @@
     if (body.dataset.billyScreen === "process") updateProcess();
   });
   window.addEventListener("billy:document-approved",() => {
-    $("simpleLearningAudit").hidden=true;
-    $("simpleLearningAudit").replaceChildren();
-    $("simpleInspectLearning").setAttribute("aria-expanded","false");
     approved = true;
     const rec = sessionFiles.find(item => item.file === activeFile);
     if (rec) rec.status = "Approved in pilot";
