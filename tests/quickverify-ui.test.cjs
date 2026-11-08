@@ -369,3 +369,22 @@ test("Returning to a regular field restores the full QuickVerify controls and so
   assert.match(css,/\.ramp-source-crop\[hidden\]/);
   assert.match(css,/\.ramp-field-detail\.ramp-missing/);
 });
+
+test("Confidence v1 logs initial risk and final operator action without document text",()=>{
+  const {window,find,segment}=simulate();
+  const initial=window.BillyReview.rampAudit().confidence_engine;
+  assert.equal(initial.version,"1.0");
+  const invoice=initial.field_reviews.find(x=>x.field_path==="invoice_number");
+  assert.equal(invoice.initial_level,"red");
+  assert.equal(invoice.initial_signal,"source_ambiguous");
+  assert.equal(invoice.action,"unreviewed");
+  segment("invoice_number").click();
+  find("ramp-confirm").click();
+  const after=window.BillyReview.rampAudit().confidence_engine;
+  const confirmed=after.field_reviews.find(x=>x.field_path==="invoice_number");
+  assert.equal(confirmed.initial_level,"red");
+  assert.equal(confirmed.final_level,"blue");
+  assert.equal(confirmed.action,"confirmed");
+  assert.equal(JSON.stringify(after).includes("INV-42"),false);
+  assert.equal(JSON.stringify(after).includes("119.00"),false);
+});
