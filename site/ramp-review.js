@@ -336,24 +336,80 @@
         feedback.textContent="Review the remaining highlighted fields. Unclear scans require an explicit operator confirmation.";
       }else feedback.textContent="Fields confirmed. Run Recheck with AI.";
     }
+    function setEditMode(enabled){
+      editMode=enabled;
+      fieldInput.hidden=!enabled;
+      currentValue.hidden=enabled;
+      currentCaption.hidden=enabled;
+      fieldConfirm.textContent=enabled?"Save correction":"Correct";
+      fieldConfirm.disabled=!enabled&&!substantive(valueAt(doc,selected));
+      fieldEdit.textContent=enabled?"Cancel edit":"Edit";
+      if(enabled)fieldInput.focus();
+      else (fieldConfirm.disabled?fieldEdit:fieldConfirm).focus();
+    }
+    function closeEditor(){
+      selected=null;editMode=false;
+      cropper?.cancel();
+      sourceCrop.replaceChildren();
+      detail.hidden=true;paint();
+    }
+    function nextAttention(afterPath){
+      // Keep the user's place: next unresolved segment, wrapping if needed.
+      const i=paths.indexOf(afterPath);
+      const ordered=[...paths.slice(i+1),...paths.slice(0,i+1)];
+      const next=ordered.find(path=>{
+        const entry=state.get(path);
+        return entry&&(entry.level==="yellow"||entry.level==="red")&&!humanReviewed.has(path);
+      });
+      if(next){openEditor(next);return;}
+      closeEditor();
+      if(!recheck.hidden){
+        feedback.textContent="Ready for Recheck";
+        recheck.focus();
+      }else if(!finish.hidden){
+        feedback.textContent="Ready for approval";
+        finish.focus();
+      }
+    }
     function openEditor(path){
+      if(busy||!state.has(path))return;
       selected=path;
       const entry=state.get(path);
       fieldTitle.textContent=labelFor(path,type,doc);
       fieldInput.value=valueAt(doc,path)??"";
+      currentValue.textContent=substantive(valueAt(doc,path))?
+        String(valueAt(doc,path)):"Not extracted";
       fieldNotPresent.textContent=notOnDocument.has(path)?"Not on document ✓":"Not on document";
       const pair=translatedPaths.get(path);
       reason.textContent=entry.reason+(pair?
         " Original ("+String(translation.source_language||"source").toUpperCase()+
         "): "+pair.source_text+". English result: "+pair.english_text+".":"");
-      fieldConfirm.textContent=entry.level==="yellow"&&checkedRevision===revision&&humanReviewed.has(path)
-        ?"Confirm despite unclear evidence":"Confirm this value";
+      const region=regions.find(item=>item.field_path===path&&
+        window.BillyQuickVerifyCrop?.validRegion(item));
+      sourceTitle.textContent=region?
+        "Original source · page "+region.page+" · AI-estimated area":
+        "Original source · location unavailable";
+      if(cropper)void cropper.show(region,sourceCrop);
+      else {
+        sourceCrop.replaceChildren(
+          create("p","ramp-crop-status","Source crop unavailable · inspect the original document."));
+      }
       detail.hidden=false;
+      setEditMode(false);
       paint();
-      fieldInput.focus();
       detail.scrollIntoView?.({block:"nearest",behavior:"smooth"});
     }
-    fieldCancel.addEventListener("click",()=>{selected=null;detail.hidden=true;paint();});
+    fieldCancel.addEventListener("click",closeEditor);
+    inspectOriginal.addEventListener("click",()=>{
+      evidence.hidden=false;
+      toggleEvidence.textContent="Hide original document";
+      evidence.scrollIntoView?.({block:"nearest",behavior:"smooth"});
+    });
+    fieldEdit.addEventListener("click",()=>{
+      if(!selected)return;
+      if(editMode)fieldInput.value=valueAt(doc,selected)??"";
+      setEditMode(!editMode);
+    });
     fieldNotPresent.addEventListener("click",()=>{
       if(!selected)return;
       const path=selected;
@@ -362,10 +418,7 @@
       notOnDocument.add(path);
       humanReviewed.add(path);
       state.set(path,{level:"blue",reason:"Operator confirmed absent on the source document. AI did not read a value."});
-      selected=null;
-      detail.hidden=true;
-      paint();
-      feedback.textContent="Marked as not on document. AI will not search for this field during recheck.";
+      nextAttention(path);
     });
     fieldInput.addEventListener("keydown",event=>{
       if(event.key==="Enter"){event.preventDefault();fieldConfirm.click();}
