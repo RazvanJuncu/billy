@@ -47,6 +47,12 @@ function mockBackend(opts={}) {
       const body=JSON.parse(init.body);
       const prompt=body.contents[0].parts[0].text||"";
       googlePrompts.push(prompt);
+      if(prompt.includes("SECOND independent visual inspection")){
+        const assessments=opts.issueAssessments||[];
+        return new Response(JSON.stringify({candidates:[{content:{parts:[{
+          text:JSON.stringify({assessments})
+        }]}}]}),{status:200,headers:{"Content-Type":"application/json"}});
+      }
       if(prompt.includes("Independently check whether the supplied field values")){
         const checks=opts.recheckChecks||[
           {field_path:"supplier_name",status:"match",reason:"Visible"},
@@ -73,7 +79,9 @@ function mockBackend(opts={}) {
       if(opts.memoryReadFails)return new Response("Unavailable",{status:503});
       const org=url.searchParams.get("organization_id")?.replace(/^eq\./,"");
       const type=url.searchParams.get("document_type")?.replace(/^eq\./,"");
-      const rows=examples.filter(row=>row.organization_id===org&&row.document_type===type);
+      const issue=url.searchParams.get("issue_key")?.replace(/^eq\./,"");
+      const rows=examples.filter(row=>row.organization_id===org&&
+        (!type||row.document_type===type)&&(!issue||row.issue_key===issue));
       return new Response(JSON.stringify(rows.reverse()),{status:200});
     }
     if(url.pathname.endsWith("/document_records")){
