@@ -230,6 +230,18 @@
       "Learn from my corrections and confirmations (team-only text examples).");
     intelLabel.append(intelCheckbox,intelText);
     intelligence.append(intelTitle,intelLabel);
+    const duplicate=result.intelligence_audit?.same_file;
+    if(duplicate?.previous_approved_found){
+      const differences=duplicate.comparison;
+      const notice=create("p","ramp-intelligence-history",
+        "Identical file previously approved "+duplicate.prior_approved_count+
+        " time(s). Fresh extraction differs in "+
+        (differences?.different_fields??"?")+" field(s); entries: "+
+        (differences?.fresh_extracted_entries??"?")+" now vs "+
+        (differences?.previously_approved_entries??"?")+
+        " previously. This is comparison, not model training.");
+      intelligence.append(notice);
+    }
     compact.append(intelligence);
     window.BillyReview.intelligenceOptIn=()=>intelCheckbox.checked;
     const localInput=path=>[...advanced.querySelectorAll("[data-evidence-path]")]
