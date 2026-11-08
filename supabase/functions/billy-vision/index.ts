@@ -178,7 +178,7 @@ function applyEnglishTranslations(sourceDoc,type,language,raw){
   const code=typeof language==="string"&&
     /^(?:[a-z]{2,3}(?:-[a-z]{2,4})?|und|mul)$/i.test(language.trim())?
       language.trim().toLowerCase():"und";
-  const output=structuredClone(sourceDoc),translations=[],seen=new Set();
+  const output=JSON.parse(JSON.stringify(sourceDoc)),translations=[],seen=new Set();
   const entries=Array.isArray(raw)?raw.slice(0,200):[];
   if(code!=="en"){
     for(const item of entries){
@@ -659,18 +659,22 @@ async function extract(req,principal){
     return error("The AI engine returned HTTP "+google.status+". Check provider billing, quota and model access.",502);
   }
   const response=await google.json();
-  let fields,regions;
+  let fields,sourceDoc,regions,translation;
   try{
     const message=(response.candidates?.[0]?.content?.parts||[]).filter(p=>!p.thought).map(p=>p.text||"").join("");
     const parsed=JSON.parse(message);
     regions=cleanRegions(parsed.regions,type);
-    const {regions: _evidence, ...structured}=parsed;
-    fields=cleanDoc(structured,type);
+    const {regions: _evidence,document_language:_language,
+      english_translations:_translations,...structured}=parsed;
+    sourceDoc=cleanDoc(structured,type);
+    const translated=applyEnglishTranslations(sourceDoc,type,_language,_translations);
+    fields=cleanDoc(translated.document,type);
+    translation=translated.metadata;
   }catch(e){
     console.error("Gemini invalid structured response",String(e).slice(0,180));
     return error("The AI engine returned an invalid structured document. Try another scan.",502);
   }
-  const issues=issuesInExtraction(regions,fields,type);
+  const issues=issuesInExtraction(regions,sourceDoc,type);
   let memory=[],review={status:"no_matching_examples",assessments:[]};
   if(issues.length){
     try{
@@ -685,6 +689,8 @@ async function extract(req,principal){
   // A second AI pass may add a warning or a plausible alternative, NEVER a new
   // extracted value or an automatic green/clear classification.
   for(const advice of review.assessments||[]){
+    // Issue alternatives refer to SOURCE glyphs, not translated English words.
+    if(translation.translations.some(row=>row.field_path===advice.field_path))continue;
     const region=regions.find(item=>item.field_path===advice.field_path);
     if(!region)continue;
     const suggestion=advice.alternative;
@@ -712,6 +718,7 @@ async function extract(req,principal){
     id,organization_id:principal.organization_id,created_by:principal.user_id,
     document_type:type,source_sha256:hash,state:"extracted",
     extracted_data:fields,regions_data:regions,validation_warnings:warnings,
+    translation_metadata:translation,
     model_name:MODEL,token_usage:usage
   });
   return json({
@@ -721,6 +728,7 @@ async function extract(req,principal){
     invoice:type==="invoice"?fields:null,
     fuel_release:type==="fuel_release"?fields:null,
     validation_warnings:warnings,usage,regions,confidence:null,
+    translation,
     handwriting_training_capture_enabled:false,
     handwriting_second_opinion:{status:"disabled",model_version:null,comparisons:0,disagreements:0},
     historical_field_agreement:{},feedback_example_count:memory.length,
@@ -784,7 +792,7 @@ async function recheck(req,principal) {
     absentPaths=checkedAbsentPaths(raw?JSON.parse(raw):[],reviewed,type);
   }catch(e){return error("Invalid not-on-document selection.",400);}
   const owned=await database(principal,"GET","document_records",{
-    select:"id,document_type,source_sha256,state",
+    select:"id,document_type,source_sha256,state,translation_metadata",
     id:"eq."+id,organization_id:"eq."+principal.organization_id,
     created_by:"eq."+principal.user_id,limit:"1"
   });
@@ -812,7 +820,9 @@ async function recheck(req,principal) {
   const proposals=fieldPaths.map(path=>{
     const m=path.match(/^(lines|handwritten_entries)\[(\d+)\]\.([a-z_]+)$/);
     const value=m?reviewed[m[1]][Number(m[2])][m[3]]:reviewed[path];
-    return {field_path:path,value};
+    const pair=(record.translation_metadata?.translations||[])
+      .find(row=>row.field_path===path&&row.english_text===value);
+    return pair?{field_path:path,value,source_text:pair.source_text}:{field_path:path,value};
   });
   const payload={
     contents:[{role:"user",parts:[
@@ -943,7 +953,7 @@ async function listRecords(principal,req) {
   if(!/^\d{1,6}$/.test(raw)||Number(raw)>999999)return error("Invalid records offset.",400);
   const offset=Number(raw);
   const rows=await database(principal,"GET","document_records",{
-    select:"id,created_by,document_type,state,created_at,approved_at,model_name,source_sha256,extracted_data,reviewed_data,review_metadata,regions_data,validation_warnings",
+    select:"id,created_by,document_type,state,created_at,approved_at,model_name,source_sha256,extracted_data,reviewed_data,review_metadata,regions_data,validation_warnings,translation_metadata",
     organization_id:"eq."+principal.organization_id,order:"created_at.desc",offset:String(offset),limit:"51"
   });
   const page=rows.slice(0,50);
