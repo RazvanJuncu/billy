@@ -116,29 +116,6 @@
         slot.replaceChildren(info("Source crop unavailable · inspect the original document."));
       }
     }
-    async function dataUrl(region){
-      if(disposed||!validRegion(region))throw Error("Invalid handwriting region");
-      const source=await sourceOnPage(region.page);
-      if(disposed)throw Error("Document changed");
-      const bounds=cropBounds(region,source.width,source.height);
-      if(!bounds)throw Error("No usable crop");
-      // TrOCR reads individual lines. Limit crop dimensions and network-free
-      // worker transfer to a compact PNG; no persistent copy is created.
-      const scale=Math.min(2.5,960/bounds.sw,220/bounds.sh);
-      const canvas=document.createElement("canvas");
-      canvas.width=Math.max(1,Math.round(bounds.sw*scale));
-      canvas.height=Math.max(1,Math.round(bounds.sh*scale));
-      const context=canvas.getContext("2d",{alpha:false});
-      if(!context)throw Error("Canvas unavailable");
-      context.fillStyle="#fff";
-      context.fillRect(0,0,canvas.width,canvas.height);
-      context.drawImage(source.drawable,
-        bounds.sx,bounds.sy,bounds.sw,bounds.sh,
-        0,0,canvas.width,canvas.height);
-      const encoded=canvas.toDataURL("image/png");
-      if(encoded.length>5_000_000)throw Error("Crop too large for local OCR");
-      return encoded;
-    }
     function dispose(){
       disposed=true;ticket++;
       if(sourceUrl)URL.revokeObjectURL(sourceUrl);
@@ -146,7 +123,7 @@
       // this in-memory viewer until the document changes.
       if(pdfPromise)pdfPromise.then(pdf=>pdf.destroy()).catch(()=>{});
     }
-    return {show,dataUrl,cancel:()=>{ticket++;},dispose};
+    return {show,cancel:()=>{ticket++;},dispose};
   }
   window.BillyQuickVerifyCrop={create,cropBounds,validRegion};
 })();
