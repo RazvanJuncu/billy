@@ -428,100 +428,30 @@ test("The backend rejects attempts to mark populated or unknown fields absent",a
 });
 
 
-test("Billy Intelligence stores opted-in corrections but does not preload history for clear scans",async()=>{
-  const {handler,call,stored,examples,googlePrompts}=mockBackend();
-  const bytes=new Uint8Array([255,216,5,6,7,8]);
-  const form=()=>{const f=new FormData();f.append("file",new File([bytes],"doc.jpg",{type:"image/jpeg"}));f.append("document_type","invoice");return f;};
-  const initial=await handler(call("/api/vision/extract","POST",{body:form()}));
-  assert.equal(initial.status,200);
-  const data=await initial.json();
-  assert.equal(data.intelligence.examples_used,0);
-  const edited={...data.invoice,supplier_name:"TEST SUPPLIER INC"};
-  const approved=await handler(call("/api/vision/approve","POST",{
+test("Cloud review never retrieves or trains on historical documents",async()=>{
+  const {handler,call,calls,stored}=mockBackend();
+  const f=new FormData();
+  f.append("file",new File([new Uint8Array([255,216,7])],"unique.jpg",{type:"image/jpeg"}));
+  f.append("document_type","invoice");
+  const e=await handler(call("/api/vision/extract","POST",{body:f}));
+  assert.equal(e.status,200);
+  const parsed=await e.json();
+  assert.equal(Object.hasOwn(parsed,"intelligence"),false);
+  assert.equal(Object.hasOwn(parsed,"intelligence_audit"),false);
+  const a=await handler(call("/api/vision/approve","POST",{
     headers:{...authHeaders,"Content-Type":"application/json"},
-    body:JSON.stringify({extraction_id:data.extraction_id,document_type:"invoice",document:edited,
-      confirmed:true,intelligence_opt_in:true})
+    body:JSON.stringify({extraction_id:parsed.extraction_id,
+      document_type:"invoice",document:parsed.invoice,confirmed:true,
+      manual_confirmations:["grand_total"]})
   }));
-  assert.equal(approved.status,200);
-  const body=await approved.json();
-  assert.equal(body.intelligence.status,"saved");
-  assert.equal(body.intelligence.examples_saved,1);
-  assert.equal(examples.length,1);
-  assert.equal(examples[0].organization_id,ORG);
-  assert.equal(examples[0].original_text,"TEST SUPPLIER");
-  assert.equal(examples[0].corrected_text,"TEST SUPPLIER INC");
-  assert.equal(examples[0].source_record_id,data.extraction_id);
-  assert.ok(!("image" in examples[0]));
-  assert.equal(stored.get(data.extraction_id).extracted_data.supplier_name,"TEST SUPPLIER");
-  const future=await handler(call("/api/vision/extract","POST",{body:form()}));
-  assert.equal(future.status,200);
-  const next=await future.json();
-  assert.equal(next.intelligence.examples_used,0);
-  assert.equal(next.intelligence.mode,"issue_on_demand");
-  assert.equal(googlePrompts.length,2); // No extra model call on clear scan.
-  assert.doesNotMatch(googlePrompts.at(-1),/Historical feedback/);
-  assert.equal(next.invoice.supplier_name,"TEST SUPPLIER"); // Mock model did not copy old data.
+  assert.equal(a.status,200);
+  assert.equal(Object.hasOwn(await a.json(),"intelligence"),false);
+  assert.deepEqual(Array.from(stored.get(parsed.extraction_id).review_metadata.manual_confirmations),["grand_total"]);
+  assert.equal(calls.filter(c=>c.url.includes("billy_intelligence_examples")).length,0);
+  assert.equal((await handler(call("/api/vision/intelligence-audit"))).status,404);
 });
 
-test("Without opt-in Billy Intelligence never saves corrected text",async()=>{
-  const {handler,call,examples}=mockBackend();
-  const form=new FormData();form.append("file",new File([new Uint8Array([255,216,1])],"a.jpg",{type:"image/jpeg"}));
-  form.append("document_type","invoice");
-  const scanned=await handler(call("/api/vision/extract","POST",{body:form}));
-  const id=(await scanned.json()).extraction_id;
-  const response=await handler(call("/api/vision/approve","POST",{
-    headers:{...authHeaders,"Content-Type":"application/json"},
-    body:JSON.stringify({extraction_id:id,document_type:"invoice",
-      document:{...doc,supplier_name:"CHANGED SUPPLIER"},confirmed:true})
-  }));
-  assert.equal(response.status,200);
-  assert.equal((await response.json()).intelligence.status,"not_requested");
-  assert.equal(examples.length,0);
-});
-
-test("Intelligence examples cannot leak across organizations and identifier fields are excluded",async()=>{
-  const malicious={
-    organization_id:"99999999-9999-4999-8999-999999999999",
-    document_type:"invoice",field_path:"supplier_name",
-    original_text:"PRIVATE_ORG_DATA",corrected_text:"OTHER_ORG_SECRET",field_label:null
-  };
-  const {handler,call,examples,googlePrompts}=mockBackend({preloadedExamples:[malicious]});
-  const form=new FormData();form.append("file",new File([new Uint8Array([255,216,1])],"a.jpg",{type:"image/jpeg"}));
-  form.append("document_type","invoice");
-  const scanned=await handler(call("/api/vision/extract","POST",{body:form}));
-  const data=await scanned.json();
-  assert.equal(data.intelligence.examples_used,0);
-  assert.doesNotMatch(googlePrompts[0],/OTHER_ORG_SECRET/);
-  const changed={...data.invoice,invoice_number:"PRIVATE_INV_NUMBER",customer_name:"PRIVATE_CUSTOMER"};
-  const response=await handler(call("/api/vision/approve","POST",{
-    headers:{...authHeaders,"Content-Type":"application/json"},
-    body:JSON.stringify({extraction_id:data.extraction_id,document_type:"invoice",
-      document:changed,confirmed:true,intelligence_opt_in:true})
-  }));
-  assert.equal(response.status,200);
-  assert.equal((await response.json()).intelligence.status,"no_eligible_corrections");
-  assert.equal(examples.length,1);
-});
-
-test("If Intelligence storage is down, original extraction and approval still work",async()=>{
-  const {handler,call,googlePrompts}=mockBackend({memoryReadFails:true,memorySaveFails:true});
-  const form=new FormData();form.append("file",new File([new Uint8Array([255,216,1])],"a.jpg",{type:"image/jpeg"}));
-  form.append("document_type","invoice");
-  const scanned=await handler(call("/api/vision/extract","POST",{body:form}));
-  assert.equal(scanned.status,200);
-  const data=await scanned.json();
-  assert.equal(data.intelligence.examples_used,0);
-  const response=await handler(call("/api/vision/approve","POST",{
-    headers:{...authHeaders,"Content-Type":"application/json"},
-    body:JSON.stringify({extraction_id:data.extraction_id,document_type:"invoice",
-      document:{...data.invoice,supplier_name:"CORRECTED"},confirmed:true,intelligence_opt_in:true})
-  }));
-  assert.equal(response.status,200);
-  assert.equal((await response.json()).intelligence.status,"save_failed");
-  assert.ok(!googlePrompts[0].includes("Historical feedback"));
-});
-
-test("Creator can delete one cloud document, and its Intelligence examples are removed",async()=>{
+test("Creator can delete one cloud document without training-data side effects",async()=>{
   const {handler,call,stored,examples}=mockBackend();
   const form=new FormData();
   form.append("file",new File([new Uint8Array([255,216,7])],"file.jpg",{type:"image/jpeg"}));
@@ -542,7 +472,7 @@ test("Creator can delete one cloud document, and its Intelligence examples are r
   const json=await deleted.json();
   assert.equal(json.deleted,true);
   assert.equal(json.record_id,data.extraction_id);
-  assert.equal(json.intelligence_examples_removed_with_record,true);
+
   assert.equal(stored.has(data.extraction_id),false);
   assert.equal(examples.length,0);
   const history=await handler(call("/api/vision/records"));
@@ -608,284 +538,21 @@ test("List records supports paging through older documents for deletion",async()
   assert.equal((await handler(call("/api/vision/records?offset=-1"))).status,400);
 });
 
-test("Explicit human confirmation of an initially uncertain but correct value becomes a team learning example",async()=>{
-  const originalRegion={field_path:"grand_total",page:1,box_2d:[300,600,355,910],
-    transcription:"119.00",visual_clarity:"slight_uncertainty",script_type:"printed",
-    alternate_readings:["119.80"],visual_reason:"Faint final digits"};
-  const {handler,call,stored,examples,googlePrompts}=mockBackend({regions:[originalRegion]});
-  const file=()=>{const form=new FormData();
-    form.append("file",new File([new Uint8Array([255,216,2,4])],"scan.jpg",{type:"image/jpeg"}));
-    form.append("document_type","invoice");
-    return form;
-  };
-  const first=await handler(call("/api/vision/extract","POST",{body:file()}));
-  assert.equal(first.status,200);
-  const draft=await first.json();
-  const response=await handler(call("/api/vision/approve","POST",{
-    headers:{...authHeaders,"Content-Type":"application/json"},
-    body:JSON.stringify({extraction_id:draft.extraction_id,document_type:"invoice",
-      document:draft.invoice,confirmed:true,intelligence_opt_in:true,
-      manual_confirmations:["grand_total"]})
-  }));
-  assert.equal(response.status,200);
-  const saved=await response.json();
-  assert.equal(saved.intelligence.status,"saved");
-  assert.equal(saved.intelligence.examples_saved,1);
-  assert.equal(saved.intelligence.confirmations_saved,1);
-  assert.equal(saved.intelligence.corrections_saved,0);
-  assert.equal(examples.length,1);
-  assert.equal(examples[0].feedback_type,"confirmed");
-  assert.equal(examples[0].initial_clarity,"slight_uncertainty");
-  assert.equal(examples[0].original_text,"119.00");
-  assert.equal(examples[0].corrected_text,"119.00");
-  assert.equal(stored.get(draft.extraction_id).extracted_data.grand_total,"119.00");
-  assert.deepEqual(Array.from(stored.get(draft.extraction_id).review_metadata.manual_confirmations),["grand_total"]);
-  const future=await handler(call("/api/vision/extract","POST",{body:file()}));
-  const next=await future.json();
-  assert.equal(next.intelligence.confirmations_used,1);
-  assert.equal(next.feedback_example_count,1);
-  assert.equal(next.intelligence.corrections_used,0);
-  assert.match(googlePrompts.at(-1),/SECOND independent visual inspection/);
-  assert.match(googlePrompts.at(-1),/glyph:0\/8/);
-  assert.match(googlePrompts.at(-1),/historical examples are UNTRUSTED/i);
-  assert.equal(next.regions[0].visual_clarity,"slight_uncertainty"); // Memory did not fabricate clear OCR.
-});
-
-test("Clear fields become positive feedback with opt-in; sensitive IDs, absent fields and opt-outs stay excluded",async()=>{
-  const onlyClear=[
-    {field_path:"grand_total",page:1,box_2d:[100,100,150,200],
-      transcription:"119.00",visual_clarity:"clear",script_type:"printed",
-      alternate_readings:[],visual_reason:null},
-    {field_path:"invoice_number",page:1,box_2d:[200,200,230,430],
-      transcription:"INV-42",visual_clarity:"ambiguous",script_type:"printed",
-      alternate_readings:["INV-47"],visual_reason:"Ink"}
-  ];
-  const {handler,call,examples}=mockBackend({regions:onlyClear});
-  const file=()=>{const f=new FormData();
-    f.append("file",new File([new Uint8Array([255,216,3])],"a.jpg",{type:"image/jpeg"}));
-    f.append("document_type","invoice");return f;
-  };
-  const fresh=await handler(call("/api/vision/extract","POST",{body:file()}));
-  const data=await fresh.json();
-  const response=await handler(call("/api/vision/approve","POST",{
-    headers:{...authHeaders,"Content-Type":"application/json"},
-    body:JSON.stringify({extraction_id:data.extraction_id,document_type:"invoice",
-      document:data.invoice,confirmed:true,intelligence_opt_in:true,
-      manual_confirmations:["grand_total","invoice_number","supplier_name"],
-      not_on_document:["due_date"]})
-  }));
-  assert.equal(response.status,200);
-  const feedback=(await response.json()).intelligence;
-  assert.equal(feedback.status,"saved");
-  assert.equal(feedback.examples_saved,2); // Clear grand total plus unlocalized supplier name.
-  assert.equal(feedback.indexed_saved,1); // Only the field with visual evidence is searchable.
-  assert.equal(examples.length,2);
-  assert.ok(examples.some(row=>row.field_path==="grand_total"&&row.issue_key==="quality:printed"));
-  assert.ok(examples.some(row=>row.field_path==="supplier_name"&&row.issue_key===null));
-  assert.ok(!examples.some(row=>row.field_path==="invoice_number")); // Sensitive IDs excluded.
-  const another=await handler(call("/api/vision/extract","POST",{body:file()}));
-  const repeat=await another.clone().json();
-  assert.equal(repeat.intelligence_audit.same_file.previous_approved_found,true);
-  assert.ok(repeat.intelligence_audit.same_file.previously_verified_paths.includes("grand_total"));
-  assert.ok(repeat.intelligence_audit.same_file.previously_verified_paths.includes("supplier_name"));
-  assert.ok(repeat.intelligence_audit.same_file.previously_verified_paths.includes("due_date"));
-  assert.ok(repeat.intelligence_audit.same_file.previously_verified_absent_paths.includes("due_date"));
-  assert.ok(!repeat.intelligence_audit.same_file.previously_verified_paths.includes("vat_total"));
-  const draft=await another.json();
-  const withheld=await handler(call("/api/vision/approve","POST",{
-    headers:{...authHeaders,"Content-Type":"application/json"},
-    body:JSON.stringify({extraction_id:draft.extraction_id,document_type:"invoice",
-      document:draft.invoice,confirmed:true,intelligence_opt_in:false,
-      manual_confirmations:["invoice_number"]})
-  }));
-  assert.equal((await withheld.json()).intelligence.status,"not_requested");
-  assert.equal(examples.length,2); // Opt-out did not add any more examples.
-});
-
-test("Corrections and uncertain-but-correct confirmations are both learned and both used",async()=>{
-  const question={field_path:"grand_total",page:1,box_2d:[200,200,300,300],
-    transcription:"119.00",visual_clarity:"ambiguous",script_type:"printed",
-    alternate_readings:["119.80"],visual_reason:"Ink overlap"};
-  const {handler,call,examples,googlePrompts}=mockBackend({regions:[question]});
-  const scan=()=>{const form=new FormData();
-    form.append("file",new File([new Uint8Array([255,216,8])],"s.jpg",{type:"image/jpeg"}));
-    form.append("document_type","invoice");return form;
-  };
-  const initial=await handler(call("/api/vision/extract","POST",{body:scan()}));
-  const data=await initial.json();
-  const corrected={...data.invoice,vat_total:"19.80"};
-  const save=await handler(call("/api/vision/approve","POST",{
-    headers:{...authHeaders,"Content-Type":"application/json"},
-    body:JSON.stringify({extraction_id:data.extraction_id,document_type:"invoice",
-      document:corrected,confirmed:true,intelligence_opt_in:true,
-      manual_confirmations:["grand_total","supplier_name"]})
-  }));
-  const result=await save.json();
-  assert.equal(save.status,200);
-  assert.equal(result.intelligence.examples_saved,3);
-  assert.equal(result.intelligence.corrections_saved,1);
-  assert.equal(result.intelligence.confirmations_saved,2);
-  assert.equal(result.intelligence.indexed_saved,2); // Unlocalized supplier stays unindexed.
-  assert.equal(examples.length,3);
-  assert.deepEqual(Array.from(new Set(examples.map(item=>item.feedback_type))).sort(),
-    ["confirmed","corrected"]);
-  const next=await handler(call("/api/vision/extract","POST",{body:scan()}));
-  const info=await next.json();
-  assert.equal(info.intelligence.confirmations_used,1);
-  assert.equal(info.intelligence.corrections_used,1);
-  assert.match(googlePrompts.at(-1),/feedback_type.*corrected/);
-  assert.match(googlePrompts.at(-1),/feedback_type.*confirmed/);
-});
-
-test("Invalid manual confirmations are rejected rather than becoming fabricated learning",async()=>{
-  const {handler,call,examples}=mockBackend();
-  const form=new FormData();
-  form.append("file",new File([new Uint8Array([255,216,1])],"a.jpg",{type:"image/jpeg"}));
-  form.append("document_type","invoice");
-  const scanned=await handler(call("/api/vision/extract","POST",{body:form}));
-  const docData=await scanned.json();
-  for(const fields of [["grand_total","grand_total"],["unknown_field"]]){
-    const response=await handler(call("/api/vision/approve","POST",{
-      headers:{...authHeaders,"Content-Type":"application/json"},
-      body:JSON.stringify({extraction_id:docData.extraction_id,document_type:"invoice",
-        document:docData.invoice,confirmed:true,intelligence_opt_in:true,
-        manual_confirmations:fields})
-    }));
-    assert.equal(response.status,400);
-  }
-  assert.equal(examples.length,0);
-});
-
-test("Issue-first memory retrieves 0/9 across unrelated fields and document types, only when uncertain",async()=>{
-  const seed={
-    issue_key:"glyph:0/9",issue_kind:"glyph",
-    organization_id:ORG,document_type:"fuel_release",field_path:"meter_start",
-    original_text:"71050",corrected_text:"71059",feedback_type:"corrected",
-    alternative_text:null,source_script_type:"handwritten"
-  };
-  const question={field_path:"grand_total",page:1,box_2d:[120,450,250,770],
-    transcription:"119.00",visual_clarity:"ambiguous",script_type:"printed",
-    alternate_readings:["119.90"],visual_reason:"Unclear glyph 0/9"};
-  const {handler,call,googlePrompts,calls,examples}=mockBackend({
-    preloadedExamples:[seed],regions:[question],issueAssessments:[
-      {field_path:"grand_total",status:"alternate_possible",alternative:"119.90",
-       reason:"The zero could resemble nine in the source image."}
-    ]
-  });
-  const form=new FormData();
-  form.append("file",new File([new Uint8Array([255,216,2,7])],"invoice.jpg",{type:"image/jpeg"}));
-  form.append("document_type","invoice");
-  const response=await handler(call("/api/vision/extract","POST",{body:form}));
-  assert.equal(response.status,200);
-  const output=await response.json();
-  assert.equal(output.intelligence.mode,"issue_on_demand");
-  assert.equal(output.intelligence.lookup_status,"reviewed");
-  assert.equal(output.intelligence.examples_used,1);
-  assert.ok(output.intelligence.issue_keys.includes("glyph:0/9"));
-  assert.equal(output.intelligence.targeted_assessments[0].status,"alternate_possible");
-  assert.equal(output.intelligence.targeted_assessments[0].alternative,"119.90");
-  assert.equal(output.invoice.grand_total,"119.00"); // Memory can flag, NEVER auto-overwrite.
-  assert.equal(output.regions[0].visual_clarity,"ambiguous"); // Never auto turn green.
-  assert.ok(output.regions[0].alternate_readings.includes("119.90"));
-  assert.ok(output.validation_warnings.some(w=>w.includes("Billy Intelligence: verify grand_total")));
-  assert.equal(googlePrompts.length,2); // One base scan, one targeted visual inspection.
-  assert.doesNotMatch(googlePrompts[0],/71050|71059/); // No eager memory preload.
-  assert.match(googlePrompts[1],/glyph:0\/9/);
-  assert.match(googlePrompts[1],/71050/);
-  assert.match(googlePrompts[1],/meter_start/);
-  const lookups=calls.filter(x=>x.url.includes("/billy_intelligence_examples")&&x.method==="GET");
-  assert.equal(lookups.length,1);
-  assert.match(lookups[0].url,/issue_key=eq\.glyph/);
-  assert.ok(!lookups[0].url.includes("document_type=")); // Cross-document matching.
-  assert.equal(examples.length,1);
-});
-
-test("Clear scans skip memory lookup even with thousands of prior lessons",async()=>{
-  const old=Array.from({length:225},(_,i)=>({
-    organization_id:ORG,issue_key:"glyph:0/9",document_type:"fuel_release",
-    field_path:"meter_start",original_text:"900",corrected_text:"990",
-    feedback_type:"corrected"
-  }));
-  const {handler,call,calls,googlePrompts}=mockBackend({preloadedExamples:old});
-  const form=new FormData();
-  form.append("file",new File([new Uint8Array([255,216,9])],"clear.jpg",{type:"image/jpeg"}));
-  form.append("document_type","invoice");
-  const response=await handler(call("/api/vision/extract","POST",{body:form}));
-  const output=await response.json();
-  assert.equal(response.status,200);
-  assert.equal(output.intelligence.examples_used,0);
-  assert.deepEqual(Array.from(output.intelligence.issue_keys),[]);
-  assert.equal(googlePrompts.length,1);
-  assert.equal(calls.filter(x=>x.url.includes("billy_intelligence_examples")).length,0);
-});
-
-test("Same issue in another organization cannot leak to the AI engine",async()=>{
-  const sample={issue_key:"glyph:0/9",organization_id:"99999999-9999-4999-8999-999999999999",
-    document_type:"fuel_release",field_path:"meter_start",original_text:"PRIVATE 0",
-    corrected_text:"PRIVATE 9",feedback_type:"corrected"};
-  const uncertain={field_path:"grand_total",page:1,box_2d:[120,150,160,250],
-    transcription:"119.00",visual_clarity:"ambiguous",script_type:"printed",
-    alternate_readings:["119.90"],visual_reason:"Unclear handwriting"};
-  const {handler,call,googlePrompts,calls}=mockBackend({preloadedExamples:[sample],regions:[uncertain]});
+test("Handwritten feedback remains operator audit metadata only",async()=>{
+  const {handler,call,stored,calls}=mockBackend();
   const f=new FormData();
-  f.append("file",new File([new Uint8Array([255,216,7])],"a.jpg",{type:"image/jpeg"}));
+  f.append("file",new File([new Uint8Array([255,216,3])],"note.jpg",{type:"image/jpeg"}));
   f.append("document_type","invoice");
-  const result=await handler(call("/api/vision/extract","POST",{body:f}));
-  const parsed=await result.json();
-  assert.equal(result.status,200);
-  assert.equal(parsed.intelligence.examples_used,0);
-  assert.equal(parsed.intelligence.lookup_status,"no_matching_examples");
-  assert.equal(googlePrompts.length,1);
-  assert.ok(!googlePrompts[0].includes("PRIVATE"));
-  assert.equal(calls.filter(c=>c.url.includes("billy_intelligence_examples")).length,1);
-});
-
-test("Memory retrieval failure leaves the original uncertain extraction intact",async()=>{
-  const uncertain={field_path:"grand_total",page:1,box_2d:[120,150,160,250],
-    transcription:"119.00",visual_clarity:"slight_uncertainty",script_type:"printed",
-    alternate_readings:["119.90"],visual_reason:"Unclear digits"};
-  const {handler,call,googlePrompts}=mockBackend({regions:[uncertain],memoryReadFails:true});
-  const form=new FormData();
-  form.append("file",new File([new Uint8Array([255,216,8])],"a.jpg",{type:"image/jpeg"}));
-  form.append("document_type","invoice");
-  const response=await handler(call("/api/vision/extract","POST",{body:form}));
-  const body=await response.json();
-  assert.equal(response.status,200);
-  assert.equal(body.intelligence.lookup_status,"unavailable");
-  assert.equal(body.invoice.grand_total,"119.00");
-  assert.equal(body.regions[0].visual_clarity,"slight_uncertainty");
-  assert.equal(googlePrompts.length,1);
-});
-
-test("Saved 0/9 correction is classified independent of its field name",async()=>{
-  const sample={field_path:"delivered_quantity",page:1,box_2d:[310,100,420,280],
-    transcription:"71050",visual_clarity:"ambiguous",script_type:"handwritten",
-    alternate_readings:["71059"],visual_reason:"Ambiguous last digit"};
-  const fuelDoc={
-    release_number:null,supplier_name:"TEST",operator_name:null,airport:"KABC",
-    aircraft_registration:null,flight_number:null,delivery_date:null,fuel_type:"JET A",
-    requested_quantity:null,delivered_quantity:"71050",quantity_unit:"GAL",
-    truck_identifier:null,fueler_name:null,receiver_name:null,meter_start:null,meter_finish:null,
-    handwritten_entries:[],notes:[]
-  };
-  const {handler,call,examples}=mockBackend({fuelDoc,regions:[sample]});
-  const f=new FormData();
-  f.append("file",new File([new Uint8Array([255,216,8])],"fuel.jpg",{type:"image/jpeg"}));
-  f.append("document_type","fuel_release");
-  const extract=await handler(call("/api/vision/extract","POST",{body:f}));
-  assert.equal(extract.status,200);
-  const data=await extract.json();
-  const corrected={...data.fuel_release,delivered_quantity:"71059"};
-  const approve=await handler(call("/api/vision/approve","POST",{
+  const scanned=await handler(call("/api/vision/extract","POST",{body:f}));
+  const data=await scanned.json();
+  const approved=await handler(call("/api/vision/approve","POST",{
     headers:{...authHeaders,"Content-Type":"application/json"},
-    body:JSON.stringify({extraction_id:data.extraction_id,document_type:"fuel_release",
-      document:corrected,intelligence_opt_in:true,confirmed:true})
+    body:JSON.stringify({extraction_id:data.extraction_id,document_type:"invoice",
+      document:data.invoice,confirmed:true,manual_confirmations:["grand_total"]})
   }));
-  assert.equal(approve.status,200);
-  assert.equal(examples.length,1);
-  assert.equal(examples[0].issue_key,"glyph:0/9");
-  assert.equal(examples[0].issue_kind,"glyph");
-  assert.equal(examples[0].source_script_type,"handwritten");
+  assert.equal(approved.status,200);
+  assert.equal(stored.get(data.extraction_id).review_metadata.manual_confirmations[0],"grand_total");
+  assert.equal(calls.filter(c=>c.url.includes("billy_intelligence_examples")).length,0);
 });
 
 test("Spanish invoices show English descriptions while preserving source text and all monetary identifiers",async()=>{
@@ -1000,108 +667,9 @@ test("Translation guard ignores invented paths, mismatched source text, and alte
   assert.equal(parsed.translation.translations.length,0);
 });
 
-test("English originals stay unchanged, and correcting a machine translation does not teach false glyph errors",async()=>{
-  const source={...doc,lines:[{description:"Mantenimiento del motor",quantity:"1",
-    unit_price:"100.00",net_amount:"100.00",vat_rate:"19",vat_amount:"19"}],notes:[]};
-  const tr=[{field_path:"lines[0].description",source_text:"Mantenimiento del motor",
-    english_text:"Engine maintenance"}];
-  const en=mockBackend({fuelDoc:source,language:"en",englishTranslations:tr});
-  const formEn=new FormData();
-  formEn.append("file",new File([new Uint8Array([255,216,1])],"en.jpg",{type:"image/jpeg"}));
-  formEn.append("document_type","invoice");
-  const responseEn=await en.handler(en.call("/api/vision/extract","POST",{body:formEn}));
-  const enDoc=await responseEn.json();
-  assert.equal(enDoc.invoice.lines[0].description,"Mantenimiento del motor");
-  assert.equal(enDoc.translation.status,"not_needed");
-  assert.equal(enDoc.translation.translations.length,0);
-
-  const {handler,call,examples}=mockBackend({fuelDoc:source,language:"es",englishTranslations:tr});
-  const form=new FormData();
-  form.append("file",new File([new Uint8Array([255,216,2])],"es.jpg",{type:"image/jpeg"}));
-  form.append("document_type","invoice");
-  const scanned=await handler(call("/api/vision/extract","POST",{body:form}));
-  const initial=await scanned.json();
-  assert.equal(initial.invoice.lines[0].description,"Engine maintenance");
-  const fixed={...initial.invoice,lines:[{...initial.invoice.lines[0],description:"Engine servicing"}]};
-  const approved=await handler(call("/api/vision/approve","POST",{
-    headers:{...authHeaders,"Content-Type":"application/json"},
-    body:JSON.stringify({extraction_id:initial.extraction_id,document_type:"invoice",
-      document:fixed,confirmed:true,intelligence_opt_in:true})
-  }));
-  assert.equal(approved.status,200);
-  assert.equal((await approved.json()).intelligence.status,"no_eligible_corrections");
-  assert.equal(examples.length,0);
-});
-
-test("Learning audit proves identical bytes were seen and compares with previous approval without masking model mistakes",async()=>{
-  const {handler,call,stored}=mockBackend();
-  const upload=()=>{
-    const form=new FormData();
-    form.append("file",new File([new Uint8Array([255,216,14,14,14])],"repeat.jpg",{type:"image/jpeg"}));
-    form.append("document_type","invoice");
-    return form;
-  };
-  const first=await handler(call("/api/vision/extract","POST",{body:upload()}));
-  assert.equal(first.status,200);
-  const initial=await first.json();
-  assert.equal(initial.intelligence_audit.same_file.prior_approved_count,0);
-  assert.equal(initial.intelligence_audit.retrieval.examples_found,0);
-  assert.equal(initial.intelligence_audit.model_weights_updated,false);
-  const checkInitial=await handler(call("/api/vision/intelligence-audit?extraction_id="+initial.extraction_id));
-  assert.equal(checkInitial.status,200);
-  const initialAudit=await checkInitial.json();
-  assert.equal(initialAudit.learning.total_saved,0);
-  assert.equal(initialAudit.audit.same_file.prior_approved_count,0);
-
-  const humanApproved={...initial.invoice,grand_total:"119.90"};
-  const approving=await handler(call("/api/vision/approve","POST",{
-    headers:{...authHeaders,"Content-Type":"application/json"},
-    body:JSON.stringify({extraction_id:initial.extraction_id,document_type:"invoice",
-      document:humanApproved,confirmed:true,intelligence_opt_in:true})
-  }));
-  assert.equal(approving.status,200);
-  const approved=await approving.json();
-  assert.equal(approved.intelligence.indexed_saved,1);
-  const previousAudit=await handler(call("/api/vision/intelligence-audit?extraction_id="+initial.extraction_id));
-  const report=await previousAudit.json();
-  assert.equal(report.learning.total_saved,1);
-  assert.equal(report.learning.opt_in,true);
-  assert.equal(stored.get(initial.extraction_id).review_metadata.intelligence_opt_in,true);
-  assert.equal(report.learning.indexed,1);
-  assert.equal(report.learning.corrections_saved,1);
-
-  const second=await handler(call("/api/vision/extract","POST",{body:upload()}));
-  assert.equal(second.status,200);
-  const result=await second.json();
-  assert.equal(result.intelligence_audit.same_file.previous_approved_found,true);
-  assert.equal(result.intelligence_audit.same_file.prior_approved_count,1);
-  assert.equal(result.intelligence_audit.same_file.comparison.different_fields,1);
-  assert.deepEqual(Array.from(result.intelligence_audit.same_file.comparison.different_field_paths),["grand_total"]);
-  assert.equal(result.intelligence_audit.same_file.comparison.entry_count_changed,false);
-  assert.equal(result.invoice.grand_total,"119.00"); // Audited baseline, never silently replaced by cache.
-  assert.equal(stored.get(result.extraction_id).intelligence_audit.version,1);
-  const secondAudit=await handler(call("/api/vision/intelligence-audit?extraction_id="+result.extraction_id));
-  const data=await secondAudit.json();
-  assert.equal(data.state,"extracted");
-  assert.equal(data.audit.same_file.comparison.different_fields,1);
-  assert.doesNotMatch(JSON.stringify(data),/119.90|TEST SUPPLIER/);
-  assert.match(data.explanation,/not model fine-tuning/);
-});
-
-test("Unauthenticated users and cross-org members cannot read another user's Intelligence audit",async()=>{
-  const {handler,call,stored}=mockBackend();
-  const form=new FormData();
-  form.append("file",new File([new Uint8Array([255,216,6])],"source.jpg",{type:"image/jpeg"}));
-  form.append("document_type","invoice");
-  const extracted=await handler(call("/api/vision/extract","POST",{body:form}));
-  const doc=await extracted.json();
-  const get=()=>handler(call("/api/vision/intelligence-audit?extraction_id="+doc.extraction_id));
-  assert.equal((await get()).status,200);
-  const record=stored.get(doc.extraction_id);
-  record.organization_id="99999999-9999-4999-8999-999999999999";
-  assert.equal((await get()).status,404);
-  const badAuth=await handler(new Request(
-    "https://synthetic.supabase.co/functions/v1/billy-vision/api/vision/intelligence-audit?extraction_id="+doc.extraction_id));
-  assert.equal(badAuth.status,401);
-  assert.equal((await handler(call("/api/vision/intelligence-audit?extraction_id=garbage"))).status,400);
+test("No duplicate-document or training workflow exists in cloud extraction",()=>{
+  assert.doesNotMatch(code,/approvedIdenticalSource|lookupIssueMemory|billy_intelligence_examples|intelligence_audit/);
+  assert.doesNotMatch(review,/intelligence_opt_in|handwriting\/examples|Submit & Learn/);
+  assert.doesNotMatch(flow,/simpleInspectLearning|renderLearningAudit/);
+  assert.match(code,/sha256\(bytes\)/); // Integrity check for a same-request recheck only.
 });
