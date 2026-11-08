@@ -48,7 +48,7 @@ test("Review highlights uncertain evidence and browser cache version is advanced
   assert.match(css,/review-field-alert/);
   assert.match(html,/vision-review\.js\?v=0\.11\.1/);
   assert.match(html,/simple\.js\?v=1\.3\.0/);
-  assert.match(read("site/sw.js"),/v55-gemini-only/);
+  assert.match(read("site/sw.js"),/v56-confidence-v1/);
 });
 
 test("Multilingual extraction keeps source-language audit and exports English-readable fields",()=>{
