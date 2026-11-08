@@ -671,7 +671,8 @@ test("Clear fields become positive feedback with opt-in; sensitive IDs, absent f
     headers:{...authHeaders,"Content-Type":"application/json"},
     body:JSON.stringify({extraction_id:data.extraction_id,document_type:"invoice",
       document:data.invoice,confirmed:true,intelligence_opt_in:true,
-      manual_confirmations:["grand_total","invoice_number","supplier_name"]})
+      manual_confirmations:["grand_total","invoice_number","supplier_name"],
+      not_on_document:["due_date"]})
   }));
   assert.equal(response.status,200);
   const feedback=(await response.json()).intelligence;
@@ -687,6 +688,8 @@ test("Clear fields become positive feedback with opt-in; sensitive IDs, absent f
   assert.equal(repeat.intelligence_audit.same_file.previous_approved_found,true);
   assert.ok(repeat.intelligence_audit.same_file.previously_verified_paths.includes("grand_total"));
   assert.ok(repeat.intelligence_audit.same_file.previously_verified_paths.includes("supplier_name"));
+  assert.ok(repeat.intelligence_audit.same_file.previously_verified_paths.includes("due_date"));
+  assert.ok(repeat.intelligence_audit.same_file.previously_verified_absent_paths.includes("due_date"));
   assert.ok(!repeat.intelligence_audit.same_file.previously_verified_paths.includes("vat_total"));
   const draft=await another.json();
   const withheld=await handler(call("/api/vision/approve","POST",{
