@@ -673,3 +673,54 @@ test("No duplicate-document or training workflow exists in cloud extraction",()=
   assert.doesNotMatch(flow,/simpleInspectLearning|renderLearningAudit/);
   assert.match(code,/sha256\(bytes\)/); // Integrity check for a same-request recheck only.
 });
+
+test("Confidence Engine audit is value-free, versioned and approval-scoped",async()=>{
+  const {handler,call,stored}=mockBackend();
+  const form=new FormData();
+  form.append("file",new File([new Uint8Array([255,216,9,9])],"audit.jpg",{type:"image/jpeg"}));
+  form.append("document_type","invoice");
+  const extraction=await handler(call("/api/vision/extract","POST",{body:form}));
+  assert.equal(extraction.status,200);
+  const doc=await extraction.json();
+  const audit={version:"1.0",field_reviews:[
+    {field_path:"invoice_number",initial_level:"yellow",initial_signal:"competing_reading",
+      final_level:"blue",action:"confirmed",document_text:"DO NOT SAVE"},
+    {field_path:"grand_total",initial_level:"green",initial_signal:"no_flag",
+      final_level:"green",action:"unreviewed"}
+  ]};
+  const approved=await handler(call("/api/vision/approve","POST",{
+    headers:{...authHeaders,"Content-Type":"application/json"},
+    body:JSON.stringify({extraction_id:doc.extraction_id,document_type:"invoice",
+      document:doc.invoice,confirmed:true,confidence_engine:audit})
+  }));
+  assert.equal(approved.status,200);
+  const metadata=stored.get(doc.extraction_id).review_metadata;
+  assert.equal(metadata.confidence_engine.version,"1.0");
+  assert.equal(metadata.confidence_engine.source,"client_observed");
+  assert.equal(metadata.confidence_engine.field_reviews.length,2);
+  assert.equal(metadata.confidence_engine.field_reviews[0].document_text,undefined);
+  assert.equal(JSON.stringify(metadata).includes("DO NOT SAVE"),false);
+  assert.equal(Object.hasOwn(stored.get(doc.extraction_id),"training_images"),false);
+});
+
+test("Malformed confidence audit is ignored, not trusted or used to gate approval",async()=>{
+  const {handler,call,stored}=mockBackend();
+  const form=new FormData();
+  form.append("file",new File([new Uint8Array([255,216,8,8])],"audit-bad.jpg",{type:"image/jpeg"}));
+  form.append("document_type","invoice");
+  const extraction=await handler(call("/api/vision/extract","POST",{body:form}));
+  const doc=await extraction.json();
+  const approved=await handler(call("/api/vision/approve","POST",{
+    headers:{...authHeaders,"Content-Type":"application/json"},
+    body:JSON.stringify({
+      extraction_id:doc.extraction_id,document_type:"invoice",
+      document:doc.invoice,confirmed:true,
+      confidence_engine:{version:"1.0",field_reviews:[
+        {field_path:"__proto__",initial_level:"green",initial_signal:"no_flag",
+          final_level:"green",action:"confirmed"}
+      ]}
+    })
+  }));
+  assert.equal(approved.status,200);
+  assert.equal(Object.hasOwn(stored.get(doc.extraction_id).review_metadata,"confidence_engine"),false);
+});
