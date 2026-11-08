@@ -1,0 +1,58 @@
+/* Excel-compatible CSV preview: compact, read-only, horizontally scrollable. */
+.simple-excel-preview{width:100%;min-width:0;margin:24px 0 22px}
+.simple-excel-preview[hidden]{display:none!important}
+.excel-preview-heading{display:flex;justify-content:space-between;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:13px}
+.excel-preview-title{font-size:19px!important;font-weight:690!important;line-height:1.2;letter-spacing:-.035em;color:#f0f1f2!important;margin:0!important}
+.excel-preview-subtitle{font-size:11px;line-height:1.5;color:#a7aaad;margin:0}
+.excel-preview-scroll{
+  max-width:100%;max-height:370px;overflow:auto;overscroll-behavior:contain;
+  border-radius:11px;border:1px solid #35383b;
+  background:#191b1d;scrollbar-color:#525456 #191b1d;
+  -webkit-overflow-scrolling:touch
+}
+.excel-preview-scroll:focus-visible{outline:2px solid #a4c4e8;outline-offset:3px}
+.excel-preview-table{
+  border-collapse:separate;border-spacing:0;min-width:max-content;width:max-content;
+  table-layout:fixed;color:#e7e7e7;font-size:12px;text-align:left
+}
+.excel-preview-caption{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.excel-preview-table th,.excel-preview-table td{
+  box-sizing:border-box;
+  padding:12px 13px;border:0;border-right:1px solid #333639;border-bottom:1px solid #333639;
+  width:156px;min-width:156px;max-width:215px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  vertical-align:middle;font-weight:480
+}
+.excel-preview-table .excel-preview-column-letter{
+  position:sticky;top:0;z-index:3;
+  padding:7px 13px;background:#26292c;color:#b6bac0;
+  text-align:center;font-size:10px;font-weight:650
+}
+.excel-preview-table .excel-preview-row-number{
+  position:sticky;left:0;z-index:2;
+  width:44px;min-width:44px;max-width:44px;padding:9px 8px;
+  background:#272a2d;color:#aeb1b6;text-align:center;font-size:10px;font-weight:650
+}
+.excel-preview-table .excel-preview-corner{top:0;z-index:4;background:#303337}
+.excel-preview-table .excel-preview-header-row th.excel-preview-field-name{
+  background:#222528;color:#f2f3f4;font-weight:690;font-size:11px;
+}
+.excel-preview-table .excel-preview-header-row .excel-preview-row-number{background:#303337}
+.excel-preview-table tbody tr:not(.excel-preview-header-row):nth-child(even) td{background:#191b1d}
+.excel-preview-table tbody tr:not(.excel-preview-header-row):nth-child(odd) td{background:#202224}
+.excel-preview-table .excel-preview-blank:empty::after{content:"—";color:#697079}
+body[data-billy-screen="upload"] #simpleUpload{
+  flex:0 0 auto!important;justify-content:flex-start!important;
+  padding-top:24px!important;padding-bottom:50px!important
+}
+body[data-billy-screen="upload"] #simpleUpload .simple-flow-card{
+  width:100%;max-width:100%;min-width:0
+}
+@media(max-width:720px){
+ .simple-excel-preview{margin:21px 0 19px}
+ .excel-preview-heading{gap:5px}
+ .excel-preview-title{font-size:18px!important}
+ .excel-preview-scroll{max-height:310px}
+ .excel-preview-table th,.excel-preview-table td{width:145px;min-width:145px;max-width:185px;padding:12px}
+ body[data-billy-screen="upload"] #simpleUpload{padding-top:18px!important}
+ body[data-billy-screen="upload"] #simpleUpload .simple-flow-card{padding:22px 16px}
+}
