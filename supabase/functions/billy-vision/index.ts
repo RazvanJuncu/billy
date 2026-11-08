@@ -388,24 +388,33 @@ async function intelligenceHints(principal,type){
       document_type:"eq."+type,order:"created_at.desc",limit:"72"
     });
     const selected=[],seen=new Set(),perField=new Map();
-    for(const row of Array.isArray(rows)?rows:[]){
-      if(selected.length>=INTELLIGENCE_MAX_EXAMPLES)break;
-      if(typeof row?.field_path!=="string"||!row.field_path.match(/^[a-z_]+(?:\[\]\.[a-z_]+)?$/))continue;
-      const a=shortLesson(row.original_text),b=shortLesson(row.corrected_text);
-      const kind=row.feedback_type==="confirmed"?"confirmed":"corrected";
-      if(!a||!b||(kind==="corrected"&&a===b)||(kind==="confirmed"&&a!==b))continue;
-      const label=shortLesson(row.field_label);
-      const key=row.field_path+":"+(label||"");
-      if((perField.get(key)||0)>=2)continue; // A field must not crowd out other fields.
-      const signature=key+":"+kind+":"+a+":"+b;
-      if(seen.has(signature))continue;
-      seen.add(signature);perField.set(key,(perField.get(key)||0)+1);
-      selected.push({
-        field:row.field_path,label,feedback_type:kind,
-        previous_visual_clarity:row.initial_clarity||null,
-        prior_model_read:a,human_verified_read:b
-      });
+    const available=Array.isArray(rows)?rows:[];
+    function appendExamples(kind,limit){
+      for(const row of available){
+        if(selected.length>=INTELLIGENCE_MAX_EXAMPLES||
+          selected.filter(item=>item.feedback_type===kind).length>=limit)break;
+        if((row.feedback_type==="confirmed"?"confirmed":"corrected")!==kind)continue;
+        if(typeof row?.field_path!=="string"||!row.field_path.match(/^[a-z_]+(?:\[\]\.[a-z_]+)?$/))continue;
+        const a=shortLesson(row.original_text),b=shortLesson(row.corrected_text);
+        if(!a||!b||(kind==="corrected"&&a===b)||(kind==="confirmed"&&a!==b))continue;
+        const label=shortLesson(row.field_label);
+        const key=row.field_path+":"+(label||"");
+        if((perField.get(key)||0)>=2)continue; // Multiple patterns, not one field dominating.
+        const signature=key+":"+kind+":"+a+":"+b;
+        if(seen.has(signature))continue;
+        seen.add(signature);perField.set(key,(perField.get(key)||0)+1);
+        selected.push({
+          field:row.field_path,label,feedback_type:kind,
+          previous_visual_clarity:row.initial_clarity||null,
+          prior_model_read:a,human_verified_read:b
+        });
+      }
     }
+    // Represent both kinds of feedback when available; otherwise fill capacity.
+    appendExamples("corrected",4);
+    appendExamples("confirmed",4);
+    appendExamples("corrected",INTELLIGENCE_MAX_EXAMPLES);
+    appendExamples("confirmed",INTELLIGENCE_MAX_EXAMPLES);
     return selected;
   }catch(_error){
     console.warn("Billy Intelligence unavailable; processing without memory.");
