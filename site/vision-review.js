@@ -208,7 +208,7 @@ function render(result,endpoint,authHeaders,sourceFile=null){
      if(!response.ok)throw Error(resultBody.detail||"Approval was not saved");
      approved=true;approvalResult=resultBody;
      approveButton.textContent="Submitted · record "+resultBody.approval_id;
-     notice.textContent="Approved values saved. No source images or training samples are retained by the browser.";
+     notice.textContent="Approved values saved. Original file is not archived; company Excel is not updated. No training samples are created.";
      exports.hidden=false;
      root.querySelectorAll(".review-grid input, .review-items input, .review-items select, .review-add-line, .line-remove").forEach(el=>{el.disabled=true;});
      window.dispatchEvent(new CustomEvent("billy:document-approved",{
