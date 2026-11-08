@@ -256,7 +256,7 @@ test("QuickVerify draws a real bounded image crop and revokes the temporary file
   };
   vm.runInNewContext(crop,{window,document,Image,URL,console});
   const viewer=window.BillyQuickVerifyCrop.create({type:"image/jpeg",name:"document.jpg"});
-  const slot={children:[],replaceChildren(...children){this.children=children;slots.push(children);}};
+  const slot={children:[],replaceChildren(...children){this.children=children;slots.push(children);},append(...parts){this.children.push(...parts);}};
   await viewer.show({page:1,box_2d:[260,400,325,515]},slot);
   assert.equal(sourceDecoded,1);
   assert.equal(slot.children[0].tagName,"CANVAS");
@@ -298,7 +298,7 @@ test("Missing evidence doesn't invent an image, and stale crop results are ignor
   const URL={createObjectURL:()=>"blob:stale",revokeObjectURL(){}};
   vm.runInNewContext(crop,{window,document,Image,URL,console});
   const viewer=window.BillyQuickVerifyCrop.create({type:"image/jpeg",name:"source.jpg"});
-  const slot={children:[],replaceChildren(...parts){this.children=parts;}};
+  const slot={children:[],replaceChildren(...parts){this.children=parts;},append(...parts){this.children.push(...parts);}};
   await viewer.show(null,slot);
   assert.match(slot.children[0].textContent,/Source crop unavailable/);
   const pending=viewer.show({page:1,box_2d:[200,200,250,300]},slot);
