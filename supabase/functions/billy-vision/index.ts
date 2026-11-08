@@ -678,11 +678,26 @@ async function approvedIdenticalSource(principal,hash,type){
  // Only reuse explicitly checked or edited values, and only when they still
  // match both the latest approved reading and the fresh extraction.
  // Top-level fields have stable identities; indexed rows can shift between scans.
-function previouslyVerifiedPaths(priorRows,fresh,type){
+// Explicit "Not on document" is also reusable on IDENTICAL source bytes.
+ // A newly detected nonempty value must always be reviewed rather than skipped.
+function previouslyVerifiedAbsentPaths(priorRows,fresh,type){
   const latest=priorRows?.[0]?.reviewed_data;
   if(!latest)return [];
   const keys=type==="invoice"?INVOICE_FIELDS:FUEL_FIELDS;
   return keys.filter(path=>{
+    if(fieldAtPath(fresh,path,type)!==null||fieldAtPath(latest,path,type)!==null)
+      return false;
+    return priorRows.some(row=>
+      fieldAtPath(row.reviewed_data,path,type)===null&&
+      Array.isArray(row.review_metadata?.not_on_document)&&
+      row.review_metadata.not_on_document.includes(path));
+  });
+}
+function previouslyVerifiedPaths(priorRows,fresh,type){
+  const latest=priorRows?.[0]?.reviewed_data;
+  if(!latest)return [];
+  const keys=type==="invoice"?INVOICE_FIELDS:FUEL_FIELDS;
+  const verified=keys.filter(path=>{
     const now=fieldAtPath(fresh,path,type);
     if(typeof now!=="string"||!now.trim()||now!==fieldAtPath(latest,path,type))
       return false;
@@ -694,6 +709,7 @@ function previouslyVerifiedPaths(priorRows,fresh,type){
       return manuallyChecked||corrected;
     });
   });
+  return [...verified,...previouslyVerifiedAbsentPaths(priorRows,fresh,type)];
 }
 function initialAudit(priorRows,fresh,type,issues,memory,review,priorLookupStatus){
   const rows=Array.isArray(priorRows)?priorRows:[];
@@ -707,6 +723,7 @@ function initialAudit(priorRows,fresh,type,issues,memory,review,priorLookupStatu
       prior_approved_count:rows.length,
       previous_approved_found:rows.length>0,
       previously_verified_paths:previouslyVerifiedPaths(rows,fresh,type),
+      previously_verified_absent_paths:previouslyVerifiedAbsentPaths(rows,fresh,type),
       comparison
     },
     issue_detection:{count:issues.length,keys:issues.map(item=>item.issue_key)},
