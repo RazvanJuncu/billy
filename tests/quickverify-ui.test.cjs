@@ -33,7 +33,7 @@ test("QuickVerify source crops remain local, bounded, and multi-page capable",()
   assert.match(crop,/pdf\.destroy\(\)/);
   assert.match(crop,/if\(disposed\|\|current!==ticket\)return/);
   assert.doesNotMatch(crop,/fetch\(|XMLHttpRequest|sendBeacon/);
-  assert.match(html,/quickverify-crop\.js\?v=1\.0\.0/);
+  assert.match(html,/quickverify-crop\.js\?v=1\.1\.0/);
   assert.ok(html.indexOf("quickverify-crop.js")<html.indexOf("ramp-review.js"));
   assert.match(sw,/"\.\/quickverify-crop\.js"/);
   assert.match(sw,/quickverify-crop\\\.js/);
