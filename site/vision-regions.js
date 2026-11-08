@@ -40,13 +40,6 @@
   const qualityDetail = region => {
     const parts = [qualityLabels[qualityFor(region)]];
     if (region.visual_reason) parts.push(String(region.visual_reason).slice(0,240));
-    if (typeof region.trocr_reading === "string" && region.trocr_reading.trim()) {
-      const geminiText = String(region.transcription || "(unreadable)").slice(0,120);
-      const localText = region.trocr_reading.slice(0,120);
-      parts.push("AI engine: " + geminiText + " · TrOCR: " + localText);
-      parts.push(region.handwriting_disagreement ? "Different readings — verify!" :
-        "Models agree — still verify");
-    }
     if (Array.isArray(region.alternate_readings) && region.alternate_readings.length)
       parts.push("Alternatives: " + region.alternate_readings.slice(0,3).join(" / "));
     return parts.join(" · ");
@@ -61,7 +54,7 @@
       y2 > y1 && x2 > x1;
   };
 
-  function mount({root, file, regions = [], agreement = {}, secondOpinion = null}) {
+  function mount({root, file, regions = [], agreement = {}}) {
     if (teardown) teardown();
     let stale = false;
     let sourceUrl = null;
@@ -80,26 +73,6 @@
       "Boxes are AI-estimated positions, not verified OCR. Tap a region to correct its value.");
     heading.append(title, subline);
     panel.appendChild(heading);
-    const modelNote = element("p","review-model-status");
-    if (secondOpinion?.status === "processed") {
-      const count = Number(secondOpinion.comparisons) || 0;
-      const disagreements = Number(secondOpinion.disagreements) || 0;
-      const label = secondOpinion.source === "fine_tuned" ? "fine-tuned TrOCR" : "pretrained TrOCR";
-      modelNote.textContent = "AI engine + local " + label + ": " + count +
-        " handwriting region(s) checked · " + disagreements +
-        " disagreement(s). Compare both readings before approval.";
-    } else if (secondOpinion?.status === "browser_optional") {
-    modelNote.textContent = "Handwriting: desktop TrOCR can check localized text on this device.";
-  } else if (secondOpinion?.status === "no_eligible_regions") {
-      modelNote.textContent = "The AI engine finished. No uncertain, localized handwriting needed TrOCR checking.";
-    } else if (secondOpinion?.status === "unavailable") {
-      modelNote.textContent = "The AI engine finished. Local TrOCR was unavailable; review fields carefully.";
-    } else if (secondOpinion?.status === "no_readings") {
-      modelNote.textContent = "The AI engine finished. Local TrOCR found no usable handwriting reading.";
-    } else {
-      modelNote.textContent = "AI engine extraction · local handwriting verification not enabled.";
-    }
-    panel.appendChild(modelNote);
 
     const caption = element("p","review-evidence-legend",
       "Colors describe how readable a zone appears to AI, not the probability that its value is correct. Green still requires review.");
