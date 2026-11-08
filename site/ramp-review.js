@@ -135,11 +135,20 @@
     const translation=result.translation||null;
     const englishPairs=Array.isArray(translation?.translations)?translation.translations:[];
     const translatedPaths=new Map(englishPairs.map(pair=>[pair.field_path,pair]));
+    const previouslyVerified=new Set(
+      result.intelligence_audit?.same_file?.previously_verified_paths||[]);
     const state=new Map(paths.map(path=>{
       const entry=classification(path,doc,type,regions,warnings);
       if(translatedPaths.has(path)&&entry.level==="green"){
         entry.level="yellow";
         entry.reason="Machine-translated field: compare the English meaning with the original wording.";
+      }
+      // Only a yellow value previously checked on the exact same file AND
+      // still identical to the last approval can reuse the operator's verdict.
+      // Never waive red issues, changed text or new-document uncertainty.
+      if(entry.level==="yellow"&&previouslyVerified.has(path)&&!translatedPaths.has(path)){
+        entry.level="blue";
+        entry.reason="Previously verified by an operator on this identical file. New edits still require recheck.";
       }
       return [path,entry];
     }));
@@ -161,7 +170,7 @@
     const intro=create("div","ramp-header");
     intro.append(
       create("h3","ramp-heading","Document check"),
-      create("p","ramp-intro","Yellow/red = needs attention. Blue ✓ = checked by operator. Green = no flagged issue, not proof of accuracy.")
+      create("p","ramp-intro","Yellow/red = needs attention. Blue ✓ = operator-verified (now or on this identical file). Green = no flagged issue, not proof of accuracy.")
     );
     compact.append(intro);
     if(translation?.status==="translated"){
