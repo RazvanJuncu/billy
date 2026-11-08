@@ -305,7 +305,7 @@ function renderMarkdown(markdown, container) {
   if (!container.childNodes.length) container.appendChild(createElement("p", "", "No recognized content on this page."));
 }
 
-function renderResult() {
+async function renderResult() {
   if (!state.result) return;
   setStage(3);
   document.querySelector(".result-panel")?.classList.add("has-results");
@@ -313,9 +313,15 @@ function renderResult() {
   $("resultToolbar").hidden = true;
   $("outputFooter").hidden = true;
   $("rawOutput").hidden = true;
-  $("formattedOutput").hidden = false;
-  if (!window.BillyReview) throw new Error("Billy Review is unavailable.");
-  window.BillyReview.render(state.result, state.api, () => window.BillyAccounts.sessionHeaders(), state.file);
+  // Never expose provisional green/yellow fields while the second OCR pass
+  // is still reading. The scan loader stays visible until this resolves.
+  $("formattedOutput").hidden = true;
+  try {
+    if (!window.BillyReview) throw new Error("Billy Review is unavailable.");
+    await window.BillyReview.render(state.result, state.api, () => window.BillyAccounts.sessionHeaders(), state.file);
+  } finally {
+    $("formattedOutput").hidden = false;
+  }
 }
 
 async function scanInvoice() {
@@ -351,7 +357,8 @@ async function scanInvoice() {
     state.result = responseBody;
     state.page = 0;
     state.tab = "document";
-    renderResult();
+    await renderResult();
+    if (state.file !== currentFile) return;
     window.dispatchEvent(new CustomEvent("billy:ocr-ready", {detail:{model:responseBody.model}}));
     showNotification(""); // Review screen and colored fields already communicate the next action.
   } catch (error) {
