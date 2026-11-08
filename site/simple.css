@@ -882,3 +882,33 @@ body[data-billy-screen="uploaded"] #simpleFlowTitle{
     transform:none!important;
   }
 }
+
+/* Developer-facing learning audit: closed by default, without crowding approvals. */
+.simple-learning-tools{width:100%;min-width:0;margin:9px 0 19px}
+.simple-learning-link{
+  padding:8px 0!important;border:0!important;background:transparent!important;
+  color:#b8bec4!important;text-align:left;font-size:12px!important;
+  cursor:pointer;text-decoration:underline;text-underline-offset:3px
+}
+.simple-learning-link:hover{color:#fff!important}
+.simple-learning-link:disabled{opacity:.5;cursor:not-allowed}
+.simple-learning-audit[hidden]{display:none!important}
+.simple-learning-audit{
+  padding:15px 17px;margin-top:8px;background:#1c2023;
+  border:1px solid #343a3e;border-radius:11px;width:100%;
+  font-size:12px;line-height:1.55;color:#c5cad0
+}
+.simple-audit-intro{font-size:12px;color:#e7e8ea;font-weight:630;margin:0 0 12px}
+.simple-audit-row{
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);
+  gap:4px 15px;padding:9px 0;border-bottom:1px solid #32383d
+}
+.simple-audit-row>span{color:#aeb6bd}
+.simple-audit-row>strong{font-weight:630;color:#f0f1f3;text-align:right;overflow-wrap:anywhere}
+.simple-audit-row>p{grid-column:1/-1;margin:0;color:#9aa4ac;font-size:11px}
+.simple-audit-footnote{color:#acb5bd;font-size:11px;line-height:1.6;margin:14px 0 0}
+@media(max-width:720px){
+ .simple-learning-audit{padding:13px}
+ .simple-audit-row{grid-template-columns:1fr;gap:2px}
+ .simple-audit-row>strong{text-align:left}
+}
