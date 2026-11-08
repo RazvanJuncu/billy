@@ -200,5 +200,9 @@ test("Only matching values on identical files can turn yellow into previously ve
   assert.match(ramp,/entry.level="blue"/);
   assert.match(ramp,/Previously verified by an operator on this identical file/);
   assert.match(ramp,/New edits still require recheck/);
+  assert.match(ramp,/previouslyVerifiedAbsent/);
+  assert.match(ramp,/Previously marked Not on document for these identical file bytes/);
+  assert.match(ramp,/notOnDocument=new Set\(\[\.\.\.previouslyVerifiedAbsent\]/);
+  assert.match(backend,/function previouslyVerifiedAbsentPaths\(priorRows,fresh,type\)/);
   assert.doesNotMatch(ramp,/entry.level!=="red"&&previouslyVerified.has\(path\)/);
 });
