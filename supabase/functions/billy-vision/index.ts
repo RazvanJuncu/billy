@@ -503,7 +503,13 @@ function issueForLesson(lesson,regions,type){
   const glyph=lesson.feedback_type==="corrected"?
     glyphIssue(old,correct):
     region?issueForRegion(region,correct):null;
-  const key=glyph||(region?issueForRegion(region,old):null);
+  // A corrected handwritten field remains reusable as a broad handwriting
+  // lesson even when no glyph region survived extraction. Do not invent a
+  // specific 0/9 or 1/7 confusion without character-level evidence.
+  const key=glyph||(region?issueForRegion(region,old):null)||
+    (lesson.feedback_type==="corrected"&&
+      /^handwritten_entries\[(?:\d+)?\]\.transcription$/.test(lesson.field_path)?
+        "quality:handwritten":null);
   const alt=lesson.feedback_type==="confirmed"&&region?
     (region.alternate_readings||[]).find(value=>glyphIssue(correct,value)===key):null;
   return {
