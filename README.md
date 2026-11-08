@@ -1,6 +1,6 @@
 # BillyDPI — Document Processing Intelligence
 
-**Your invoices, decoded.** Billy is an installable web/PWA document scanner with an offline-capable camera, perspective correction, and a **Gemini cloud extraction + human-review workflow** using an authenticated Supabase Edge Function. The older local Python PaddleOCR/TrOCR tooling remains in the repo but is not required by the public Gemini site.
+**Your invoices, decoded.** Billy is an installable web/PWA document scanner with an offline-capable camera, perspective correction, and a **Gemini cloud extraction + human-review workflow** using an authenticated Supabase Edge Function. Older Python handwriting experiments are separate from the hosted application.
 
 ## Gemini-first cloud pilot (active)
 
@@ -8,44 +8,20 @@ The public PWA uses the `billy-vision` Supabase Edge Function for Gemini extract
 
 **The server-side `GEMINI_API_KEY` secret must be configured by a project administrator before AI extraction is usable.** The deployed Edge Function is not proof that Google billing, API access, or end-to-end scanning has been tested.
 
-See [GEMINI_CLOUD.md](GEMINI_CLOUD.md) for the Gemini cloud setup. Desktop TrOCR is a separate experimental local second opinion; training and remote workers are not part of the hosted app.
+See [GEMINI_CLOUD.md](GEMINI_CLOUD.md) for the Gemini cloud setup.
 
-## Desktop TrOCR browser second opinion (experimental)
+## Active OCR architecture: Gemini only
 
-The hosted PWA keeps Gemini as the source of structured document fields.
-On a supported **desktop browser**, the review of a Fuel Release launches a
-separate **on-device TrOCR Small** reader for up to eight localized
-handwritten/mixed source regions supplied by Gemini.
+The hosted PWA uses the authenticated Gemini Vision backend to extract document
+fields, with human verification of low-confidence or ambiguous handwriting.
+No secondary browser OCR, downloadable handwriting model, ONNX worker or
+automatic OCR-based recoloring is active. The local TrOCR experiment was removed
+after live Fuel Release trials produced nonsensical readings for dates,
+registrations, quantities and initials.
 
-- The model is loaded lazily in a module Web Worker with pinned
-  `@huggingface/transformers@3.8.1` and
-  `Xenova/trocr-small-handwritten` ONNX weights. First load downloads model
-  weights and can be slow; later loads may use browser caches.
-- The original scan is sent only to the authenticated Gemini extraction API.
-  The TrOCR worker receives bounded **local PNG crops** from the source,
-  never sends them to a training service, and does not persist them.
-- Differences between the two readings are shown as review warnings. The
-  TrOCR output **never silently overwrites** an extracted number, registration,
-  or approved value and does not automatically turn yellow fields green.
-- On mobile, with no handwriting regions, or if the local model fails to load,
-  Gemini review remains available. Browsers without WebAssembly/model support
-  may not run TrOCR.
-- No browser fine-tuning, sample-collection pipeline, image-training upload,
-  historical document lookup or Billy Intelligence memory is active.
-  A source SHA-256 is retained **only for binding a recheck to its upload**.
-
-**Validation:** static integration and mocked-worker tests pass. Actual ONNX
-downloads, browser inference time, crop geometry and model accuracy on
-real Fuel Releases still require an in-browser test; do not claim improved
-recognition accuracy before measuring it.
-
-### Legacy offline tooling
-
-Older Python PaddleOCR, TrOCR training, and worker experiments remain in
-source control for historical developer reference; they are **not connected**
-to the hosted PWA. The older [HANDWRITING_TRAINING.md](HANDWRITING_TRAINING.md)
-and [WORKER_DEPLOYMENT.md](WORKER_DEPLOYMENT.md) describe that legacy
-opt-in **local** workflow and are not current cloud setup instructions.
+Source crops are still shown to operators for verification; corrections are
+stored with the approved document, not as training photographs. Existing
+numerical consistency checks and source-based review warnings remain.
 
 ## BillyDPI magnetic loader v1.1
 
