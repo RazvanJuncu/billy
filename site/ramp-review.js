@@ -69,13 +69,17 @@
     });
     return items;
   };
+  // Confidence Engine v1: risk flags, NOT a statistically calibrated
+  // probability. Green means no active flag, not guaranteed correctness.
   function classification(path,doc,type,regions,warnings) {
     const value=valueAt(doc,path);
     if(!substantive(value))return {
       level:highRisk.has(path)?"red":"yellow",
-      reason:"No value extracted. Verify the source, or choose Not on document if this field is absent."
+      reason:"No value extracted. Verify the source, or choose Not on document if this field is absent.",
+      signal:highRisk.has(path)?"missing_critical":"missing_value"
     };
-    let level="green",reason="No issue flagged by the first AI pass. Still review before final approval.";
+    let level="green",reason="No issue flagged by the first AI pass. Still review before final approval.",
+      signal="no_flag";
     const matches=regions.filter(region=>region.field_path===path);
     if(matches.length){
       for(const region of matches){
@@ -84,16 +88,24 @@
           q==="slight_uncertainty"||q==="unassessed"||!q?"yellow":"green";
         if(severity[risk]>severity[level]){
           level=risk;reason=region.visual_reason||"Source text needs verification.";
+          signal=q==="unreadable"?"source_unreadable":
+            q==="ambiguous"?"source_ambiguous":
+            q==="slight_uncertainty"?"source_slight_uncertainty":"source_unassessed";
         }
-        // A model proposing materially different readings is expressing uncertainty,
-        // even when it calls its primary choice "clear". Do not silently mark green.
-        const normalized=v=>String(v??"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+        // Alternative numeric readings remain significant even if the model
+        // describes the primary reading as visually clear.
+        const normalized=v=>{
+          const text=String(v??"").normalize("NFKC").toUpperCase();
+          // Keep punctuation for numeric readings: 12.5 is not 125.
+          return /^(meter_start|meter_finish|delivered_quantity|requested_quantity|grand_total|subtotal|vat_total)$/.test(path)
+            ?text.replace(/\s+/g,""):text.replace(/[^A-Z0-9]/g,"");
+        };
         const chosen=normalized(value);
         const alternate=(region.alternate_readings||[]).find(a=>{
           const other=normalized(a);
           if(!other||other===chosen)return false;
-          // A single optional prefix (e.g. "M 04569" vs "04569") isn't
-          // necessarily an alternate reading of the handwritten digits.
+          // A single optional prefix (e.g. M04569 vs 04569) is formatting,
+          // not a competing reading of the handwritten number.
           if(chosen.endsWith(other)&&chosen.length-other.length<=1)return false;
           if(other.endsWith(chosen)&&other.length-chosen.length<=1)return false;
           return true;
@@ -101,27 +113,34 @@
         if(alternate&&severity.yellow>severity[level]){
           level="yellow";
           reason="AI also considered '"+String(alternate).slice(0,90)+"'. Verify the original writing.";
+          signal="competing_reading";
         }
       }
     }else if(highRisk.has(path)){
       level="yellow";reason="No localized visual evidence is available. Verify this value.";
+      signal="missing_visual_evidence";
+    }else{
+      signal="no_evidence_low_risk";
     }
     for(const warning of warnings) {
       const line=String(warning);
+      // A correct arithmetic equality is a useful *consistency check*, not
+      // an uncertainty warning. It is NOT grounds by itself to mark all
+      // three fuel meter/quantity readings yellow; independent visual
+      // ambiguity, alternatives or missing evidence still keep them flagged.
+      if(/^Meter arithmetic matches \(/i.test(line))continue;
       const related=line.includes(path)||line.toLowerCase().includes(path.replaceAll("_"," "))||
-        // Meter-specific warnings affect readings and delivered quantity. Missing
-        // unit warnings must NOT incorrectly turn three unrelated fields red.
         (["meter_start","meter_finish","delivered_quantity"].includes(path)&&
-          /^(?:Meter mismatch|Meter finish is less than start|Meter arithmetic matches|Only one meter reading)/i.test(line))||
+          /^(?:Meter mismatch|Meter finish is less than start|Only one meter reading|Meter difference is )/i.test(line))||
         (path==="quantity_unit"&&/Fuel quantity unit missing or unreadable/i.test(line))||
         (path==="grand_total"&&/total not found/i.test(line));
       if(!related)continue;
       const risk=/mismatch|invalid|missing|unreadable/i.test(line)?"red":"yellow";
       if(severity[risk]>=severity[level]){
-        level=risk;reason=line;
+        level=risk;reason=line;signal="validation_warning";
       }
     }
-    return {level,reason};
+    return {level,reason,signal};
   }
   function mount(result,endpoint,getHeaders,sourceFile){
     const root=$("formattedOutput");
@@ -140,9 +159,14 @@
       if(translatedPaths.has(path)&&entry.level==="green"){
         entry.level="yellow";
         entry.reason="Machine-translated field: compare the English meaning with the original wording.";
+        entry.signal="translation_needs_review";
       }
       return [path,entry];
     }));
+    // Snapshot the initial decisions; later operator/recheck state is separate.
+    const initialState=new Map([...state].map(([path,entry])=>[path,{
+      level:entry.level,signal:entry.signal||"unclassified"
+    }]));
     const humanReviewed=new Set(),manualAcknowledged=new Set(),notOnDocument=new Set();
     let revision=0,checkedRevision=-1,busy=false,recheckCount=0;
     let selected=null,editMode=false;
@@ -270,6 +294,22 @@
     window.BillyReview.canApprove=readyToApprove;
     window.BillyReview.rampAudit=()=>({
       ai_recheck_count:recheckCount,
+      confidence_engine:{
+        version:"1.0",
+        field_reviews:paths.slice(0,180).map(field_path=>{
+          const initial=initialState.get(field_path);
+          const before=valueAt(source,field_path);
+          const after=valueAt(doc,field_path);
+          const action=notOnDocument.has(field_path)?"absent":
+            String(before??"")!==String(after??"")?"corrected":
+            humanReviewed.has(field_path)?"confirmed":"unreviewed";
+          return {
+            field_path,initial_level:initial?.level||"new",
+            initial_signal:initial?.signal||"new_field",
+            final_level:state.get(field_path)?.level||"unknown",action
+          };
+        })
+      },
       manual_confirmations:[...humanReviewed],
       ambiguity_acknowledgements:[...manualAcknowledged],
       not_on_document:[...notOnDocument],
