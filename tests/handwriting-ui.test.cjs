@@ -11,16 +11,11 @@ const trainer=read("billy/handwriting_train.py");
 const worker=read("billy/handwriting_worker.py");
 const inference=read("billy/handwriting_inference.py");
 
-test("Submit & Learn is explicit, optional, and always keeps the normal approval",()=>{
-  assert.match(review,/handwriting_training_capture_enabled === true/);
-  assert.match(review,/Submit & Learn/);
-  assert.match(review,/Submit only · don't train/);
-  assert.match(review,/api\+"\/api\/vision\/approve"/);
-  assert.match(review,/api\+"\/api\/handwriting\/examples"/);
-  assert.match(review,/form\.append\("training_consent","true"\)/);
-  assert.match(review,/if\(allowTraining && trainingEligible\)/);
-  assert.match(review,/Review saved, but handwriting sample collection failed/);
-  assert.doesNotMatch(review,/autoTrainNow|training\.start\(/);
+test("Hosted Billy never uploads handwriting crops for training",()=>{
+  assert.match(review,/api\+"\\/api\\/vision\\/approve"/);
+  assert.doesNotMatch(review,/Submit & Learn|Submit only|training_consent|api\\/handwriting\\/examples/);
+  assert.doesNotMatch(review,/handwriting_training_capture_enabled/);
+  assert.doesNotMatch(review,/allowTraining|trainingEligible/);
 });
 test("Sample collection is authentication-scoped, source-hash-bound and off by default",()=>{
   assert.match(api,/Depends\(require_member\)/);
