@@ -6,6 +6,7 @@
   const originalRender=window.BillyReview?.render;
   if(typeof originalRender!=="function")return;
   const $=id=>document.getElementById(id);
+  let disposeActiveCrop=null;
   const create=(tag,cls="",value)=>{
     const el=document.createElement(tag);
     if(cls)el.className=cls;
@@ -144,7 +145,9 @@
     }));
     const humanReviewed=new Set(), manualAcknowledged=new Set(), notOnDocument=new Set();
     let revision=0,checkedRevision=-1,busy=false,recheckCount=0;
-    let selected=null;
+    let selected=null,editMode=false;
+    const cropper=window.BillyQuickVerifyCrop?.create(sourceFile)||null;
+    disposeActiveCrop=()=>cropper?.dispose();
     // The original detailed UI remains functional, but is hidden by default.
     const advanced=create("section","ramp-advanced");
     advanced.hidden=true;
@@ -180,18 +183,28 @@
     const detail=create("section","ramp-field-detail");
     detail.hidden=true;
     const fieldTitle=create("h4","ramp-field-title");
+    const sourceTitle=create("p","ramp-source-caption","Original source · AI-estimated area");
+    const sourceCrop=create("div","ramp-source-crop");
+    const currentCaption=create("p","ramp-value-caption","BILLY EXTRACTED");
+    const currentValue=create("div","ramp-current-value");
     const reason=create("p","ramp-reason");
     const fieldInput=create("input","ramp-field-input");
-    fieldInput.type="text";fieldInput.autocomplete="off";
+    fieldInput.type="text";fieldInput.autocomplete="off";fieldInput.hidden=true;
     const fieldButtons=create("div","ramp-detail-actions");
-    const fieldConfirm=create("button","ramp-confirm","Confirm this value");
-    fieldConfirm.type="button";
+    const fieldConfirm=create("button","ramp-confirm","Correct");
+    const fieldEdit=create("button","ramp-edit","Edit");
+    fieldConfirm.type=fieldEdit.type="button";
     const fieldNotPresent=create("button","ramp-not-present","Not on document");
     fieldNotPresent.type="button";
-    const fieldCancel=create("button","ramp-secondary","Close");
+    const fieldCancel=create("button","ramp-close","Close");
     fieldCancel.type="button";
-    fieldButtons.append(fieldConfirm,fieldNotPresent,fieldCancel);
-    detail.append(fieldTitle,reason,fieldInput,fieldButtons);
+    const minorActions=create("div","ramp-minor-actions");
+    const inspectOriginal=create("button","ramp-inspect-original","View full document");
+    inspectOriginal.type="button";
+    minorActions.append(fieldNotPresent,inspectOriginal,fieldCancel);
+    fieldButtons.append(fieldConfirm,fieldEdit);
+    detail.append(fieldTitle,sourceTitle,sourceCrop,currentCaption,
+      currentValue,fieldInput,reason,fieldButtons,minorActions);
     compact.append(detail);
     const feedback=create("p","ramp-feedback");
     feedback.setAttribute("role","status");feedback.setAttribute("aria-live","polite");
@@ -471,6 +484,7 @@
     paint();
   }
   window.BillyReview.render=function(result,endpoint,getHeaders,sourceFile){
+    if(disposeActiveCrop){disposeActiveCrop();disposeActiveCrop=null;}
     window.BillyReview.canApprove=null;
     window.BillyReview.rampAudit=null;
     window.BillyReview.intelligenceOptIn=null;
