@@ -43,6 +43,7 @@ test("Local TrOCR respects desktop-only gating and never auto-writes the review"
   const callbacks=[],status=[];
   const context={
     window:{
+      location:{search:"?trocr=experiment"},
       matchMedia:()=>({matches:true}),
       BillyQuickVerifyCrop:{
         validRegion:()=>true,
@@ -71,6 +72,14 @@ test("Local TrOCR respects desktop-only gating and never auto-writes the review"
   assert.match(ramp,/region.trocr_comparison=compared/);
   assert.match(ramp,/showLocalReading\(field_path\)/);
   assert.doesNotMatch(ramp,/doc\[field_path\]=text|setAt\(doc,field_path,text\)/);
+  // Normal users never run experimental TrOCR or let it affect review colors.
+  context.window.location.search="";
+  assert.equal(agent.desktop(),false);
+  const normal=agent.inspect({file:{},regions:[region]});
+  assert.equal(normal.enabled,false);
+  assert.equal((await normal.done).status,"skipped");
+  assert.equal(workers,1);
+  context.window.location.search="?trocr=experiment";
   context.navigator.userAgent="iPhone";
   assert.equal(agent.desktop(),false);
   const skipped=agent.inspect({file:{},regions:[region]});
