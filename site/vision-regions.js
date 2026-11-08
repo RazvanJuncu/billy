@@ -88,7 +88,9 @@
       modelNote.textContent = "AI engine + local " + label + ": " + count +
         " handwriting region(s) checked · " + disagreements +
         " disagreement(s). Compare both readings before approval.";
-    } else if (secondOpinion?.status === "no_eligible_regions") {
+    } else if (secondOpinion?.status === "browser_optional") {
+    modelNote.textContent = "Handwriting: desktop TrOCR can check localized text on this device.";
+  } else if (secondOpinion?.status === "no_eligible_regions") {
       modelNote.textContent = "The AI engine finished. No uncertain, localized handwriting needed TrOCR checking.";
     } else if (secondOpinion?.status === "unavailable") {
       modelNote.textContent = "The AI engine finished. Local TrOCR was unavailable; review fields carefully.";
