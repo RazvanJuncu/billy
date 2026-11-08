@@ -107,29 +107,16 @@ test("Blue is visually reviewed, but modified fields still require AI recheck be
   assert.match(ramp,/statusText=allResolved\(\)/);
 });
 
-test("Billy Intelligence is explicitly opt-in and shown without replacing ramp review",()=>{
-  assert.match(ramp,/Billy Intelligence/);
-  assert.doesNotMatch(ramp,/previous team correction example\(s\) used for this scan/);
-  assert.match(ramp,/intelCheckbox\.checked=false/);
-  assert.match(ramp,/window\.BillyReview\.intelligenceOptIn=\(\)=>intelCheckbox\.checked/);
-  assert.match(ramp,/window\.BillyReview\.intelligenceOptIn=null/);
-  assert.match(ramp,/Learn from my corrections and confirmations \(team-only text examples\)/);
-  assert.match(css,/\.ramp-intelligence-consent\{/);
-  assert.match(review,/intelligence_opt_in:window\.BillyReview\?\.intelligenceOptIn\?\.\(\)===true/);
-  assert.match(review,/manual_confirmations:window\.BillyReview\?\.rampAudit\?\.\(\)\?\.manual_confirmations\|\|\[\]/);
-  assert.match(review,/intelligence:approvalResult\?\.intelligence\|\|null/);
+test("Desktop TrOCR runs independently of Gemini and cannot auto-approve",()=>{
+  assert.match(html,/desktop-trocr\.js\?v=/);
+  assert.match(html,/ramp-review\.js\?v=/);
+  assert.match(ramp,/BillyDesktopTrOCR\.inspect/);
+  assert.match(ramp,/region\.trocr_reading=text/);
+  assert.match(ramp,/handwriting_disagreement=differs/);
+  assert.match(ramp,/level:"yellow"/);
+  assert.doesNotMatch(ramp,/previouslyVerified|intelligenceOptIn|Billy Intelligence/);
+  assert.doesNotMatch(backend,/billy_intelligence_examples|lookupIssueMemory|approvedIdenticalSource/);
 });
-test("Historical corrections are text-only, tenant-scoped, and never treated as current OCR values",()=>{
-  assert.match(backend,/const INTELLIGENCE_EXCLUDED_FIELDS=new Set\(/);
-  assert.match(backend,/function correctionLessons\(before,after,type\)/);
-  assert.match(backend,/async function lookupIssueMemory\(principal,issues\)/);
-  assert.match(backend,/organization_id:"eq\."\+principal\.organization_id/);
-  assert.match(backend,/Document scans, entire invoices and handwritten signatures are never archived/);
-  assert.match(backend,/Never copy numeric values or identifiers from examples/);
-  assert.match(backend,/model_fine_tuned:false/);
-  assert.match(backend,/const consent=data\.intelligence_opt_in===true/);
-});
-
 test("A missing fuel unit must not mark known meter readings as critical",()=>{
   const injected=ramp.replace("  function mount(result,endpoint,getHeaders,sourceFile){",
     "  window.__testClassify=classification;\n  function mount(result,endpoint,getHeaders,sourceFile){");
@@ -177,32 +164,10 @@ test("Competing readings override Gemini's own visually clear classification",()
   ],[]).level,"red");
 });
 
-test("Human checks create a separate Intelligence signal, not a calibrated AI confidence",()=>{
+
+test("Human checks remain audit metadata; no training consent or document memory",()=>{
   assert.match(ramp,/manual_confirmations:\[\.\.\.humanReviewed\]/);
   assert.match(ramp,/ambiguity_acknowledgements:\[\.\.\.manualAcknowledged\]/);
-  assert.match(backend,/function confirmationLessons\(before,after,type,regions,claims\)/);
-  assert.match(backend,/const clarity=String\(region\?\.visual_clarity\|\|"unassessed"\)/);
-  const confirmationBlock=backend.slice(backend.indexOf("function confirmationLessons("),
-    backend.indexOf("const INTELLIGENCE_LOOKUP_MAX"));
-  assert.doesNotMatch(confirmationBlock,/if\(!region\)continue/);
-  assert.match(backend,/if\(!a\|\|!b\|\|a!==b\)continue/);
-  assert.match(backend,/feedback_type:"confirmed"/);
-  assert.match(backend,/Never assert certainty based on historical agreement/);
   assert.match(backend,/manual_confirmations:confirmationClaims/);
-  assert.match(backend,/model_fine_tuned:false/);
-});
-
-test("Only matching values on identical files can turn yellow into previously verified blue",()=>{
-  assert.match(backend,/function previouslyVerifiedPaths\(priorRows,fresh,type\)/);
-  assert.match(backend,/previously_verified_paths:previouslyVerifiedPaths/);
-  assert.match(backend,/now!==fieldAtPath\(latest,path,type\)/);
-  assert.match(ramp,/entry.level==="yellow"&&previouslyVerified.has\(path\)/);
-  assert.match(ramp,/entry.level="blue"/);
-  assert.match(ramp,/Previously verified by an operator on this identical file/);
-  assert.match(ramp,/New edits still require recheck/);
-  assert.match(ramp,/previouslyVerifiedAbsent/);
-  assert.match(ramp,/Previously marked Not on document for these identical file bytes/);
-  assert.match(ramp,/notOnDocument=new Set\(\[\.\.\.previouslyVerifiedAbsent\]/);
-  assert.match(backend,/function previouslyVerifiedAbsentPaths\(priorRows,fresh,type\)/);
-  assert.doesNotMatch(ramp,/entry.level!=="red"&&previouslyVerified.has\(path\)/);
+  assert.doesNotMatch(backend,/intelligence_opt_in|billy_intelligence_examples/);
 });
