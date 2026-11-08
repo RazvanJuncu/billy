@@ -771,12 +771,12 @@ test("Issue-first memory retrieves 0/9 across unrelated fields and document type
   assert.ok(output.validation_warnings.some(w=>w.includes("Billy Intelligence: verify grand_total")));
   assert.equal(googlePrompts.length,2); // One base scan, one targeted visual inspection.
   assert.doesNotMatch(googlePrompts[0],/71050|71059/); // No eager memory preload.
-  assert.match(googlePrompts[1],/glyph:0\\/9/);
+  assert.match(googlePrompts[1],/glyph:0\/9/);
   assert.match(googlePrompts[1],/71050/);
   assert.match(googlePrompts[1],/meter_start/);
   const lookups=calls.filter(x=>x.url.includes("/billy_intelligence_examples")&&x.method==="GET");
   assert.equal(lookups.length,1);
-  assert.match(lookups[0].url,/issue_key=eq\\.glyph/);
+  assert.match(lookups[0].url,/issue_key=eq\.glyph/);
   assert.ok(!lookups[0].url.includes("document_type=")); // Cross-document matching.
   assert.equal(examples.length,1);
 });
