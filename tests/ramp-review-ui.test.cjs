@@ -171,3 +171,29 @@ test("Human checks remain audit metadata; no training consent or document memory
   assert.match(backend,/manual_confirmations:confirmationClaims/);
   assert.doesNotMatch(backend,/intelligence_opt_in|billy_intelligence_examples/);
 });
+
+test("Independent OCR exact agreement clears yellow, while partial and blocking warnings do not",()=>{
+  const injected=ramp.replace("  function mount(result,endpoint,getHeaders,sourceFile){",
+    "  window.__compareLocalOCR=compareLocalOCR;\n  window.__blockingWarning=blockingWarning;\n  function mount(result,endpoint,getHeaders,sourceFile){");
+  const context={window:{BillyReview:{render:()=>{}}}};
+  vm.runInNewContext(injected,context);
+  const cmp=context.window.__compareLocalOCR;
+  const blocks=context.window.__blockingWarning;
+  assert.equal(cmp("fuel_type","SHELL 80","80"),"partial");
+  assert.equal(cmp("fuel_type","SHELL 80","SHELL 80"),"match");
+  assert.equal(cmp("fuel_type","SHELL 80","100"),"different");
+  assert.equal(cmp("meter_start","71052","71052"),"match");
+  assert.equal(cmp("meter_start","12.5","125"),"different");
+  assert.equal(cmp("meter_start","71052","71053"),"different");
+  assert.equal(cmp("fuel_type","SHELL 80",""),"unusable");
+  assert.equal(blocks("meter_start",["Meter mismatch: finish minus start is 10 but delivered quantity is 14."]),true);
+  assert.equal(blocks("grand_total",["Subtotal + VAT does not match the invoice total; inspect discounts and other charges."]),true);
+  assert.equal(blocks("meter_start",["Needs verification: meter_start has ambiguous source evidence."]),false);
+  assert.match(ramp,/current.level==="yellow"&&!translatedPaths.has\(field_path\)/);
+  assert.match(ramp,/state.set\(field_path,\{level:"green"/);
+  assert.match(ramp,/!blockingWarning\(field_path,warnings\)/);
+  assert.match(ramp,/const differs=compared==="different"/);
+  assert.match(ramp,/const tag=region.trocr_comparison==="match"/);
+  assert.match(ramp,/TrOCR read: /);
+  assert.match(css,/\.ramp-local-reading\{/);
+});
