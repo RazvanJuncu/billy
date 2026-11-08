@@ -123,6 +123,44 @@
     }
     return {level,reason};
   }
+  // Compare the actual glyph strings, never the review field's semantic guess.
+  // Keep contextual labels separate: a crop with "80" cannot verify "SHELL".
+  function compareLocalOCR(path,extracted,local){
+    const compact=value=>String(value??"").normalize("NFKC").toUpperCase()
+      .replace(/[^A-Z0-9]/g,"");
+    const original=compact(extracted),second=compact(local);
+    if(!original||!second)return "unusable";
+    if(original===second)return "match";
+    if(path==="fuel_type"&&/^\d{2,3}$/.test(second)){
+      const terms=String(extracted??"").toUpperCase().match(/[A-Z0-9]+/g)||[];
+      if(terms.length===2&&/^[A-Z]+$/.test(terms[0])&&terms[1]===second)
+        return "partial";
+    }
+    return "different";
+  }
+  // Gemini source-visibility warnings may be resolved by an independent
+  // matching OCR read. Business-rule, numeric, absent and totals warnings cannot.
+  function blockingWarning(path,warnings){
+    return (warnings||[]).some(raw=>{
+      const value=String(raw);
+      if(/^Needs verification: .*source evidence/i.test(value)||
+         /^Needs verification: handwriting in /i.test(value)||
+         /^Meter arithmetic matches/i.test(value))return false;
+      if(["meter_start","meter_finish","delivered_quantity"].includes(path)&&
+         /^(?:Meter mismatch|Meter finish is less than start|Only one meter reading|Meter difference is )/i.test(value))return true;
+      if(["subtotal","vat_total","grand_total"].includes(path)&&
+         /^(?:Subtotal \+ VAT does not match|Sum of line net amounts differs)/i.test(value))return true;
+      if(path==="quantity_unit"&&/Fuel quantity unit missing or unreadable/i.test(value))return true;
+      if(path==="grand_total"&&/Total not found/i.test(value))return true;
+      if(path==="aircraft_registration"&&/Aircraft registration missing or unreadable/i.test(value))return true;
+      if(path==="delivered_quantity"&&/Delivered fuel quantity missing or unreadable|not a valid numeric amount/i.test(value))return true;
+      if(path==="meter_start"&&/meter start reading has invalid or ambiguous digits/i.test(value))return true;
+      if(path==="meter_finish"&&/meter finish reading has invalid or ambiguous digits/i.test(value))return true;
+      const line=path.match(/^lines\[(\d+)\]\./);
+      if(line&&new RegExp("^Line "+(Number(line[1])+1)+": quantity × unit price differs").test(value))return true;
+      return false;
+    });
+  }
   function mount(result,endpoint,getHeaders,sourceFile){
     const root=$("formattedOutput");
     const type=result.document_type;
@@ -188,6 +226,8 @@
     const currentCaption=create("p","ramp-value-caption","BILLY EXTRACTED");
     const currentValue=create("div","ramp-current-value");
     const reason=create("p","ramp-reason");
+    const localReadout=create("p","ramp-local-reading","");
+    localReadout.hidden=true;
     const fieldInput=create("input","ramp-field-input");
     fieldInput.type="text";fieldInput.autocomplete="off";fieldInput.hidden=true;
     const fieldButtons=create("div","ramp-detail-actions");
@@ -204,7 +244,7 @@
     minorActions.append(fieldNotPresent,inspectOriginal,fieldCancel);
     fieldButtons.append(fieldConfirm,fieldEdit);
     detail.append(fieldTitle,sourceTitle,sourceCrop,currentCaption,
-      currentValue,fieldInput,reason,fieldButtons,minorActions);
+      currentValue,fieldInput,reason,localReadout,fieldButtons,minorActions);
     compact.append(detail);
     const feedback=create("p","ramp-feedback");
     feedback.setAttribute("role","status");feedback.setAttribute("aria-live","polite");
@@ -364,6 +404,16 @@
         finish.focus();
       }
     }
+    function showLocalReading(path){
+      const region=regions.find(item=>item.field_path===path&&
+        typeof item.trocr_reading==="string"&&item.trocr_reading.trim());
+      localReadout.hidden=!region;
+      if(!region){localReadout.textContent="";return;}
+      const tag=region.trocr_comparison==="match"?"Same reading as Gemini":
+        region.trocr_comparison==="partial"?"Same handwritten grade; contextual prefix not checked":
+        region.trocr_comparison==="different"?"Different reading":"Not comparable";
+      localReadout.textContent="TrOCR read: "+region.trocr_reading.slice(0,120)+" · "+tag;
+    }
     function openEditor(path){
       if(busy||!state.has(path))return;
       selected=path;
@@ -388,6 +438,7 @@
       sourceTitle.textContent=region?
         "Original source · page "+region.page+" · AI-estimated area":
         "Original source · location unavailable";
+      showLocalReading(path);
       if(missing){
         // No source value: a blank crop/placeholder adds noise and implies evidence.
         cropper?.cancel();
@@ -561,23 +612,33 @@
           if(!region||!state.has(field_path))return;
           region.trocr_reading=text;
           const value=valueAt(doc,field_path);
-          const norm=value=>String(value??"").trim().toLowerCase().replace(/\s+/g,"");
-          const differs=!!norm(value)&&!!norm(text)&&norm(value)!==norm(text);
+          const compared=compareLocalOCR(field_path,value,text);
+          const differs=compared==="different";
+          region.trocr_comparison=compared;
           region.handwriting_disagreement=differs;
-          if(differs){
+          const current=state.get(field_path);
+          if(!humanReviewed.has(field_path)&&compared==="match"&&
+             current.level==="yellow"&&!translatedPaths.has(field_path)&&
+             !blockingWarning(field_path,warnings)){
+            state.set(field_path,{level:"green",
+              reason:"Gemini and local TrOCR read the same handwriting. No flagged disagreement; operator review is still required."});
+          }else if(!humanReviewed.has(field_path)&&differs){
+            if(!Array.isArray(region.alternate_readings))region.alternate_readings=[];
             if(!region.alternate_readings.includes(text))
               region.alternate_readings=[...region.alternate_readings,text].slice(0,3);
             if(region.visual_clarity==="clear")region.visual_clarity="slight_uncertainty";
-            const current=state.get(field_path);
             if(current.level==="green"){
               state.set(field_path,{level:"yellow",
                 reason:"AI engine and local TrOCR read this handwriting differently. Inspect the original."});
             }
           }
+          // "SHELL 80" vs a cropped "80" is only a partial contextual match:
+          // never introduce a false disagreement, but also never green a yellow.
           paint();
-          if(selected===field_path&&detail.hidden===false)
-            reason.textContent=state.get(field_path).reason+
-              " Local TrOCR reading: "+text.slice(0,120);
+          if(selected===field_path&&detail.hidden===false){
+            reason.textContent=state.get(field_path).reason;
+            showLocalReading(field_path);
+          }
         }
       });
       disposeActiveCrop=()=>{
