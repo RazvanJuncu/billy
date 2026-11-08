@@ -190,6 +190,11 @@
       auditLine(target,"Memory retrieval","Not recorded",
         "Earlier scans did not persist retrieval diagnostics.");
     }
+    auditLine(target,"Learning opted in",
+      memory.opt_in===true?"Yes":memory.opt_in===false?"No":"Not recorded",
+      memory.opt_in===false?
+        "The operator did not enable learning for this approval; no new examples can be saved.":
+        "Per-document consent is required before Billy stores learning examples.");
     auditLine(target,"Operator confirmations",memory.confirmed_clicked??0,
       "A confirmation is not necessarily eligible to become a searchable example.");
     auditLine(target,"Saved / searchable examples",
