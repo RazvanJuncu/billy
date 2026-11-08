@@ -130,7 +130,7 @@
     $("simpleUploadNote").textContent = exportable
       ? "Approved fields are saved to your Billy team records when connected to cloud. The original file and company Excel are not updated."
       : "Review and approve the document before exporting.";
-    // The preview and CSV share the SAME approved snapshot and column order.
+    // Preview and CSV use the same approved document summary and entry rows.
     // Never display an unapproved AI extraction as an Excel-ready result.
     const sheet=exportable?window.BillyReview?.getApprovedSpreadsheetData?.():null;
     window.BillyExcelPreview?.render($("simpleExcelPreview"),sheet);
