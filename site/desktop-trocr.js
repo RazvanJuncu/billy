@@ -56,17 +56,17 @@
     typeof region.field_path === "string" && region.field_path.length <= 90
   ).slice(0,MAX_REGIONS);
   function inspect({file,regions,onStatus,onReading}) {
-    if(!desktop()||!file) return {enabled:false,cancel(){}};
+    if(!desktop()||!file) return {enabled:false,cancel(){},done:Promise.resolve({status:"skipped"})};
     const candidates=eligible(regions);
-    if(!candidates.length)return {enabled:false,cancel(){}};
+    if(!candidates.length)return {enabled:false,cancel(){},done:Promise.resolve({status:"skipped"})};
     if(activeRun)activeRun.cancel();
     let cancelled=false;
     const run={cancel(){cancelled=true;},onStatus};
     activeRun=run;
     const crop=window.BillyQuickVerifyCrop?.create(file);
     onStatus?.("Checking handwriting locally (0/"+candidates.length+")…");
-    (async()=>{
-      let completed=0,reads=0;
+    const done=(async()=>{
+      let completed=0,reads=0,status="completed";
       try{
         for(const region of candidates){
           if(cancelled)break;
@@ -87,13 +87,15 @@
           ?"Local TrOCR checked "+reads+" handwriting region(s). Differences need review."
           :"Local TrOCR returned no usable text. Review the AI engine results.");
       }catch(error){
+        status="unavailable";
         if(!cancelled)onStatus?.("Local TrOCR unavailable: "+String(error?.message||"error").slice(0,100)+". The AI engine remains available.");
       }finally{
         crop?.dispose?.();
         if(activeRun===run)activeRun=null;
       }
+      return {status:cancelled?"cancelled":status,reads,completed};
     })();
-    return {enabled:true,cancel:run.cancel};
+    return {enabled:true,cancel:run.cancel,done};
   }
   window.BillyDesktopTrOCR={desktop,eligible,inspect};
 })();
