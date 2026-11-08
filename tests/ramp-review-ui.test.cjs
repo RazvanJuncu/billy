@@ -122,10 +122,10 @@ test("Billy Intelligence is explicitly opt-in and shown without replacing ramp r
 test("Historical corrections are text-only, tenant-scoped, and never treated as current OCR values",()=>{
   assert.match(backend,/const INTELLIGENCE_EXCLUDED_FIELDS=new Set\(/);
   assert.match(backend,/function correctionLessons\(before,after,type\)/);
-  assert.match(backend,/async function intelligenceHints\(principal,type\)/);
+  assert.match(backend,/async function lookupIssueMemory\(principal,issues\)/);
   assert.match(backend,/organization_id:"eq\."\+principal\.organization_id/);
   assert.match(backend,/Document scans, entire invoices and handwritten signatures are never archived/);
-  assert.match(backend,/Never copy names/);
+  assert.match(backend,/Never copy numeric values or identifiers from examples/);
   assert.match(backend,/model_fine_tuned:false/);
   assert.match(backend,/const consent=data\.intelligence_opt_in===true/);
 });
