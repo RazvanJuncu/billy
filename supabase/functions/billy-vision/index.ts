@@ -625,6 +625,101 @@ async function targetedIssueReview(bytes,mime,issues,matches){
   return {status:"reviewed",assessments};
 }
 
+
+// An identical file is a deterministic SHA-256 match, not proof that the AI
+// learned. Compare only values and counts; never include OCR text in diagnostics.
+function compareApprovedToFresh(prior,fresh,type){
+  if(!prior||!fresh)return null;
+  const fields=type==="invoice"?INVOICE_FIELDS:FUEL_FIELDS;
+  let matching=0,different=0,unreadable=0;
+  const changedPaths=[];
+  for(const field of fields){
+    const a=prior[field]??null,b=fresh[field]??null;
+    if(a===b){if(a!==null)matching++;continue;}
+    if(a!==null&&b===null)unreadable++;
+    else different++;
+    if(changedPaths.length<24)changedPaths.push(field);
+  }
+  const group=type==="invoice"?"lines":"handwritten_entries";
+  const before=Array.isArray(prior[group])?prior[group]:[];
+  const after=Array.isArray(fresh[group])?fresh[group]:[];
+  const comparable=Math.min(before.length,after.length);
+  let rowDifferences=0;
+  for(let i=0;i<comparable;i++)
+    if(JSON.stringify(before[i])!==JSON.stringify(after[i]))rowDifferences++;
+  return {
+    same_file:true,matching_fields:matching,different_fields:different,
+    missing_from_fresh:unreadable,different_field_paths:changedPaths,
+    previously_approved_entries:before.length,fresh_extracted_entries:after.length,
+    changed_entry_rows:rowDifferences,entry_count_changed:before.length!==after.length
+  };
+}
+async function approvedIdenticalSource(principal,hash,type){
+  return await database(principal,"GET","document_records",{
+    select:"id,reviewed_data,created_at",
+    organization_id:"eq."+principal.organization_id,
+    created_by:"eq."+principal.user_id,
+    source_sha256:"eq."+hash,document_type:"eq."+type,
+    state:"eq.approved",order:"created_at.desc",limit:"20"
+  });
+}
+function initialAudit(priorRows,fresh,type,issues,memory,review,priorLookupStatus){
+  const rows=Array.isArray(priorRows)?priorRows:[];
+  const comparison=rows[0]?compareApprovedToFresh(rows[0].reviewed_data,fresh,type):null;
+  return {
+    version:1,
+    model_weights_updated:false,
+    learning_mode:"retrieval_not_model_training",
+    same_file:{
+      lookup_status:priorLookupStatus,
+      prior_approved_count:rows.length,
+      previous_approved_found:rows.length>0,
+      comparison
+    },
+    issue_detection:{count:issues.length,keys:issues.map(item=>item.issue_key)},
+    retrieval:{
+      status:review.status,examples_found:memory.length,
+      issue_matches:[...new Set(memory.map(item=>item.issue_key))],
+      provider_second_pass:review.status==="reviewed",
+      assessed_fields:review.assessments?.length||0
+    },
+    recorded_at:new Date().toISOString()
+  };
+}
+async function learningAudit(req,principal){
+  const id=new URL(req.url).searchParams.get("extraction_id")||"";
+  if(!/^[0-9a-f]{8}-[0-9a-f-]{27,36}$/i.test(id))
+    return error("Invalid extraction ID.",400);
+  const records=await database(principal,"GET","document_records",{
+    select:"id,state,document_type,source_sha256,intelligence_audit,review_metadata",
+    id:"eq."+id,organization_id:"eq."+principal.organization_id,
+    created_by:"eq."+principal.user_id,limit:"1"
+  });
+  const row=records[0];
+  if(!row)return error("Review record not available for this team member.",404);
+  const examples=await database(principal,"GET","billy_intelligence_examples",{
+    select:"feedback_type,issue_key",
+    source_record_id:"eq."+id,organization_id:"eq."+principal.organization_id,
+    created_by:"eq."+principal.user_id,limit:"50"
+  });
+  const saved=Array.isArray(examples)?examples:[];
+  const confirmed=Array.isArray(row.review_metadata?.manual_confirmations)?
+    row.review_metadata.manual_confirmations.length:0;
+  return json({
+    extraction_id:id,document_type:row.document_type,state:row.state,
+    audit:row.intelligence_audit||{},
+    learning:{
+      confirmed_clicked:confirmed,
+      total_saved:saved.length,
+      corrections_saved:saved.filter(item=>item.feedback_type==="corrected").length,
+      confirmations_saved:saved.filter(item=>item.feedback_type==="confirmed").length,
+      indexed:saved.filter(item=>!!item.issue_key).length,
+      unindexed:saved.filter(item=>!item.issue_key).length
+    },
+    explanation:"Context retrieval is not model fine-tuning. Prior approval of identical bytes is memory recall, not evidence of improved OCR."
+  });
+}
+
 async function extract(req,principal){
   if(!providerKey())return error("The AI engine is not configured on the server.",503);
   const contentType=req.headers.get("content-type")||"";
@@ -639,6 +734,9 @@ async function extract(req,principal){
   const bytes=new Uint8Array(await file.arrayBuffer());
   let mime;try{mime=mimeOf(file.name,bytes);}catch(e){return error(e.message,400);}
   const hash=await sha256(bytes);
+  let priorRows=[],priorLookupStatus="checked";
+  try{priorRows=await approvedIdenticalSource(principal,hash,type);}
+  catch(_error){priorLookupStatus="unavailable";}
   // V3: do not preload team memory into every extraction. Find visual issues first.
   const payload={
     contents:[{role:"user",parts:[
@@ -703,6 +801,8 @@ async function extract(req,principal){
         suggestion+". "+advice.reason).slice(0,240);
     }
   }
+  const intelligenceAudit=initialAudit(
+    priorRows,fields,type,issues,memory,review,priorLookupStatus);
   const warnings=validate(fields,type,regions);
   for(const advice of review.assessments||[]){
     if(advice.status==="alternate_possible")warnings.push(
@@ -718,7 +818,7 @@ async function extract(req,principal){
     id,organization_id:principal.organization_id,created_by:principal.user_id,
     document_type:type,source_sha256:hash,state:"extracted",
     extracted_data:fields,regions_data:regions,validation_warnings:warnings,
-    translation_metadata:translation,
+    translation_metadata:translation,intelligence_audit:intelligenceAudit,
     model_name:MODEL,token_usage:usage
   });
   return json({
@@ -729,6 +829,7 @@ async function extract(req,principal){
     fuel_release:type==="fuel_release"?fields:null,
     validation_warnings:warnings,usage,regions,confidence:null,
     translation,
+    intelligence_audit:intelligenceAudit,
     handwriting_training_capture_enabled:false,
     handwriting_second_opinion:{status:"disabled",model_version:null,comparisons:0,disagreements:0},
     historical_field_agreement:{},feedback_example_count:memory.length,
@@ -998,7 +1099,7 @@ Deno.serve(async req=>{
   const path=new URL(req.url).pathname;
   // Supabase may present the public path, function-local path, or a slug-prefixed path.
   // Match only known routes regardless of which valid prefix the edge runtime preserves.
-  const routes=["/api/vision/health","/api/vision/extract","/api/vision/recheck","/api/vision/approve","/api/vision/records","/api/vision/delete"];
+  const routes=["/api/vision/health","/api/vision/extract","/api/vision/recheck","/api/vision/approve","/api/vision/records","/api/vision/delete","/api/vision/intelligence-audit"];
   const suffix=routes.find(route=>path===route||path.endsWith("/billy-vision"+route));
   if(!suffix)return error("Not found.",404);
   if(req.method!==(suffix==="/api/vision/extract"||suffix==="/api/vision/recheck"||suffix==="/api/vision/approve"||suffix==="/api/vision/delete"?"POST":"GET"))return error("Method not allowed.",405);
@@ -1015,6 +1116,7 @@ Deno.serve(async req=>{
     if(suffix==="/api/vision/recheck")return await recheck(req,principal);
     if(suffix==="/api/vision/approve")return await approve(req,principal);
     if(suffix==="/api/vision/delete")return await deleteRecord(req,principal);
+    if(suffix==="/api/vision/intelligence-audit")return await learningAudit(req,principal);
     return await listRecords(principal,req);
   }catch(e){
     console.error("Billy Vision backend error:",e instanceof Error?e.message:"unknown");
