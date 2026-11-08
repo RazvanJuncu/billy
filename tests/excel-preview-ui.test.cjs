@@ -23,7 +23,7 @@ test("Excel Preview and CSV are built from approved document-and-entry sections"
   assert.match(review,/const sheet=getApprovedSpreadsheetData\(\)/);
   assert.match(review,/sheet\.details\.map\(field=>\[field\.label,field\.value\]\)/);
   assert.match(review,/sheet\.entries\.rows/);
-  assert.match(review,/getApprovedSpreadsheetData,getLearningAudit\};/);
+  assert.match(review,/getApprovedSpreadsheetData\};/);
   assert.match(simple,/exportable\?window\.BillyReview\?\.getApprovedSpreadsheetData\?\.\(\):null/);
   assert.match(simple,/window\.BillyExcelPreview\?\.render\(\$\("simpleExcelPreview"\),sheet\)/);
   assert.match(html,/Upload to company Excel/);
@@ -191,45 +191,10 @@ test("Preview renders untrusted document values as literal text, never executabl
   assert.doesNotMatch(preview,/innerHTML|insertAdjacentHTML/);
 });
 
-test("Approved screen exposes a collapsed authenticated learning audit, never a fake green status",()=>{
-  assert.match(html,/id="simpleInspectLearning"/);
-  assert.match(html,/id="simpleLearningAudit"[^>]*hidden/);
-  assert.match(simple,/getLearningAudit\?\.\(\)/);
-  assert.match(simple,/Learning audit is unavailable/);
-  assert.match(simple,/Saved \/ searchable examples|Saved \/ searchable/);
-  assert.match(review,/async function getLearningAudit\(\)/);
-  assert.match(review,/\/api\/vision\/intelligence-audit\?extraction_id=/);
-  assert.match(simple,/Model weights are not updated/);
-  assert.doesNotMatch(simple,/innerHTML|insertAdjacentHTML/);
-});
-test("Learning audit renders sanitized metrics, exact-file drift and unindexed warning as text",()=>{
-  const root=node("section");
-  const from=simple.indexOf("  function auditLine(");
-  const to=simple.indexOf("  function recordFile(file)",from);
-  assert.ok(from>=0&&to>from);
-  const script=simple.slice(from,to);
-  const report={
-    audit:{
-      same_file:{lookup_status:"checked",prior_approved_count:3,
-        comparison:{different_fields:2,missing_from_fresh:1,
-          fresh_extracted_entries:12,previously_approved_entries:10}},
-      retrieval:{status:"no_matching_examples",examples_found:0,
-        provider_second_pass:false}
-    },
-    learning:{opt_in:false,confirmed_clicked:5,total_saved:1,indexed:0,unindexed:1}
-  };
-  const context={
-    document:{createElement:node},$:(id)=>id==="simpleLearningAudit"?root:null,
-    report
-  };
-  vm.runInNewContext(script+"\nrenderLearningAudit(report);",context);
-  const text=JSON.stringify(root.children);
-  assert.match(text,/3 earlier approval/);
-  assert.match(text,/2 changed field/);
-  assert.match(text,/12 now \/ 10 previously/);
-  assert.match(text,/0 matching example/);
-  assert.match(text,/1 saved/);
-  assert.match(text,/1 saved example\(s\) have no issue classification/);
-  assert.match(text,/operator did not enable learning/);
-  assert.doesNotMatch(text,/private-supplier|secret-identifier/);
+test("Approved screen exports verified content without historical OCR memory",()=>{
+  assert.match(html,/id="simpleExcelPreview"/);
+  assert.doesNotMatch(html,/id="simpleInspectLearning"|id="simpleLearningAudit"/);
+  assert.doesNotMatch(review,/getLearningAudit|intelligence_opt_in|handwriting\/examples/);
+  assert.doesNotMatch(simple,/renderLearningAudit|getLearningAudit/);
+  assert.match(simple,/window\.BillyExcelPreview/);
 });
