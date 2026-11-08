@@ -123,7 +123,7 @@
       // this in-memory viewer until the document changes.
       if(pdfPromise)pdfPromise.then(pdf=>pdf.destroy()).catch(()=>{});
     }
-    return {show,dispose};
+    return {show,cancel:()=>{ticket++;},dispose};
   }
   window.BillyQuickVerifyCrop={create,cropBounds,validRegion};
 })();
