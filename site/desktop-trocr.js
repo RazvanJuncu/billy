@@ -38,7 +38,7 @@
     };
     next.onerror=() => {
       resetWorker();
-      activeRun?.onStatus?.("Local handwriting model unavailable. Gemini review still works.");
+      activeRun?.onStatus?.("Local handwriting model unavailable. The AI engine review still works.");
     };
     worker=next;
     return worker;
@@ -85,9 +85,9 @@
         }
         if(!cancelled)onStatus?.(reads
           ?"Local TrOCR checked "+reads+" handwriting region(s). Differences need review."
-          :"Local TrOCR returned no usable text. Review Gemini results.");
+          :"Local TrOCR returned no usable text. Review the AI engine results.");
       }catch(error){
-        if(!cancelled)onStatus?.("Local TrOCR unavailable: "+String(error?.message||"error").slice(0,100)+". Gemini remains available.");
+        if(!cancelled)onStatus?.("Local TrOCR unavailable: "+String(error?.message||"error").slice(0,100)+". The AI engine remains available.");
       }finally{
         crop?.dispose?.();
         if(activeRun===run)activeRun=null;
