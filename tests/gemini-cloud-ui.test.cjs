@@ -188,7 +188,7 @@ test("Valid signed-in team member can extract, review, approve and list a docume
   const result=await extracted.json();
   assert.equal(result.invoice.invoice_number,"INV-42");
   assert.equal(result.regions.length,1);
-  assert.equal(result.handwriting_second_opinion.status,"disabled");
+  assert.equal(result.handwriting_second_opinion.status,"browser_optional");
   assert.equal(result.confidence,null);
   assert.equal(stored.size,1);
   const record=stored.get(result.extraction_id);
