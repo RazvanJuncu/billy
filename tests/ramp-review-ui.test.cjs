@@ -184,7 +184,7 @@ test("Human checks create a separate Intelligence signal, not a calibrated AI co
   assert.match(backend,/if\(!region\)continue/);
   assert.match(backend,/if\(!a\|\|!b\|\|a!==b\)continue/);
   assert.match(backend,/feedback_type:"confirmed"/);
-  assert.match(backend,/Never declare clarity or suppress a warning/);
+  assert.match(backend,/Never assert certainty based on historical agreement/);
   assert.match(backend,/manual_confirmations:confirmationClaims/);
   assert.match(backend,/model_fine_tuned:false/);
 });
