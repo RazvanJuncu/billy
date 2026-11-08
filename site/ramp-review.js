@@ -377,7 +377,7 @@
       selected=path;
       const entry=state.get(path);
       const missing=!substantive(valueAt(doc,path));
-      detail.classList.toggle("ramp-missing",missing);
+      detail.className=missing?"ramp-field-detail ramp-missing":"ramp-field-detail";
       fieldTitle.textContent=labelFor(path,type,doc)+(missing?" · Missing":"");
       fieldInput.value=valueAt(doc,path)??"";
       currentValue.textContent=missing?"":String(valueAt(doc,path));
