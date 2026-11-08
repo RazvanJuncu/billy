@@ -19,7 +19,7 @@ test("Desktop TrOCR uses a pinned pretrained model in a module worker",()=>{
   assert.match(worker,/device:"wasm",dtype:"q8"/);
   assert.match(worker,/max_new_tokens:64/);
   assert.doesNotMatch(worker,/\/api\/handwriting\/examples|train\(|fit\(/);
-  assert.match(html,/desktop-trocr\.js\?v=1/);
+  assert.match(html,/desktop-trocr\.js\?v=2/);
   assert.ok(html.indexOf("quickverify-crop.js")<html.indexOf("desktop-trocr.js"));
   assert.ok(html.indexOf("desktop-trocr.js")<html.indexOf("ramp-review.js"));
   assert.match(sw,/"\.\/desktop-trocr-worker\.js"/);
