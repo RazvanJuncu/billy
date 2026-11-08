@@ -8,7 +8,13 @@
   const MAX_REGIONS = 8;
   let worker = null, sequence = 0, activeRun = null;
   const pending = new Map();
+  // The pretrained Small model produced unrelated words on short handwritten
+  // registration numbers, dates and initials in actual Fuel Release testing.
+  // Keep it available only for explicit developer experiments, never by default.
+  const experimentalOptIn = () =>
+    /(?:^|[?&])trocr=experiment(?:&|$)/.test(window.location?.search || "");
   const desktop = () => {
+    if(!experimentalOptIn())return false;
     const ua = navigator.userAgent || "";
     const mobile = /iphone|ipad|ipod|android|huawei|honor|harmonyos|emui/i.test(ua) ||
       (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
