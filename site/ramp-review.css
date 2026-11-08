@@ -163,18 +163,3 @@
   .ramp-field-detail.ramp-missing{padding:18px 15px 15px}
   .ramp-field-detail.ramp-missing .ramp-field-title{font-size:20px}
 }
-
-/* Repeat-document provenance is visible only when an exact SHA-256 was approved earlier. */
-.ramp-intelligence-history{
-  font-size:11px;line-height:1.6;color:#b4bec7;
-  margin:12px 0 0;padding-top:11px;
-  border-top:1px solid #363b40
-}
-
-/* On-device OCR status is deliberately quiet: no extra panels or AI confidence. */
-.ramp-local-ocr-status{font-size:12px;color:var(--muted,#9ba4ac);line-height:1.45;margin:0;padding:0 3px}
-.ramp-local-ocr-status:empty{display:none}
-
-/* Independent local OCR result, always shown without implying calibrated confidence. */
-.ramp-local-reading{font-size:13px;color:#d6d9df;line-height:1.5;margin:0 0 16px;overflow-wrap:anywhere}
-.ramp-local-reading[hidden]{display:none!important}
