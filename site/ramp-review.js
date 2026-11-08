@@ -166,7 +166,7 @@
     const root=$("formattedOutput");
     const type=result.document_type;
     const source=type==="fuel_release"?result.fuel_release:result.invoice;
-    if(!source||!sourceFile||!endpoint.includes("/functions/v1/billy-vision"))return;
+    if(!source||!sourceFile||!endpoint.includes("/functions/v1/billy-vision"))return Promise.resolve();
     const doc=structuredClone(source);
     const regions=Array.isArray(result.regions)?result.regions:[];
     const warnings=Array.isArray(result.validation_warnings)?result.validation_warnings:[];
@@ -599,15 +599,10 @@
       paint();feedback.textContent=message;
     });
     paint();
-    // On desktop, read source-localized handwriting with an independent
-    // pretrained TrOCR worker. Never upload crops, train, or auto-approve.
+    // On desktop, finish both OCR passes BEFORE exposing the review screen.
+    // The caller awaits the returned promise while the work loader stays up.
     if(window.BillyDesktopTrOCR?.desktop?.()){
-      const local=window.BillyDesktopTrOCR.inspect({
-        file:sourceFile,
-        // OCR compares source-language readings only, not English translations.
-        regions:regions.filter(region=>!translatedPaths.has(region.field_path)),
-        onStatus:message=>{localStatus.textContent=message;},
-        onReading:({field_path,page,text})=>{
+      const applyReading=({field_path,page,text})=>{
           const region=regions.find(item=>
             item.field_path===field_path&&item.page===page);
           if(!region||!state.has(field_path))return;
@@ -640,19 +635,44 @@
             reason.textContent=state.get(field_path).reason;
             showLocalReading(field_path);
           }
+      };
+      // Revisiting this extraction must not show intermediate Gemini colors
+      // or start another model download. Reapply completed local reads.
+      if(result._billyLocalOcrFinished===true){
+        for(const region of regions){
+          if(typeof region.trocr_reading==="string"&&region.trocr_reading.trim())
+            applyReading({field_path:region.field_path,page:region.page,text:region.trocr_reading});
         }
+        localStatus.textContent=result._billyLocalOcrStatus||"Local handwriting check completed.";
+        return Promise.resolve();
+      }
+      const local=window.BillyDesktopTrOCR.inspect({
+        file:sourceFile,
+        // OCR compares source-language readings only, not English translations.
+        regions:regions.filter(region=>!translatedPaths.has(region.field_path)),
+        onStatus:message=>{
+          localStatus.textContent=message;
+          result._billyLocalOcrStatus=message;
+        },
+        onReading:applyReading
       });
       disposeActiveCrop=()=>{
         local?.cancel?.();
         cropper?.dispose?.();
       };
+      // TrOCR failures are already handled by the local worker. Either way,
+      // the user receives one stable review with no green-to-yellow flicker.
+      return Promise.resolve(local.done).then(()=>{
+        result._billyLocalOcrFinished=true;
+      });
     }
+    return Promise.resolve();
   }
   window.BillyReview.render=function(result,endpoint,getHeaders,sourceFile){
     if(disposeActiveCrop){disposeActiveCrop();disposeActiveCrop=null;}
     window.BillyReview.canApprove=null;
     window.BillyReview.rampAudit=null;
     originalRender(result,endpoint,getHeaders,sourceFile);
-    mount(result,endpoint,getHeaders,sourceFile);
+    return mount(result,endpoint,getHeaders,sourceFile);
   };
 })();
