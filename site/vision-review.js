@@ -21,18 +21,34 @@ function download(text,name,mime){const u=URL.createObjectURL(new Blob([text],{t
 function escapeCell(value){const s=String(value??"");const dangerous=/^\s*[=+@]/.test(s) || (/^\s*-/.test(s) && !/^\s*-\d+(?:[.,]\d+)?\s*$/.test(s));const safe=dangerous?"'"+s:s;return '"'+safe.replaceAll('"','""')+'"';}
 function getApprovedSpreadsheetData(){
   if(!approved||!draft)return null;
-  const columns=[...fieldKeys,...lineKeys].map(([key,label])=>({key,label}));
-  const items=documentType==="fuel_release"?draft.handwritten_entries:draft.lines;
-  const rows=(Array.isArray(items)&&items.length?items:[{}]).map(line=>[
-    ...fieldKeys.map(([key])=>draft[key]??""),
-    ...lineKeys.map(([key])=>line[key]??"")
-  ]);
-  return {documentType,columns,rows}; // One row per item, matching the CSV's flattened layout.
+  // Document-level metadata describes ONE document. Never repeat it once for
+  // every handwritten field / invoice line: the preview is a report, not a JOIN.
+  const details=fieldKeys
+    .filter(([key])=>draft[key]!==null&&draft[key]!==undefined&&String(draft[key]).trim()!=="")
+    .map(([key,label])=>({key,label,value:draft[key]}));
+  const sourceRows=documentType==="fuel_release"?draft.handwritten_entries:draft.lines;
+  const columns=lineKeys.map(([key,label])=>({key,label}));
+  const rows=(Array.isArray(sourceRows)?sourceRows:[]).map(item=>
+    columns.map(column=>item?.[column.key]??""));
+  const entries={
+    title:documentType==="fuel_release"?"Handwritten entries":"Invoice line items",
+    columns,rows
+  };
+  return {documentType,details,entries};
 }
 function exportCSV(){
   const sheet=getApprovedSpreadsheetData();
   if(!sheet)return;
-  const table=[sheet.columns.map(column=>column.key),...sheet.rows];
+  // A single CSV has one worksheet: separate the document summary and its
+  // individual entries with explicit headings. No repeated document metadata.
+  const table=[
+    ["Document details"],["Field","Value"],
+    ...sheet.details.map(field=>[field.label,field.value]),
+    [],
+    [sheet.entries.title],
+    sheet.entries.columns.map(column=>column.label),
+    ...sheet.entries.rows
+  ];
   download("\ufeff"+table.map(row=>row.map(escapeCell).join(",")).join("\r\n")+"\r\n",
     "billy-approved.csv","text/csv;charset=utf-8");
 }
