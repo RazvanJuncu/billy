@@ -50,3 +50,25 @@ test("Review highlights uncertain evidence and browser cache version is advanced
   assert.match(html,/simple\.js\?v=1\.2\.11/);
   assert.match(read("site/sw.js"),/v43-intelligence-confirmations/);
 });
+
+test("Multilingual extraction keeps source-language audit and exports English-readable fields",()=>{
+  const ramp=read("site/ramp-review.js"),rampCss=read("site/ramp-review.css");
+  assert.match(edge,/document_language:\{type:"string"\}/);
+  assert.match(edge,/english_translations:ENGLISH_TRANSLATIONS/);
+  assert.match(edge,/function applyEnglishTranslations\(sourceDoc,type,language,raw\)/);
+  assert.match(edge,/translationNumberTokens\(source\)!==translationNumberTokens\(english\)/);
+  assert.match(edge,/translation_metadata:translation/);
+  assert.match(edge,/source_text:pair\.source_text/);
+  assert.match(edge,/English translations are not supposed to be literal character matches/);
+  assert.match(review,/translatedHandwritingKeys/);
+  assert.match(review,/English meaning/);
+  assert.match(review,/Raw handwriting/);
+  assert.match(review,/translation:auditMeta\?\.translation\|\|null/);
+  assert.match(review,/Translation|Translated/);
+  assert.match(ramp,/translatedPaths/);
+  assert.match(ramp,/entry\.level="yellow"/);
+  assert.match(ramp,/Original \("/);
+  assert.match(rampCss,/\.ramp-translation-note/);
+  assert.match(read("site/review.css"),/\.review-translation-note/);
+  assert.match(read("site/excel-preview.js"),/Excel Preview/);
+});
