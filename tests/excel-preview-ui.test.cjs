@@ -190,3 +190,45 @@ test("Preview renders untrusted document values as literal text, never executabl
   assert.equal(tableRows(root.children[2]).rows[0][0],payload);
   assert.doesNotMatch(preview,/innerHTML|insertAdjacentHTML/);
 });
+
+test("Approved screen exposes a collapsed authenticated learning audit, never a fake green status",()=>{
+  assert.match(html,/id="simpleInspectLearning"/);
+  assert.match(html,/id="simpleLearningAudit"[^>]*hidden/);
+  assert.match(simple,/getLearningAudit\?\.\(\)/);
+  assert.match(simple,/Learning audit is unavailable/);
+  assert.match(simple,/Saved \/ searchable examples|Saved \/ searchable/);
+  assert.match(review,/async function getLearningAudit\(\)/);
+  assert.match(review,/\/api\/vision\/intelligence-audit\?extraction_id=/);
+  assert.match(simple,/Model weights are not updated/);
+  assert.doesNotMatch(simple,/innerHTML|insertAdjacentHTML/);
+});
+test("Learning audit renders sanitized metrics, exact-file drift and unindexed warning as text",()=>{
+  const root=node("section");
+  const from=simple.indexOf("  function auditLine(");
+  const to=simple.indexOf("  function recordFile(file)",from);
+  assert.ok(from>=0&&to>from);
+  const script=simple.slice(from,to);
+  const report={
+    audit:{
+      same_file:{lookup_status:"checked",prior_approved_count:3,
+        comparison:{different_fields:2,missing_from_fresh:1,
+          fresh_extracted_entries:12,previously_approved_entries:10}},
+      retrieval:{status:"no_matching_examples",examples_found:0,
+        provider_second_pass:false}
+    },
+    learning:{confirmed_clicked:5,total_saved:1,indexed:0,unindexed:1}
+  };
+  const context={
+    document:{createElement:node},$:(id)=>id==="simpleLearningAudit"?root:null,
+    report
+  };
+  vm.runInNewContext(script+"\nrenderLearningAudit(report);",context);
+  const text=JSON.stringify(root.children);
+  assert.match(text,/3 earlier approval/);
+  assert.match(text,/2 changed field/);
+  assert.match(text,/12 now \/ 10 previously/);
+  assert.match(text,/0 matching example/);
+  assert.match(text,/1 saved/);
+  assert.match(text,/1 saved example\(s\) have no issue classification/);
+  assert.doesNotMatch(text,/private-supplier|secret-identifier/);
+});
