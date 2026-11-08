@@ -650,6 +650,15 @@ async function approve(req,principal){
   if(!source)return error("This extraction does not belong to your team and account.",404);
   if(source.document_type!==data.document_type)return error("Document type mismatch.",400);
   if(source.state!=="extracted")return error("This document was already approved.",409);
+  let confirmationClaims;
+  try{
+    confirmationClaims=data.manual_confirmations??[];
+    // Validate even when learning is disabled: audit metadata must be structured.
+    if(!Array.isArray(confirmationClaims)||confirmationClaims.length>120||
+      confirmationClaims.some(path=>typeof path!=="string"||!editPath(data.document_type,path))||
+      new Set(confirmationClaims).size!==confirmationClaims.length)
+      throw Error("Invalid human confirmation list.");
+  }catch{return error("Invalid human confirmation list.",400);}
   const corrections=Object.keys(checked).filter(k=>JSON.stringify(checked[k])!==JSON.stringify(source.extracted_data?.[k])).length;
   const consent=data.intelligence_opt_in===true;
   const warnings=validate(checked,data.document_type,source.regions_data||[]);
@@ -660,13 +669,19 @@ async function approve(req,principal){
     "created_by":"eq."+principal.user_id,"state":"eq.extracted"
   },{
     state:"approved",reviewed_data:checked,validation_warnings:warnings,
-    review_metadata:{not_on_document:absentPaths,origin:"operator_confirmation"},
+    review_metadata:{not_on_document:absentPaths,
+      manual_confirmations:confirmationClaims,origin:"operator_confirmation"},
     approved_at:new Date().toISOString(),approved_by:principal.user_id
   });
   if(!Array.isArray(updated)||updated.length!==1)return error("This document was already approved.",409);
-  const memory={opted_in:consent,examples_saved:0,status:consent?"no_eligible_corrections":"not_requested"};
+  const memory={opted_in:consent,examples_saved:0,corrections_saved:0,
+    confirmations_saved:0,status:consent?"no_eligible_corrections":"not_requested"};
   if(consent){
-    const lessons=correctionLessons(source.extracted_data,checked,data.document_type);
+    const lessons=[
+      ...correctionLessons(source.extracted_data,checked,data.document_type),
+      ...confirmationLessons(source.extracted_data,checked,data.document_type,
+        source.regions_data||[],confirmationClaims)
+    ];
     if(lessons.length){
       try{
         const rows=await database(principal,"POST","billy_intelligence_examples",{},lessons.map(lesson=>({
@@ -674,6 +689,11 @@ async function approve(req,principal){
           created_by:principal.user_id,document_type:data.document_type
         })));
         memory.examples_saved=Array.isArray(rows)?rows.length:0;
+        // Returned rows reflect actual inserts; avoid claiming learning on failure.
+        memory.corrections_saved=Array.isArray(rows)?
+          rows.filter(row=>row.feedback_type==="corrected").length:0;
+        memory.confirmations_saved=Array.isArray(rows)?
+          rows.filter(row=>row.feedback_type==="confirmed").length:0;
         memory.status=memory.examples_saved===lessons.length?"saved":"partially_saved";
       }catch(_error){
         memory.status="save_failed";
@@ -683,7 +703,8 @@ async function approve(req,principal){
   }
   return json({status:"approved",approval_id:source.id,document_type:data.document_type,
     correction_count:corrections,validation_warnings:warnings,
-    review_metadata:{not_on_document:absentPaths,origin:"operator_confirmation"},
+    review_metadata:{not_on_document:absentPaths,
+      manual_confirmations:confirmationClaims,origin:"operator_confirmation"},
     intelligence:memory,posted_to_excel:false});
 }
 async function listRecords(principal,req) {
