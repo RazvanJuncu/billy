@@ -216,7 +216,7 @@ test("Learning audit renders sanitized metrics, exact-file drift and unindexed w
       retrieval:{status:"no_matching_examples",examples_found:0,
         provider_second_pass:false}
     },
-    learning:{confirmed_clicked:5,total_saved:1,indexed:0,unindexed:1}
+    learning:{opt_in:false,confirmed_clicked:5,total_saved:1,indexed:0,unindexed:1}
   };
   const context={
     document:{createElement:node},$:(id)=>id==="simpleLearningAudit"?root:null,
@@ -230,5 +230,6 @@ test("Learning audit renders sanitized metrics, exact-file drift and unindexed w
   assert.match(text,/0 matching example/);
   assert.match(text,/1 saved/);
   assert.match(text,/1 saved example\(s\) have no issue classification/);
+  assert.match(text,/operator did not enable learning/);
   assert.doesNotMatch(text,/private-supplier|secret-identifier/);
 });
