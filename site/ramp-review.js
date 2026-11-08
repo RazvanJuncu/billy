@@ -126,8 +126,9 @@
   // Compare the actual glyph strings, never the review field's semantic guess.
   // Keep contextual labels separate: a crop with "80" cannot verify "SHELL".
   function compareLocalOCR(path,extracted,local){
+    // Preserve punctuation such as decimal separators: 12.5 is NOT 125.
     const compact=value=>String(value??"").normalize("NFKC").toUpperCase()
-      .replace(/[^A-Z0-9]/g,"");
+      .replace(/\s+/g,"");
     const original=compact(extracted),second=compact(local);
     if(!original||!second)return "unusable";
     if(original===second)return "match";
