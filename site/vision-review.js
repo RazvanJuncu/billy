@@ -14,7 +14,23 @@ const textbox=(value,onUpdate,cls="review-input",path=null)=>{const e=node("inpu
 function dirty(){approved=false;if(approveButton){approveButton.disabled=false;approveButton.textContent="Submit corrections";}if(notice)notice.textContent="Changes not submitted. Verify the values against the original.";if(exportPanel)exportPanel.hidden=true;const meter=document.querySelector(".review-meter-check");if(meter&&documentType==="fuel_release")meter.textContent=localMeterCheck(draft);}
 function download(text,name,mime){const u=URL.createObjectURL(new Blob([text],{type:mime}));const a=node("a");a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1000);}
 function escapeCell(value){const s=String(value??"");const dangerous=/^\s*[=+@]/.test(s) || (/^\s*-/.test(s) && !/^\s*-\d+(?:[.,]\d+)?\s*$/.test(s));const safe=dangerous?"'"+s:s;return '"'+safe.replaceAll('"','""')+'"';}
-function exportCSV(){if(!approved)return;const columns=[...fieldKeys.map(k=>k[0]),...lineKeys.map(k=>k[0])];const items=documentType==="fuel_release"?draft.handwritten_entries:draft.lines;const rows=items.length?items:[{}];const table=[columns,...rows.map(line=>[...fieldKeys.map(k=>draft[k[0]]),...lineKeys.map(k=>line[k[0]])])];download("\ufeff"+table.map(row=>row.map(escapeCell).join(",")).join("\r\n")+"\r\n","billy-approved.csv","text/csv;charset=utf-8");}
+function getApprovedSpreadsheetData(){
+  if(!approved||!draft)return null;
+  const columns=[...fieldKeys,...lineKeys].map(([key,label])=>({key,label}));
+  const items=documentType==="fuel_release"?draft.handwritten_entries:draft.lines;
+  const rows=(Array.isArray(items)&&items.length?items:[{}]).map(line=>[
+    ...fieldKeys.map(([key])=>draft[key]??""),
+    ...lineKeys.map(([key])=>line[key]??"")
+  ]);
+  return {documentType,columns,rows}; // One row per item, matching the CSV's flattened layout.
+}
+function exportCSV(){
+  const sheet=getApprovedSpreadsheetData();
+  if(!sheet)return;
+  const table=[sheet.columns.map(column=>column.key),...sheet.rows];
+  download("\ufeff"+table.map(row=>row.map(escapeCell).join(",")).join("\r\n")+"\r\n",
+    "billy-approved.csv","text/csv;charset=utf-8");
+}
 function auditChanges(){
   return Object.keys(draft||{}).filter(key=>JSON.stringify(original?.[key])!==JSON.stringify(draft[key]))
     .map(field_path=>({field_path,original:original?.[field_path]??null,reviewed:draft[field_path]??null}));
@@ -233,5 +249,5 @@ function render(result,endpoint,authHeaders,sourceFile=null){
    });
  }
 }
-window.BillyReview={render,exportCSV,exportJSON,exportRawJSON};
+window.BillyReview={render,exportCSV,exportJSON,exportRawJSON,getApprovedSpreadsheetData};
 })();
