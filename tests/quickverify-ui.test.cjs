@@ -94,13 +94,14 @@ function fakeDocument(){
   return {document:{createElement:make,getElementById:id=>id==="formattedOutput"?root:null},root,make,
     focus:()=>focused};
 }
-function simulate(){
+function simulate(options={}){
   const dom=fakeDocument(),cropped=[],disposals=[];
   const copied={
     supplier_name:"Supplier Ltd",supplier_tax_id:null,customer_name:null,
     invoice_number:"INV-42",issue_date:null,due_date:null,currency:"USD",
     subtotal:null,vat_total:null,grand_total:"119.00",lines:[],notes:[]
   };
+  if(options.missing)copied[options.missing]=null;
   const rawRegion=(path,clarity)=>({
     field_path:path,visual_clarity:clarity,page:1,box_2d:[100,200,150,390],
     alternate_readings:[],visual_reason:"Faint ink"
@@ -309,4 +310,62 @@ test("Missing evidence doesn't invent an image, and stale crop results are ignor
   assert.equal(slot.children[0].tagName,"P");
   assert.match(slot.children[0].textContent,/Preparing source crop/);
   viewer.dispose();
+});
+
+test("Missing field is a minimal two-choice decision, without fake source crops or giant placeholder",()=>{
+  const {window,find,segment,cropped,sourceDraft}=simulate({missing:"grand_total"});
+  segment("grand_total").click();
+  assert.match(find("ramp-field-detail").className,/ramp-missing/);
+  assert.equal(find("ramp-field-title").textContent,"Grand total · Missing");
+  assert.equal(find("ramp-confirm").textContent,"Enter value");
+  assert.equal(find("ramp-confirm").disabled,false);
+  assert.equal(find("ramp-edit").textContent,"Not on document");
+  assert.equal(find("ramp-source-crop").hidden,true);
+  assert.equal(find("ramp-source-crop").children.length,0);
+  assert.equal(find("ramp-source-caption").hidden,true);
+  assert.equal(find("ramp-current-value").hidden,true);
+  assert.equal(find("ramp-value-caption").hidden,true);
+  assert.equal(find("ramp-reason").hidden,true);
+  assert.equal(find("ramp-not-present").hidden,true);
+  assert.equal(find("ramp-inspect-original").textContent,"View document");
+  assert.ok(!cropped.includes("grand_total"));
+  find("ramp-confirm").click();
+  assert.equal(find("ramp-field-input").hidden,false);
+  assert.equal(find("ramp-confirm").textContent,"Save value");
+  assert.equal(find("ramp-edit").textContent,"Cancel edit");
+  find("ramp-field-input").value="200.00";
+  find("ramp-confirm").click();
+  assert.equal(sourceDraft.grand_total,"200.00");
+  assert.equal(segment("grand_total").className.includes("ramp-blue"),true);
+  assert.equal(find("ramp-field-title").textContent,"Invoice number");
+  assert.equal(window.BillyReview.canApprove(),false);
+});
+
+test("Missing field Not on document skips editing and continues to next highlighted field",()=>{
+  const {window,find,segment,sourceDraft}=simulate({missing:"invoice_number"});
+  segment("invoice_number").click();
+  assert.equal(find("ramp-edit").textContent,"Not on document");
+  find("ramp-edit").click();
+  assert.equal(sourceDraft.invoice_number,null);
+  assert.deepEqual([...window.BillyReview.rampAudit().not_on_document],["invoice_number"]);
+  assert.equal(segment("invoice_number").className.includes("ramp-blue"),true);
+  assert.equal(find("ramp-field-title").textContent,"Grand total");
+  assert.equal(window.BillyReview.canApprove(),false);
+});
+
+test("Returning to a regular field restores the full QuickVerify controls and source crop",()=>{
+  const {find,segment,cropped}=simulate({missing:"grand_total"});
+  segment("grand_total").click();
+  assert.equal(find("ramp-source-crop").hidden,true);
+  segment("invoice_number").click();
+  assert.equal(find("ramp-field-detail").className,"ramp-field-detail");
+  assert.equal(find("ramp-source-crop").hidden,false);
+  assert.equal(find("ramp-reason").hidden,false);
+  assert.equal(find("ramp-confirm").textContent,"Correct");
+  assert.equal(find("ramp-edit").textContent,"Edit");
+  assert.equal(find("ramp-not-present").hidden,false);
+  assert.equal(find("ramp-inspect-original").textContent,"View full document");
+  assert.ok(cropped.includes("invoice_number"));
+  assert.match(css,/\.ramp-source-crop\[hidden\]/);
+  assert.match(css,/\.ramp-field-detail\.ramp-missing/);
 });
