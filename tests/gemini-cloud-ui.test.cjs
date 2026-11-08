@@ -736,3 +736,135 @@ test("Invalid manual confirmations are rejected rather than becoming fabricated 
   }
   assert.equal(examples.length,0);
 });
+
+test("Issue-first memory retrieves 0/9 across unrelated fields and document types, only when uncertain",async()=>{
+  const seed={
+    issue_key:"glyph:0/9",issue_kind:"glyph",
+    organization_id:ORG,document_type:"fuel_release",field_path:"meter_start",
+    original_text:"71050",corrected_text:"71059",feedback_type:"corrected",
+    alternative_text:null,source_script_type:"handwritten"
+  };
+  const question={field_path:"grand_total",page:1,box_2d:[120,450,250,770],
+    transcription:"119.00",visual_clarity:"ambiguous",script_type:"printed",
+    alternate_readings:["119.90"],visual_reason:"Unclear glyph 0/9"};
+  const {handler,call,googlePrompts,calls,examples}=mockBackend({
+    preloadedExamples:[seed],regions:[question],issueAssessments:[
+      {field_path:"grand_total",status:"alternate_possible",alternative:"119.90",
+       reason:"The zero could resemble nine in the source image."}
+    ]
+  });
+  const form=new FormData();
+  form.append("file",new File([new Uint8Array([255,216,2,7])],"invoice.jpg",{type:"image/jpeg"}));
+  form.append("document_type","invoice");
+  const response=await handler(call("/api/vision/extract","POST",{body:form}));
+  assert.equal(response.status,200);
+  const output=await response.json();
+  assert.equal(output.intelligence.mode,"issue_on_demand");
+  assert.equal(output.intelligence.lookup_status,"reviewed");
+  assert.equal(output.intelligence.examples_used,1);
+  assert.ok(output.intelligence.issue_keys.includes("glyph:0/9"));
+  assert.equal(output.intelligence.targeted_assessments[0].status,"alternate_possible");
+  assert.equal(output.intelligence.targeted_assessments[0].alternative,"119.90");
+  assert.equal(output.invoice.grand_total,"119.00"); // Memory can flag, NEVER auto-overwrite.
+  assert.equal(output.regions[0].visual_clarity,"ambiguous"); // Never auto turn green.
+  assert.ok(output.regions[0].alternate_readings.includes("119.90"));
+  assert.ok(output.validation_warnings.some(w=>w.includes("Billy Intelligence: verify grand_total")));
+  assert.equal(googlePrompts.length,2); // One base scan, one targeted visual inspection.
+  assert.doesNotMatch(googlePrompts[0],/71050|71059/); // No eager memory preload.
+  assert.match(googlePrompts[1],/glyph:0\\/9/);
+  assert.match(googlePrompts[1],/71050/);
+  assert.match(googlePrompts[1],/meter_start/);
+  const lookups=calls.filter(x=>x.url.includes("/billy_intelligence_examples")&&x.method==="GET");
+  assert.equal(lookups.length,1);
+  assert.match(lookups[0].url,/issue_key=eq\\.glyph/);
+  assert.ok(!lookups[0].url.includes("document_type=")); // Cross-document matching.
+  assert.equal(examples.length,1);
+});
+
+test("Clear scans skip memory lookup even with thousands of prior lessons",async()=>{
+  const old=Array.from({length:225},(_,i)=>({
+    organization_id:ORG,issue_key:"glyph:0/9",document_type:"fuel_release",
+    field_path:"meter_start",original_text:"900",corrected_text:"990",
+    feedback_type:"corrected"
+  }));
+  const {handler,call,calls,googlePrompts}=mockBackend({preloadedExamples:old});
+  const form=new FormData();
+  form.append("file",new File([new Uint8Array([255,216,9])],"clear.jpg",{type:"image/jpeg"}));
+  form.append("document_type","invoice");
+  const response=await handler(call("/api/vision/extract","POST",{body:form}));
+  const output=await response.json();
+  assert.equal(response.status,200);
+  assert.equal(output.intelligence.examples_used,0);
+  assert.deepEqual(Array.from(output.intelligence.issue_keys),[]);
+  assert.equal(googlePrompts.length,1);
+  assert.equal(calls.filter(x=>x.url.includes("billy_intelligence_examples")).length,0);
+});
+
+test("Same issue in another organization cannot leak to the AI engine",async()=>{
+  const sample={issue_key:"glyph:0/9",organization_id:"99999999-9999-4999-8999-999999999999",
+    document_type:"fuel_release",field_path:"meter_start",original_text:"PRIVATE 0",
+    corrected_text:"PRIVATE 9",feedback_type:"corrected"};
+  const uncertain={field_path:"grand_total",page:1,box_2d:[120,150,160,250],
+    transcription:"119.00",visual_clarity:"ambiguous",script_type:"printed",
+    alternate_readings:["119.90"],visual_reason:"Unclear handwriting"};
+  const {handler,call,googlePrompts,calls}=mockBackend({preloadedExamples:[sample],regions:[uncertain]});
+  const f=new FormData();
+  f.append("file",new File([new Uint8Array([255,216,7])],"a.jpg",{type:"image/jpeg"}));
+  f.append("document_type","invoice");
+  const result=await handler(call("/api/vision/extract","POST",{body:f}));
+  const parsed=await result.json();
+  assert.equal(result.status,200);
+  assert.equal(parsed.intelligence.examples_used,0);
+  assert.equal(parsed.intelligence.lookup_status,"no_matching_examples");
+  assert.equal(googlePrompts.length,1);
+  assert.ok(!googlePrompts[0].includes("PRIVATE"));
+  assert.equal(calls.filter(c=>c.url.includes("billy_intelligence_examples")).length,1);
+});
+
+test("Memory retrieval failure leaves the original uncertain extraction intact",async()=>{
+  const uncertain={field_path:"grand_total",page:1,box_2d:[120,150,160,250],
+    transcription:"119.00",visual_clarity:"slight_uncertainty",script_type:"printed",
+    alternate_readings:["119.90"],visual_reason:"Unclear digits"};
+  const {handler,call,googlePrompts}=mockBackend({regions:[uncertain],memoryReadFails:true});
+  const form=new FormData();
+  form.append("file",new File([new Uint8Array([255,216,8])],"a.jpg",{type:"image/jpeg"}));
+  form.append("document_type","invoice");
+  const response=await handler(call("/api/vision/extract","POST",{body:form}));
+  const body=await response.json();
+  assert.equal(response.status,200);
+  assert.equal(body.intelligence.lookup_status,"unavailable");
+  assert.equal(body.invoice.grand_total,"119.00");
+  assert.equal(body.regions[0].visual_clarity,"slight_uncertainty");
+  assert.equal(googlePrompts.length,1);
+});
+
+test("Saved 0/9 correction is classified independent of its field name",async()=>{
+  const sample={field_path:"delivered_quantity",page:1,box_2d:[310,100,420,280],
+    transcription:"71050",visual_clarity:"ambiguous",script_type:"handwritten",
+    alternate_readings:["71059"],visual_reason:"Ambiguous last digit"};
+  const fuelDoc={
+    release_number:null,supplier_name:"TEST",operator_name:null,airport:"KABC",
+    aircraft_registration:null,flight_number:null,delivery_date:null,fuel_type:"JET A",
+    requested_quantity:null,delivered_quantity:"71050",quantity_unit:"GAL",
+    truck_identifier:null,fueler_name:null,receiver_name:null,meter_start:null,meter_finish:null,
+    handwritten_entries:[],notes:[]
+  };
+  const {handler,call,examples}=mockBackend({fuelDoc,regions:[sample]});
+  const f=new FormData();
+  f.append("file",new File([new Uint8Array([255,216,8])],"fuel.jpg",{type:"image/jpeg"}));
+  f.append("document_type","fuel_release");
+  const extract=await handler(call("/api/vision/extract","POST",{body:f}));
+  assert.equal(extract.status,200);
+  const data=await extract.json();
+  const corrected={...data.fuel_release,delivered_quantity:"71059"};
+  const approve=await handler(call("/api/vision/approve","POST",{
+    headers:{...authHeaders,"Content-Type":"application/json"},
+    body:JSON.stringify({extraction_id:data.extraction_id,document_type:"fuel_release",
+      document:corrected,intelligence_opt_in:true,confirmed:true})
+  }));
+  assert.equal(approve.status,200);
+  assert.equal(examples.length,1);
+  assert.equal(examples[0].issue_key,"glyph:0/9");
+  assert.equal(examples[0].issue_kind,"glyph");
+  assert.equal(examples[0].source_script_type,"handwritten");
+});
