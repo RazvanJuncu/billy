@@ -240,7 +240,10 @@ function render(result,endpoint,authHeaders,sourceFile=null){
      const saved=resultBody.intelligence;
      const intelligenceInfo=saved?.status==="saved"
        ?" Billy Intelligence saved "+saved.corrections_saved+" correction(s) and "+
-         saved.confirmations_saved+" human-confirmed uncertain reading(s)."
+         saved.confirmations_saved+" human-confirmed uncertain reading(s); "+
+         (saved.indexed_saved??0)+" indexed for future issue retrieval."+
+         (saved.unindexed_saved?
+           " "+saved.unindexed_saved+" example(s) still lack a searchable issue classification.":"")
        :saved?.status==="save_failed"
          ?" The review was saved, but Billy Intelligence could not save examples."
          :saved?.status==="no_eligible_corrections"
