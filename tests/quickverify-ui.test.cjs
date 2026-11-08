@@ -227,3 +227,86 @@ test("New document disposes the previous cropper; source fallback stays availabl
   assert.match(css,/\.ramp-minor-actions\{/);
   assert.match(css,/\.ramp-field-detail \.ramp-detail-actions\{display:flex;flex-direction:row/);
 });
+
+test("QuickVerify draws a real bounded image crop and revokes the temporary file URL",async()=>{
+  const drawCalls=[],revoked=[],slots=[],window={};
+  let sourceDecoded=0;
+  const document={
+    createElement(tag){
+      const n={
+        tagName:tag.toUpperCase(),children:[],attrs:{},
+        setAttribute(key,value){this.attrs[key]=value;},
+        replaceChildren(...children){this.children=children;},
+        append(child){this.children.push(child);}
+      };
+      if(tag==="canvas"){
+        n.getContext=()=>({drawImage(...args){drawCalls.push(args);}});
+      }
+      return n;
+    }
+  };
+  class Image{
+    constructor(){this.naturalWidth=2000;this.naturalHeight=3000;}
+    set src(value){this.url=value;}
+    decode(){sourceDecoded++;return Promise.resolve();}
+  }
+  const URL={
+    createObjectURL(){return "blob:quickverify-source";},
+    revokeObjectURL(value){revoked.push(value);}
+  };
+  vm.runInNewContext(crop,{window,document,Image,URL,console});
+  const viewer=window.BillyQuickVerifyCrop.create({type:"image/jpeg",name:"document.jpg"});
+  const slot={children:[],replaceChildren(...children){this.children=children;slots.push(children);}};
+  await viewer.show({page:1,box_2d:[260,400,325,515]},slot);
+  assert.equal(sourceDecoded,1);
+  assert.equal(slot.children[0].tagName,"CANVAS");
+  assert.equal(slot.children[0].attrs.role,"img");
+  assert.match(slot.children[0].attrs["aria-label"],/AI-estimated location/);
+  assert.equal(drawCalls.length,1);
+  const args=drawCalls[0];
+  assert.ok(args[1]>0&&args[2]>0&&args[3]>0&&args[4]>0);
+  assert.ok(args[1]+args[3]<=2000);
+  assert.ok(args[2]+args[4]<=3000);
+  assert.ok(slot.children[0].width<=960&&slot.children[0].height<=420);
+  await viewer.show({page:1,box_2d:[300,300,360,450]},slot);
+  assert.equal(sourceDecoded,1); // Same file decoded just once.
+  assert.equal(drawCalls.length,2);
+  viewer.dispose();
+  assert.deepEqual(revoked,["blob:quickverify-source"]);
+  assert.ok(slots.length>=2);
+});
+
+test("Missing evidence doesn't invent an image, and stale crop results are ignored",async()=>{
+  let resolveDecode;
+  const window={};
+  const document={
+    createElement(tag){
+      const n={
+        tagName:tag.toUpperCase(),children:[],textContent:"",
+        replaceChildren(...parts){this.children=parts;},
+        setAttribute(){},
+      };
+      if(tag==="canvas")n.getContext=()=>({drawImage(){}});
+      return n;
+    }
+  };
+  class Image{
+    constructor(){this.naturalWidth=1200;this.naturalHeight=1800;}
+    set src(value){}
+    decode(){return new Promise(resolve=>{resolveDecode=resolve;});}
+  }
+  const URL={createObjectURL:()=>"blob:stale",revokeObjectURL(){}};
+  vm.runInNewContext(crop,{window,document,Image,URL,console});
+  const viewer=window.BillyQuickVerifyCrop.create({type:"image/jpeg",name:"source.jpg"});
+  const slot={children:[],replaceChildren(...parts){this.children=parts;}};
+  await viewer.show(null,slot);
+  assert.match(slot.children[0].textContent,/Source crop unavailable/);
+  const pending=viewer.show({page:1,box_2d:[200,200,250,300]},slot);
+  viewer.cancel();
+  resolveDecode();
+  await pending;
+  // Cancel must not allow a delayed crop to overwrite the current UI.
+  assert.equal(slot.children[0].tagName,"P");
+  assert.match(slot.children[0].textContent,/Preparing source crop/);
+  viewer.dispose();
+});
