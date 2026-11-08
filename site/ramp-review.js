@@ -427,8 +427,8 @@
     fieldConfirm.addEventListener("click",()=>{
       if(!selected)return;
       const path=selected;
-      const value=fieldInput.value.trim();
-      if(!value){feedback.textContent="A value is required for this field.";return;}
+      const value=editMode?fieldInput.value.trim():String(valueAt(doc,path)??"").trim();
+      if(!value){feedback.textContent="Enter a value using Edit, or mark it Not on document.";return;}
       const before=valueAt(doc,path);
       const current=state.get(path);
       const changed=value!==String(before??"");
@@ -448,7 +448,7 @@
         state.set(path,{level:"blue",reason:checkedRevision===revision?
           "Verified by operator; AI recheck completed.":"Checked by operator; AI recheck is pending."});
       }
-      selected=null;detail.hidden=true;paint();
+      nextAttention(path);
     });
     async function recheckWithAI(){
       if(busy||!sourceFile)return;
