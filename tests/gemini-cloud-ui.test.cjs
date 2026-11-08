@@ -868,3 +868,148 @@ test("Saved 0/9 correction is classified independent of its field name",async()=
   assert.equal(examples[0].issue_kind,"glyph");
   assert.equal(examples[0].source_script_type,"handwritten");
 });
+
+test("Spanish invoices show English descriptions while preserving source text and all monetary identifiers",async()=>{
+  const source={...doc,
+    supplier_name:"AEROPUERTO SERVICIOS S.L.",invoice_number:"FAC-2026-04",
+    issue_date:"08/11/2026",currency:"EUR",subtotal:"150.00",vat_total:"0.00",grand_total:"150.00",
+    lines:[{description:"Mantenimiento del motor",quantity:"1",unit_price:"150.00",
+      net_amount:"150.00",vat_rate:"0",vat_amount:"0"}],
+    notes:["Servicio completado"]
+  };
+  const translations=[
+    {field_path:"lines[0].description",source_text:"Mantenimiento del motor",english_text:"Engine maintenance"},
+    {field_path:"notes[0]",source_text:"Servicio completado",english_text:"Service completed"}
+  ];
+  const {handler,call,stored,googlePrompts}=mockBackend({
+    fuelDoc:source,language:"es",englishTranslations:translations
+  });
+  const file=()=>{const form=new FormData();
+    form.append("file",new File([new Uint8Array([255,216,42])],"factura.jpg",{type:"image/jpeg"}));
+    form.append("document_type","invoice");return form;};
+  const response=await handler(call("/api/vision/extract","POST",{body:file()}));
+  assert.equal(response.status,200);
+  const result=await response.json();
+  assert.equal(result.translation.source_language,"es");
+  assert.equal(result.translation.target_language,"en");
+  assert.equal(result.translation.status,"translated");
+  assert.equal(result.translation.translations.length,2);
+  assert.equal(result.invoice.lines[0].description,"Engine maintenance");
+  assert.equal(result.invoice.notes[0],"Service completed");
+  assert.equal(result.invoice.invoice_number,"FAC-2026-04");
+  assert.equal(result.invoice.supplier_name,"AEROPUERTO SERVICIOS S.L.");
+  assert.equal(result.invoice.grand_total,"150.00");
+  assert.equal(result.invoice.issue_date,"08/11/2026");
+  assert.equal(stored.get(result.extraction_id).translation_metadata.translations[0].source_text,
+    "Mantenimiento del motor");
+  assert.equal(stored.get(result.extraction_id).extracted_data.lines[0].description,"Engine maintenance");
+
+  const recheck=new FormData();
+  recheck.append("file",new File([new Uint8Array([255,216,42])],"factura.jpg",{type:"image/jpeg"}));
+  recheck.append("extraction_id",result.extraction_id);
+  recheck.append("document_type","invoice");
+  recheck.append("reviewed_document",JSON.stringify(result.invoice));
+  recheck.append("not_on_document","[]");
+  const check=await handler(call("/api/vision/recheck","POST",{body:recheck}));
+  assert.equal(check.status,200);
+  const prompt=googlePrompts.at(-1);
+  assert.match(prompt,/source_text/);
+  assert.match(prompt,/Mantenimiento del motor/);
+  assert.match(prompt,/Engine maintenance/);
+  assert.match(prompt,/English translations are not supposed to be literal character matches/);
+});
+
+test("Fuel Releases retain raw handwritten labels and text, adding English meaning separately",async()=>{
+  const fuelDoc={
+    release_number:"A-101",supplier_name:"EMPRESA DE COMBUSTIBLE",
+    operator_name:null,airport:"MADRID BARAJAS",aircraft_registration:"EC-ABC",
+    flight_number:null,delivery_date:"08/11/2026",fuel_type:"JET A-1",
+    requested_quantity:null,delivered_quantity:"50",quantity_unit:"L",
+    truck_identifier:null,fueler_name:null,receiver_name:null,meter_start:null,meter_finish:null,
+    handwritten_entries:[{label:"TIPO DE AERONAVE",transcription:"AVIONETA LIGERA",
+      legibility:"clear",interpreted_as:null}],notes:[]
+  };
+  const {handler,call,stored}=mockBackend({fuelDoc,language:"es",englishTranslations:[
+    {field_path:"handwritten_entries[0].label",
+      source_text:"TIPO DE AERONAVE",english_text:"Aircraft type"},
+    {field_path:"handwritten_entries[0].transcription",
+      source_text:"AVIONETA LIGERA",english_text:"Light aircraft"}
+  ]});
+  const form=new FormData();
+  form.append("file",new File([new Uint8Array([255,216,50])],"fuel.jpg",{type:"image/jpeg"}));
+  form.append("document_type","fuel_release");
+  const response=await handler(call("/api/vision/extract","POST",{body:form}));
+  assert.equal(response.status,200);
+  const parsed=await response.json();
+  const entry=parsed.fuel_release.handwritten_entries[0];
+  assert.equal(entry.label,"TIPO DE AERONAVE");
+  assert.equal(entry.transcription,"AVIONETA LIGERA");
+  assert.equal(entry.english_label,"Aircraft type");
+  assert.equal(entry.english_translation,"Light aircraft");
+  assert.equal(parsed.fuel_release.aircraft_registration,"EC-ABC");
+  assert.equal(parsed.fuel_release.delivered_quantity,"50");
+  assert.equal(parsed.fuel_release.fuel_type,"JET A-1");
+  assert.equal(parsed.translation.translations.length,2);
+  const approved=await handler(call("/api/vision/approve","POST",{
+    headers:{...authHeaders,"Content-Type":"application/json"},
+    body:JSON.stringify({extraction_id:parsed.extraction_id,document_type:"fuel_release",
+      document:parsed.fuel_release,confirmed:true})
+  }));
+  assert.equal(approved.status,200);
+  assert.equal(stored.get(parsed.extraction_id).reviewed_data.handwritten_entries[0].english_translation,
+    "Light aircraft");
+});
+
+test("Translation guard ignores invented paths, mismatched source text, and altered numeric tokens",async()=>{
+  const source={...doc,lines:[{description:"Reparacion del motor 2",quantity:"1",
+    unit_price:"100.00",net_amount:"100.00",vat_rate:"19",vat_amount:"19"}],
+    notes:[]};
+  const {handler,call}=mockBackend({fuelDoc:source,language:"es",englishTranslations:[
+    {field_path:"supplier_name",source_text:"TEST SUPPLIER",english_text:"NOT THE SUPPLIER"},
+    {field_path:"lines[0].description",source_text:"Other text",english_text:"Engine repair 2"},
+    {field_path:"lines[0].description",source_text:"Reparacion del motor 2",english_text:"Engine repair 999"}
+  ]});
+  const form=new FormData();
+  form.append("file",new File([new Uint8Array([255,216,77])],"bad.jpg",{type:"image/jpeg"}));
+  form.append("document_type","invoice");
+  const response=await handler(call("/api/vision/extract","POST",{body:form}));
+  assert.equal(response.status,200);
+  const parsed=await response.json();
+  assert.equal(parsed.invoice.supplier_name,"TEST SUPPLIER");
+  assert.equal(parsed.invoice.lines[0].description,"Reparacion del motor 2");
+  assert.equal(parsed.translation.status,"not_applied");
+  assert.equal(parsed.translation.translations.length,0);
+});
+
+test("English originals stay unchanged, and correcting a machine translation does not teach false glyph errors",async()=>{
+  const source={...doc,lines:[{description:"Mantenimiento del motor",quantity:"1",
+    unit_price:"100.00",net_amount:"100.00",vat_rate:"19",vat_amount:"19"}],notes:[]};
+  const tr=[{field_path:"lines[0].description",source_text:"Mantenimiento del motor",
+    english_text:"Engine maintenance"}];
+  const en=mockBackend({fuelDoc:source,language:"en",englishTranslations:tr});
+  const formEn=new FormData();
+  formEn.append("file",new File([new Uint8Array([255,216,1])],"en.jpg",{type:"image/jpeg"}));
+  formEn.append("document_type","invoice");
+  const responseEn=await en.handler(en.call("/api/vision/extract","POST",{body:formEn}));
+  const enDoc=await responseEn.json();
+  assert.equal(enDoc.invoice.lines[0].description,"Mantenimiento del motor");
+  assert.equal(enDoc.translation.status,"not_needed");
+  assert.equal(enDoc.translation.translations.length,0);
+
+  const {handler,call,examples}=mockBackend({fuelDoc:source,language:"es",englishTranslations:tr});
+  const form=new FormData();
+  form.append("file",new File([new Uint8Array([255,216,2])],"es.jpg",{type:"image/jpeg"}));
+  form.append("document_type","invoice");
+  const scanned=await handler(call("/api/vision/extract","POST",{body:form}));
+  const initial=await scanned.json();
+  assert.equal(initial.invoice.lines[0].description,"Engine maintenance");
+  const fixed={...initial.invoice,lines:[{...initial.invoice.lines[0],description:"Engine servicing"}]};
+  const approved=await handler(call("/api/vision/approve","POST",{
+    headers:{...authHeaders,"Content-Type":"application/json"},
+    body:JSON.stringify({extraction_id:initial.extraction_id,document_type:"invoice",
+      document:fixed,confirmed:true,intelligence_opt_in:true})
+  }));
+  assert.equal(approved.status,200);
+  assert.equal((await approved.json()).intelligence.status,"no_eligible_corrections");
+  assert.equal(examples.length,0);
+});
