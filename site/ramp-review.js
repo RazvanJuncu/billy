@@ -338,14 +338,15 @@
     }
     function setEditMode(enabled){
       editMode=enabled;
+      const missing=!substantive(valueAt(doc,selected));
       fieldInput.hidden=!enabled;
-      currentValue.hidden=enabled;
-      currentCaption.hidden=enabled;
-      fieldConfirm.textContent=enabled?"Save correction":"Correct";
-      fieldConfirm.disabled=!enabled&&!substantive(valueAt(doc,selected));
-      fieldEdit.textContent=enabled?"Cancel edit":"Edit";
+      currentValue.hidden=enabled||missing;
+      currentCaption.hidden=enabled||missing;
+      fieldConfirm.textContent=enabled?"Save value":missing?"Enter value":"Correct";
+      fieldConfirm.disabled=!enabled&&!missing&&!substantive(valueAt(doc,selected));
+      fieldEdit.textContent=enabled?"Cancel edit":missing?"Not on document":"Edit";
       if(enabled)fieldInput.focus();
-      else (fieldConfirm.disabled?fieldEdit:fieldConfirm).focus();
+      else fieldConfirm.focus();
     }
     function closeEditor(){
       selected=null;editMode=false;
@@ -375,11 +376,17 @@
       if(busy||!state.has(path))return;
       selected=path;
       const entry=state.get(path);
-      fieldTitle.textContent=labelFor(path,type,doc);
+      const missing=!substantive(valueAt(doc,path));
+      detail.classList.toggle("ramp-missing",missing);
+      fieldTitle.textContent=labelFor(path,type,doc)+(missing?" · Missing":"");
       fieldInput.value=valueAt(doc,path)??"";
-      currentValue.textContent=substantive(valueAt(doc,path))?
-        String(valueAt(doc,path)):"Not extracted";
+      currentValue.textContent=missing?"":String(valueAt(doc,path));
       fieldNotPresent.textContent=notOnDocument.has(path)?"Not on document ✓":"Not on document";
+      fieldNotPresent.hidden=missing;
+      inspectOriginal.textContent=missing?"View document":"View full document";
+      sourceTitle.hidden=missing;
+      sourceCrop.hidden=missing;
+      reason.hidden=missing;
       const pair=translatedPaths.get(path);
       reason.textContent=entry.reason+(pair?
         " Original ("+String(translation.source_language||"source").toUpperCase()+
@@ -389,7 +396,11 @@
       sourceTitle.textContent=region?
         "Original source · page "+region.page+" · AI-estimated area":
         "Original source · location unavailable";
-      if(cropper)void cropper.show(region,sourceCrop);
+      if(missing){
+        // No source value: a blank crop/placeholder adds noise and implies evidence.
+        cropper?.cancel();
+        sourceCrop.replaceChildren();
+      }else if(cropper)void cropper.show(region,sourceCrop);
       else {
         sourceCrop.replaceChildren(
           create("p","ramp-crop-status","Source crop unavailable · inspect the original document."));
@@ -407,6 +418,11 @@
     });
     fieldEdit.addEventListener("click",()=>{
       if(!selected)return;
+      if(!editMode&&!substantive(valueAt(doc,selected))){
+        // Missing fields are a two-choice decision, with no disabled Correct.
+        fieldNotPresent.click();
+        return;
+      }
       if(editMode)fieldInput.value=valueAt(doc,selected)??"";
       setEditMode(!editMode);
     });
@@ -426,6 +442,10 @@
     });
     fieldConfirm.addEventListener("click",()=>{
       if(!selected)return;
+      if(!editMode&&!substantive(valueAt(doc,selected))){
+        setEditMode(true); // Enter value, then save through the same button.
+        return;
+      }
       const path=selected;
       const value=editMode?fieldInput.value.trim():String(valueAt(doc,path)??"").trim();
       if(!value){feedback.textContent="Enter a value using Edit, or mark it Not on document.";return;}
