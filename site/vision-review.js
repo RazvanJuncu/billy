@@ -6,6 +6,11 @@ const invoiceFieldKeys = [["supplier_name","Supplier"],["supplier_tax_id","Suppl
 const invoiceLineKeys = [["description","Description"],["quantity","Quantity"],["unit_price","Unit price"],["net_amount","Net"],["vat_rate","VAT %"],["vat_amount","VAT"]];
 const fuelFieldKeys = [["release_number","Release #"],["supplier_name","Fuel supplier"],["operator_name","Operator"],["airport","Airport"],["aircraft_registration","Registration"],["flight_number","Flight"],["delivery_date","Delivery date"],["fuel_type","Fuel type"],["requested_quantity","Requested fuel"],["delivered_quantity","Delivered fuel"],["quantity_unit","Unit"],["truck_identifier","Truck"],["fueler_name","Fueler"],["receiver_name","Receiver"],["meter_start","Meter start"],["meter_finish","Meter finish"]];
 const handwritingKeys = [["label","Original field label"],["transcription","Raw handwriting"],["legibility","Legibility"],["interpreted_as","Interpreted as"]];
+const translatedHandwritingKeys = [
+  ["label","Original field label"],["english_label","Label (English)"],
+  ["transcription","Raw handwriting"],["english_translation","English meaning"],
+  ["legibility","Legibility"],["interpreted_as","Interpreted as"]
+];
 let fieldKeys=invoiceFieldKeys,lineKeys=invoiceLineKeys,documentType="invoice",extractId="",getHeaders=null;
 
 let original=null,draft=null,sha="",api="",approved=false,approveButton=null,notice=null,exportPanel=null,auditMeta=null,approvalResult=null;
@@ -42,6 +47,7 @@ function exportRawJSON(){
     document_type:documentType,source_sha256:sha,extraction_id:extractId,
     model:auditMeta?.model||null,document:original,
     original_validation_warnings:auditMeta?.warnings||[],
+    translation:auditMeta?.translation||null,
     evidence_regions:auditMeta?.regions||[]
   },null,2),"billy-original-ai-unverified.json","application/json");
 }
@@ -53,6 +59,7 @@ function exportJSON(){
     changes_from_original:auditChanges(),
     original_validation_warnings:auditMeta?.warnings||[],
     review_validation_warnings:approvalResult?.validation_warnings||[],
+    translation:auditMeta?.translation||null,
     evidence_regions:auditMeta?.regions||[],
     ramp_review:window.BillyReview?.rampAudit?.()||null,
     intelligence:approvalResult?.intelligence||null,
@@ -84,14 +91,22 @@ function render(result,endpoint,authHeaders,sourceFile=null){
  const source=documentType==="fuel_release"?result?.fuel_release:result?.invoice;
  if(!source||!result.extraction_id||!result.source_sha256)throw Error("Incomplete extraction.");
  fieldKeys=documentType==="fuel_release"?fuelFieldKeys:invoiceFieldKeys;
- lineKeys=documentType==="fuel_release"?handwritingKeys:invoiceLineKeys;
+ lineKeys=documentType==="fuel_release"?
+   (source.handwritten_entries||[]).some(row=>row.english_label||row.english_translation)?
+     translatedHandwritingKeys:handwritingKeys
+   :invoiceLineKeys;
  original=structuredClone(source);draft=structuredClone(source);sha=result.source_sha256;
  extractId=result.extraction_id;api=endpoint;getHeaders=authHeaders;approved=false;approvalResult=null;
- auditMeta={model:result.model||null,warnings:structuredClone(result.validation_warnings||[]),regions:structuredClone(result.regions||[])};
+ auditMeta={model:result.model||null,warnings:structuredClone(result.validation_warnings||[]),regions:structuredClone(result.regions||[]),translation:structuredClone(result.translation||null)};
  const root=$("formattedOutput");root.replaceChildren();root.hidden=false;root.classList.add("vision-review");
  const title=node("div","review-intro");
  title.append(node("span","review-eyebrow","BILLYDPI / VERIFIED DOCUMENT WORKFLOW"),node("h3","review-title",documentType==="fuel_release"?"Review Fuel Release":"Review extracted invoice"),node("p","review-note","Verify and correct the extracted fields."));
  root.appendChild(title);
+ if(auditMeta?.translation?.status==="translated"){
+   const lang=String(auditMeta.translation.source_language||"unknown").toUpperCase();
+   root.appendChild(node("p","review-translation-note",
+     "Descriptions translated from "+lang+" to English. Original text retained for verification."));
+ }
  const rawButton=node("button","review-export-button secondary review-raw-export","Download original AI engine JSON (unverified)");
  rawButton.type="button";rawButton.addEventListener("click",exportRawJSON);
  root.appendChild(rawButton);
