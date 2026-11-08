@@ -1017,3 +1017,74 @@ test("English originals stay unchanged, and correcting a machine translation doe
   assert.equal((await approved.json()).intelligence.status,"no_eligible_corrections");
   assert.equal(examples.length,0);
 });
+
+test("Learning audit proves identical bytes were seen and compares with previous approval without masking model mistakes",async()=>{
+  const {handler,call,stored}=mockBackend();
+  const upload=()=>{
+    const form=new FormData();
+    form.append("file",new File([new Uint8Array([255,216,14,14,14])],"repeat.jpg",{type:"image/jpeg"}));
+    form.append("document_type","invoice");
+    return form;
+  };
+  const first=await handler(call("/api/vision/extract","POST",{body:upload()}));
+  assert.equal(first.status,200);
+  const initial=await first.json();
+  assert.equal(initial.intelligence_audit.same_file.prior_approved_count,0);
+  assert.equal(initial.intelligence_audit.retrieval.examples_found,0);
+  assert.equal(initial.intelligence_audit.model_weights_updated,false);
+  const checkInitial=await handler(call("/api/vision/intelligence-audit?extraction_id="+initial.extraction_id));
+  assert.equal(checkInitial.status,200);
+  const initialAudit=await checkInitial.json();
+  assert.equal(initialAudit.learning.total_saved,0);
+  assert.equal(initialAudit.audit.same_file.prior_approved_count,0);
+
+  const humanApproved={...initial.invoice,grand_total:"119.90"};
+  const approving=await handler(call("/api/vision/approve","POST",{
+    headers:{...authHeaders,"Content-Type":"application/json"},
+    body:JSON.stringify({extraction_id:initial.extraction_id,document_type:"invoice",
+      document:humanApproved,confirmed:true,intelligence_opt_in:true})
+  }));
+  assert.equal(approving.status,200);
+  const approved=await approving.json();
+  assert.equal(approved.intelligence.indexed_saved,1);
+  const previousAudit=await handler(call("/api/vision/intelligence-audit?extraction_id="+initial.extraction_id));
+  const report=await previousAudit.json();
+  assert.equal(report.learning.total_saved,1);
+  assert.equal(report.learning.indexed,1);
+  assert.equal(report.learning.corrections_saved,1);
+
+  const second=await handler(call("/api/vision/extract","POST",{body:upload()}));
+  assert.equal(second.status,200);
+  const result=await second.json();
+  assert.equal(result.intelligence_audit.same_file.previous_approved_found,true);
+  assert.equal(result.intelligence_audit.same_file.prior_approved_count,1);
+  assert.equal(result.intelligence_audit.same_file.comparison.different_fields,1);
+  assert.deepEqual(Array.from(result.intelligence_audit.same_file.comparison.different_field_paths),["grand_total"]);
+  assert.equal(result.intelligence_audit.same_file.comparison.entry_count_changed,false);
+  assert.equal(result.invoice.grand_total,"119.00"); // Audited baseline, never silently replaced by cache.
+  assert.equal(stored.get(result.extraction_id).intelligence_audit.version,1);
+  const secondAudit=await handler(call("/api/vision/intelligence-audit?extraction_id="+result.extraction_id));
+  const data=await secondAudit.json();
+  assert.equal(data.state,"extracted");
+  assert.equal(data.audit.same_file.comparison.different_fields,1);
+  assert.doesNotMatch(JSON.stringify(data),/119.90|TEST SUPPLIER/);
+  assert.match(data.explanation,/not model fine-tuning/);
+});
+
+test("Unauthenticated users and cross-org members cannot read another user's Intelligence audit",async()=>{
+  const {handler,call,stored}=mockBackend();
+  const form=new FormData();
+  form.append("file",new File([new Uint8Array([255,216,6])],"source.jpg",{type:"image/jpeg"}));
+  form.append("document_type","invoice");
+  const extracted=await handler(call("/api/vision/extract","POST",{body:form}));
+  const doc=await extracted.json();
+  const get=()=>handler(call("/api/vision/intelligence-audit?extraction_id="+doc.extraction_id));
+  assert.equal((await get()).status,200);
+  const record=stored.get(doc.extraction_id);
+  record.organization_id="99999999-9999-4999-8999-999999999999";
+  assert.equal((await get()).status,404);
+  const badAuth=await handler(new Request(
+    "https://synthetic.supabase.co/functions/v1/billy-vision/api/vision/intelligence-audit?extraction_id="+doc.extraction_id));
+  assert.equal(badAuth.status,401);
+  assert.equal((await handler(call("/api/vision/intelligence-audit?extraction_id=garbage"))).status,400);
+});
