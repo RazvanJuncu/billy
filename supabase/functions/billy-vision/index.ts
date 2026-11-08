@@ -414,8 +414,10 @@ function correctionLessons(before,after,type){
   return out;
 }
 
-// Explicit confirmations are positive feedback only for previously uncertain,
-// image-localized readings. A generic "Approve" click is never training evidence.
+// Every deliberate field confirmation is operator feedback, even if Gemini called
+// the source clear. Only consented, non-sensitive, nonempty text is reusable.
+// The review's manual_confirmations retain ALL checks, including excluded/absent.
+// A generic "Approve" click is never positive training evidence.
 function fieldAtPath(doc,path,type){
   if(!editPath(type,path))return null;
   const nested=path.match(/^(lines|handwritten_entries)\[(\d+)\]\.([a-z_]+)$/);
@@ -442,16 +444,16 @@ function confirmationLessons(before,after,type,regions,claims){
     new Set(claims).size!==claims.length)throw Error("Invalid operator confirmation list.");
   const eligible=[];
   for(const path of claims){
-    if(eligible.length>=16)break;
+    if(eligible.length>=100)break;
     const lastKey=path.split(".").pop();
     if(INTELLIGENCE_EXCLUDED_FIELDS.has(path)||INTELLIGENCE_EXCLUDED_FIELDS.has(lastKey))continue;
     const a=shortLesson(fieldAtPath(before,path,type));
     const b=shortLesson(fieldAtPath(after,path,type));
     if(!a||!b||a!==b)continue; // Changed readings use correction lessons, never double count.
     const region=(regions||[]).find(item=>item.field_path===path);
-    if(!region)continue; // No image-localized evidence: cannot learn glyph recognition.
-    const clarity=String(region.visual_clarity||"unassessed");
-    if(clarity==="clear"&&!initialAlternativeDiffers(region,a))continue;
+    // Without an evidence region this is still a recorded positive example,
+    // but it cannot be indexed as a visual issue or used to teach glyph reading.
+    const clarity=String(region?.visual_clarity||"unassessed");
     const match=path.match(/^handwritten_entries\[(\d+)\]\./);
     const label=match?before.handwritten_entries?.[Number(match[1])]?.label:null;
     eligible.push({
@@ -509,7 +511,10 @@ function issueForLesson(lesson,regions,type){
   const key=glyph||(region?issueForRegion(region,old):null)||
     (lesson.feedback_type==="corrected"&&
       /^handwritten_entries\[(?:\d+)?\]\.transcription$/.test(lesson.field_path)?
-        "quality:handwritten":null);
+        "quality:handwritten":null)||
+    (lesson.feedback_type==="confirmed"&&region?
+      "quality:"+(["handwritten","printed","mixed","unknown"].includes(region.script_type)?
+        region.script_type:"unknown"):null);
   const alt=lesson.feedback_type==="confirmed"&&region?
     (region.alternate_readings||[]).find(value=>glyphIssue(correct,value)===key):null;
   return {
@@ -662,11 +667,32 @@ function compareApprovedToFresh(prior,fresh,type){
 }
 async function approvedIdenticalSource(principal,hash,type){
   return await database(principal,"GET","document_records",{
-    select:"id,reviewed_data,created_at",
+    select:"id,reviewed_data,extracted_data,review_metadata,created_at",
     organization_id:"eq."+principal.organization_id,
     created_by:"eq."+principal.user_id,
     source_sha256:"eq."+hash,document_type:"eq."+type,
     state:"eq.approved",order:"created_at.desc",limit:"20"
+  });
+}
+// Exact-byte previous approvals are scoped to this user+team in the lookup.
+ // Only reuse explicitly checked or edited values, and only when they still
+ // match both the latest approved reading and the fresh extraction.
+ // Top-level fields have stable identities; indexed rows can shift between scans.
+function previouslyVerifiedPaths(priorRows,fresh,type){
+  const latest=priorRows?.[0]?.reviewed_data;
+  if(!latest)return [];
+  const keys=type==="invoice"?INVOICE_FIELDS:FUEL_FIELDS;
+  return keys.filter(path=>{
+    const now=fieldAtPath(fresh,path,type);
+    if(typeof now!=="string"||!now.trim()||now!==fieldAtPath(latest,path,type))
+      return false;
+    return priorRows.some(row=>{
+      if(fieldAtPath(row.reviewed_data,path,type)!==now)return false;
+      const manuallyChecked=Array.isArray(row.review_metadata?.manual_confirmations)&&
+        row.review_metadata.manual_confirmations.includes(path);
+      const corrected=fieldAtPath(row.extracted_data,path,type)!==now;
+      return manuallyChecked||corrected;
+    });
   });
 }
 function initialAudit(priorRows,fresh,type,issues,memory,review,priorLookupStatus){
@@ -680,6 +706,7 @@ function initialAudit(priorRows,fresh,type,issues,memory,review,priorLookupStatu
       lookup_status:priorLookupStatus,
       prior_approved_count:rows.length,
       previous_approved_found:rows.length>0,
+      previously_verified_paths:previouslyVerifiedPaths(rows,fresh,type),
       comparison
     },
     issue_detection:{count:issues.length,keys:issues.map(item=>item.issue_key)},
@@ -706,7 +733,7 @@ async function learningAudit(req,principal){
   const examples=await database(principal,"GET","billy_intelligence_examples",{
     select:"feedback_type,issue_key",
     source_record_id:"eq."+id,organization_id:"eq."+principal.organization_id,
-    created_by:"eq."+principal.user_id,limit:"50"
+    created_by:"eq."+principal.user_id,limit:"150"
   });
   const saved=Array.isArray(examples)?examples:[];
   const confirmed=Array.isArray(row.review_metadata?.manual_confirmations)?
