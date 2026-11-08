@@ -65,7 +65,7 @@
     activeRun=run;
     const crop=window.BillyQuickVerifyCrop?.create(file);
     onStatus?.("Checking handwriting locally (0/"+candidates.length+")…");
-    const done=(async()=>{
+    const task=(async()=>{
       let completed=0,reads=0,status="completed";
       try{
         for(const region of candidates){
@@ -95,6 +95,18 @@
       }
       return {status:cancelled?"cancelled":status,reads,completed};
     })();
+    // No indefinitely spinning loader if a model/CDN or local inference stalls.
+    // A late model response cannot alter visible review fields after cancellation.
+    let watchdog=null;
+    const timeout=new Promise(resolve=>{
+      watchdog=setTimeout(()=>{
+        cancelled=true;
+        resetWorker();
+        onStatus?.("Local TrOCR could not finish. Review the AI engine results.");
+        resolve({status:"unavailable",reads:0,completed:0});
+      },180000);
+    });
+    const done=Promise.race([task,timeout]).finally(()=>clearTimeout(watchdog));
     return {enabled:true,cancel:run.cancel,done};
   }
   window.BillyDesktopTrOCR={desktop,eligible,inspect};
