@@ -67,6 +67,8 @@ test("Local TrOCR respects desktop-only gating and never auto-writes the review"
   assert.equal(callbacks[0].text,"71052");
   assert.ok(status.some(s=>s.includes("Local TrOCR checked")));
   assert.match(ramp,/handwriting_disagreement=differs/);
+  assert.match(ramp,/region.trocr_comparison=compared/);
+  assert.match(ramp,/showLocalReading\(field_path\)/);
   assert.doesNotMatch(ramp,/doc\[field_path\]=text|setAt\(doc,field_path,text\)/);
   context.navigator.userAgent="iPhone";
   assert.equal(agent.desktop(),false);
