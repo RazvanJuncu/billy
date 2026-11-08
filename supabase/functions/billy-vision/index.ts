@@ -1,5 +1,5 @@
 /* Billy Vision: Gemini-only authenticated HTTPS backend.
-   Browser TrOCR is independent; this backend does not store images or training crops.
+   The hosted app uses Gemini extraction with operator review, no local OCR model.
    All document data is untrusted; every org/user authorization is server-side.
 */
 const INVOICE_FIELDS = ["supplier_name","supplier_tax_id","customer_name","invoice_number","issue_date","due_date","currency","subtotal","vat_total","grand_total"];
@@ -450,8 +450,7 @@ async function extract(req,principal){
     fuel_release:type==="fuel_release"?fields:null,
     validation_warnings:warnings,usage,regions,confidence:null,
     translation,
-    handwriting_training_capture_enabled:false,
-    handwriting_second_opinion:{status:"browser_optional",model_version:null,comparisons:0,disagreements:0}
+    handwriting_training_capture_enabled:false
 
   });
 }
@@ -691,7 +690,7 @@ Deno.serve(async req=>{
       status:"online",provider:"gemini",model:MODEL,configured:!!providerKey(),
       requires_review:true,excel_write_enabled:false,
       document_types:["invoice","fuel_release"],organization_id:principal.organization_id,
-      handwriting:{enabled:false,source:"desktop_browser_optional"},storage:"supabase_private_ledger"
+      handwriting:{enabled:false,source:"not_configured"},storage:"supabase_private_ledger"
     });
     if(suffix==="/api/vision/extract")return await extract(req,principal);
     if(suffix==="/api/vision/recheck")return await recheck(req,principal);
