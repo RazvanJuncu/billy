@@ -410,7 +410,7 @@
         typeof item.trocr_reading==="string"&&item.trocr_reading.trim());
       localReadout.hidden=!region;
       if(!region){localReadout.textContent="";return;}
-      const tag=region.trocr_comparison==="match"?"Same reading as Gemini":
+      const tag=region.trocr_comparison==="match"?"Same reading as AI engine":
         region.trocr_comparison==="partial"?"Same handwritten grade; contextual prefix not checked":
         region.trocr_comparison==="different"?"Different reading":"Not comparable";
       localReadout.textContent="TrOCR read: "+region.trocr_reading.slice(0,120)+" · "+tag;
@@ -622,7 +622,7 @@
              current.level==="yellow"&&!translatedPaths.has(field_path)&&
              !blockingWarning(field_path,warnings)){
             state.set(field_path,{level:"green",
-              reason:"Gemini and local TrOCR read the same handwriting. No flagged disagreement; operator review is still required."});
+              reason:"AI engine and local TrOCR read the same handwriting. No flagged disagreement; operator review is still required."});
           }else if(!humanReviewed.has(field_path)&&differs){
             if(!Array.isArray(region.alternate_readings))region.alternate_readings=[];
             if(!region.alternate_readings.includes(text))
