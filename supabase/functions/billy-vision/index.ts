@@ -611,10 +611,10 @@ async function extract(req,principal){
   const bytes=new Uint8Array(await file.arrayBuffer());
   let mime;try{mime=mimeOf(file.name,bytes);}catch(e){return error(e.message,400);}
   const hash=await sha256(bytes);
-  const memory=await intelligenceHints(principal,type);
+  // V3: do not preload team memory into every extraction. Find visual issues first.
   const payload={
     contents:[{role:"user",parts:[
-      {text:INSTRUCTIONS+" Document type: "+type+"."+intelligencePrompt(memory)},
+      {text:INSTRUCTIONS+" Document type: "+type+"."},
       {inline_data:{mime_type:mime,data:b64(bytes)}}
     ]}],
     generationConfig:{responseMimeType:"application/json",
@@ -642,7 +642,38 @@ async function extract(req,principal){
     console.error("Gemini invalid structured response",String(e).slice(0,180));
     return error("The AI engine returned an invalid structured document. Try another scan.",502);
   }
+  const issues=issuesInExtraction(regions,fields,type);
+  let memory=[],review={status:"no_matching_examples",assessments:[]};
+  if(issues.length){
+    try{
+      memory=await lookupIssueMemory(principal,issues);
+      if(memory.length)review=await targetedIssueReview(bytes,mime,issues,memory);
+    }catch(_error){
+      // The original extraction is still usable. Do not silently claim it was verified.
+      review={status:"unavailable",assessments:[]};
+      console.warn("Billy Intelligence issue lookup/review unavailable; original uncertainties preserved.");
+    }
+  }
+  // A second AI pass may add a warning or a plausible alternative, NEVER a new
+  // extracted value or an automatic green/clear classification.
+  for(const advice of review.assessments||[]){
+    const region=regions.find(item=>item.field_path===advice.field_path);
+    if(!region)continue;
+    const suggestion=advice.alternative;
+    if(advice.status==="alternate_possible"&&suggestion&&
+       suggestion!==fieldAtPath(fields,advice.field_path,type)){
+      if(!region.alternate_readings.includes(suggestion))
+        region.alternate_readings=[...region.alternate_readings,suggestion].slice(0,3);
+      if(region.visual_clarity==="clear")region.visual_clarity="slight_uncertainty";
+      region.visual_reason=("Billy Intelligence second look: possible alternative "+
+        suggestion+". "+advice.reason).slice(0,240);
+    }
+  }
   const warnings=validate(fields,type,regions);
+  for(const advice of review.assessments||[]){
+    if(advice.status==="alternate_possible")warnings.push(
+      "Billy Intelligence: verify "+advice.field_path+" against the source; another reading may be possible.");
+  }
   const usage={
     input_tokens:response.usageMetadata?.promptTokenCount??null,
     output_tokens:response.usageMetadata?.candidatesTokenCount??null,
@@ -665,7 +696,10 @@ async function extract(req,principal){
     handwriting_training_capture_enabled:false,
     handwriting_second_opinion:{status:"disabled",model_version:null,comparisons:0,disagreements:0},
     historical_field_agreement:{},feedback_example_count:memory.length,
-    intelligence:{mode:"team_examples",examples_used:memory.length,
+    intelligence:{mode:"issue_on_demand",lookup_status:review.status,
+      issue_keys:issues.map(item=>item.issue_key),
+      targeted_assessments:review.assessments,
+      examples_used:memory.length,
       confirmations_used:memory.filter(item=>item.feedback_type==="confirmed").length,
       corrections_used:memory.filter(item=>item.feedback_type==="corrected").length,
       model_fine_tuned:false}
