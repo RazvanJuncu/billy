@@ -8,53 +8,44 @@ The public PWA uses the `billy-vision` Supabase Edge Function for Gemini extract
 
 **The server-side `GEMINI_API_KEY` secret must be configured by a project administrator before AI extraction is usable.** The deployed Edge Function is not proof that Google billing, API access, or end-to-end scanning has been tested.
 
-See [GEMINI_CLOUD.md](GEMINI_CLOUD.md) for setup and the test flow. Worker, Pending queue, fine-tuning, and TrOCR are on hold for the active cloud integration.
+See [GEMINI_CLOUD.md](GEMINI_CLOUD.md) for the Gemini cloud setup. Desktop TrOCR is a separate experimental local second opinion; training and remote workers are not part of the hosted app.
 
-## Portable Billy Worker (PC today, company server later)
+## Desktop TrOCR browser second opinion (experimental)
 
-Billy remains a web/PWA application. An **optional separate local
-handwriting engine** is now runnable with the same source code on an
-authorized Windows PC or an on-prem Linux server, including a CPU-oriented
-Docker package. See [WORKER_DEPLOYMENT.md](WORKER_DEPLOYMENT.md).
+The hosted PWA keeps Gemini as the source of structured document fields.
+On a supported **desktop browser**, the review of a Fuel Release launches a
+separate **on-device TrOCR Small** reader for up to eight localized
+handwritten/mixed source regions supplied by Gemini.
 
-**Scope:** this is a portable manual TrOCR CLI, not yet the automatic
-remote-job worker. Secure Pending cloud queues, private job downloads,
-worker identity and retry/heartbeats are future integration work.
-No employee's browser automatically downloads documents to run TrOCR.
+- The model is loaded lazily in a module Web Worker with pinned
+  `@huggingface/transformers@3.8.1` and
+  `Xenova/trocr-small-handwritten` ONNX weights. First load downloads model
+  weights and can be slow; later loads may use browser caches.
+- The original scan is sent only to the authenticated Gemini extraction API.
+  The TrOCR worker receives bounded **local PNG crops** from the source,
+  never sends them to a training service, and does not persist them.
+- Differences between the two readings are shown as review warnings. The
+  TrOCR output **never silently overwrites** an extracted number, registration,
+  or approved value and does not automatically turn yellow fields green.
+- On mobile, with no handwriting regions, or if the local model fails to load,
+  Gemini review remains available. Browsers without WebAssembly/model support
+  may not run TrOCR.
+- No browser fine-tuning, sample-collection pipeline, image-training upload,
+  historical document lookup or Billy Intelligence memory is active.
+  A source SHA-256 is retained **only for binding a recheck to its upload**.
 
-## Learnable handwriting OCR (local pilot)
+**Validation:** static integration and mocked-worker tests pass. Actual ONNX
+downloads, browser inference time, crop geometry and model accuracy on
+real Fuel Releases still require an in-browser test; do not claim improved
+recognition accuracy before measuring it.
 
-Billy now includes a **real, trainable TrOCR handwriting recognizer**, alongside
-Gemini's structured document extraction and the existing PaddleOCR layout
-tools. See [HANDWRITING_TRAINING.md](HANDWRITING_TRAINING.md) for setup, consent,
-test commands, production restrictions and GPU requirements.
+### Legacy offline tooling
 
-When explicitly enabled by the trusted server administrator, the review
-screen offers **Submit & Learn** (one action to approve and queue verified
-corrected text crops) or **Submit only** (approve without training data).
-The server verifies the original SHA-256, authenticated reviewer/team,
-server-stored evidence coordinates, and final approved text before writing
-team-private cropped PNG training examples. Original full documents are not
-persisted by the handwriting collector.
-
-A separate optional worker can fine-tune
-[`microsoft/trocr-base-handwritten`](https://huggingface.co/microsoft/trocr-base-handwritten)
-on those labeled crops. It measures character error rate on a **document-split
-holdout**, blocks numeric regression, and only promotes improved checkpoints.
-With `BILLY_HANDWRITING_INFERENCE_ENABLED=1`, local TrOCR Small can run
-**immediately without fine-tuning** using Microsoft's original pretrained
-checkpoint. A successfully trained and promoted team checkpoint automatically
-takes priority later. It re-reads visually ambiguous handwriting, surfaces
-Gemini/TrOCR disagreements and never overrides financial fields without review.
-See [SETUP_WINDOWS.md](SETUP_WINDOWS.md) for the first CPU baseline test.
-
-**Important:** training capture, automatic training and local TrOCR inference
-are OFF by default until the backend operator enables them. Inference can run
-on a local CPU; only practical fine-tuning typically benefits from a GPU.
-These Python services are NOT deployed or executed by GitHub Pages. This repository does not
-contain a company dataset, trained Billy checkpoint or a completed benchmark.
-TrOCR reads single lines; a separately fine-tuned page-layout model is still
-future work. No claim of 100% accuracy is made.
+Older Python PaddleOCR, TrOCR training, and worker experiments remain in
+source control for historical developer reference; they are **not connected**
+to the hosted PWA. The older [HANDWRITING_TRAINING.md](HANDWRITING_TRAINING.md)
+and [WORKER_DEPLOYMENT.md](WORKER_DEPLOYMENT.md) describe that legacy
+opt-in **local** workflow and are not current cloud setup instructions.
 
 ## BillyDPI magnetic loader v1.1
 
