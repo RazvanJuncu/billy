@@ -11,16 +11,18 @@ const preview=read("site/excel-preview.js");
 const css=read("site/excel-preview.css");
 const sw=read("site/sw.js");
 
-test("Approved export shows Excel preview using exactly the same data source as CSV",()=>{
+test("Excel Preview and CSV are built from approved document-and-entry sections",()=>{
   assert.match(html,/id="simpleExcelPreview"[^>]*hidden/);
-  assert.match(html,/Excel Preview|excel-preview\.js\?v=/);
+  assert.match(html,/excel-preview\.js\?v=/);
   assert.match(html,/excel-preview\.css\?v=/);
   assert.ok(html.indexOf("vision-review.js")<html.indexOf("excel-preview.js"));
   assert.ok(html.indexOf("excel-preview.js")<html.indexOf("simple.js"));
   assert.match(review,/function getApprovedSpreadsheetData\(\)/);
   assert.match(review,/if\(!approved\|\|!draft\)return null/);
+  assert.match(review,/return \{documentType,details,entries\}/);
   assert.match(review,/const sheet=getApprovedSpreadsheetData\(\)/);
-  assert.match(review,/sheet\.columns\.map\(column=>column\.key\),\.\.\.sheet\.rows/);
+  assert.match(review,/sheet\.details\.map\(field=>\[field\.label,field\.value\]\)/);
+  assert.match(review,/sheet\.entries\.rows/);
   assert.match(review,/getApprovedSpreadsheetData\};/);
   assert.match(simple,/exportable\?window\.BillyReview\?\.getApprovedSpreadsheetData\?\.\(\):null/);
   assert.match(simple,/window\.BillyExcelPreview\?\.render\(\$\("simpleExcelPreview"\),sheet\)/);
@@ -29,7 +31,7 @@ test("Approved export shows Excel preview using exactly the same data source as 
   assert.match(sw,/"\.\/excel-preview\.js"/);
   assert.match(sw,/"\.\/excel-preview\.css"/);
   assert.match(sw,/excel-preview\\\.js\|excel-preview\\\.css/);
-  assert.doesNotMatch(preview,/fetch\(|XMLHttpRequest|innerHTML/);
+  assert.doesNotMatch(preview,/fetch\(|XMLHttpRequest|innerHTML|insertAdjacentHTML/);
   assert.match(css,/overflow:auto/);
 });
 
@@ -50,54 +52,141 @@ function boot(){
   vm.runInNewContext(preview,{window,document,console});
   return window.BillyExcelPreview;
 }
-test("Spreadsheet renders column letters, first-row CSV headers, approved rows, and blanks",()=>{
+function tableRows(section){
+  const table=section.children[1].children[0];
+  return {header:table.children[1].children[0].children.map(c=>c.textContent),
+    rows:table.children[2].children.map(row=>row.children.map(c=>c.textContent))};
+}
+test("Fuel Release preview displays header values ONCE and seven separate handwriting entries",()=>{
   const ui=boot(),root=node("section");
-  assert.equal(ui.columnLetter(0),"A");
-  assert.equal(ui.columnLetter(25),"Z");
-  assert.equal(ui.columnLetter(26),"AA");
-  assert.equal(ui.columnLetter(51),"AZ");
   const sheet={
     documentType:"fuel_release",
-    columns:[
-      {key:"release_number",label:"Release #"},
-      {key:"aircraft_registration",label:"Registration"},
-      {key:"delivered_quantity",label:"Delivered fuel"}
+    details:[
+      {key:"release_number",label:"Release #",value:"M 04569"},
+      {key:"supplier_name",label:"Fuel supplier",value:"TUCSON AIRPORT AUTHORITY"},
+      {key:"airport",label:"Airport",value:"MUNICIPAL AIRPORT"},
+      {key:"aircraft_registration",label:"Registration",value:"1719P"}
     ],
-    rows:[
-      ["M 04569","1719P","14"],
-      ["M 04569","1719P",null]
-    ]
+    entries:{
+      title:"Handwritten entries",
+      columns:[
+        {key:"label",label:"Original field label"},
+        {key:"transcription",label:"Raw handwriting"}
+      ],
+      rows:Array.from({length:7},(_,index)=>["Meter "+(index+1),String(71050+index)])
+    }
   };
   ui.render(root,sheet);
   assert.equal(root.hidden,false);
+  assert.equal(root.children.length,3); // Heading + two distinct tables.
   assert.equal(root.children[0].children[0].textContent,"Excel Preview");
-  const viewport=root.children[1];
-  assert.equal(viewport.attrs.role,"region");
-  assert.equal(viewport.tabIndex,0);
-  const table=viewport.children[0];
-  const letterRow=table.children[1].children[0];
-  assert.equal(letterRow.children[1].textContent,"A");
-  assert.equal(letterRow.children[2].textContent,"B");
-  assert.equal(letterRow.children[3].textContent,"C");
-  const tbody=table.children[2];
-  assert.equal(tbody.children[0].children[0].textContent,"1");
-  assert.equal(tbody.children[0].children[1].textContent,"release_number");
-  assert.equal(tbody.children[0].children[3].textContent,"delivered_quantity");
-  assert.equal(tbody.children[1].children[0].textContent,"2");
-  assert.equal(tbody.children[1].children[1].textContent,"M 04569");
-  assert.equal(tbody.children[1].children[3].textContent,"14");
-  assert.equal(tbody.children[2].children[0].textContent,"3");
-  assert.equal(tbody.children[2].children[3].textContent,"");
-  assert.match(tbody.children[2].children[3].className,/excel-preview-blank/);
+  assert.equal(root.children[1].children[0].children[0].textContent,"Document details");
+  assert.equal(root.children[2].children[0].children[0].textContent,"Handwritten entries");
+  assert.equal(root.children[2].children[0].children[1].textContent,"7 entries");
+  const documentRows=tableRows(root.children[1]);
+  const details=JSON.stringify(documentRows.rows);
+  assert.equal((details.match(/M 04569/g)||[]).length,1);
+  assert.equal((details.match(/1719P/g)||[]).length,1);
+  assert.equal(documentRows.rows.length,4);
+  assert.deepEqual(documentRows.header,["Field","Value"]);
+  const lines=tableRows(root.children[2]);
+  assert.deepEqual(lines.header,["Original field label","Raw handwriting"]);
+  assert.equal(lines.rows.length,7);
+  assert.deepEqual(lines.rows[0],["Meter 1","71050"]);
+  assert.deepEqual(lines.rows[6],["Meter 7","71056"]);
+  assert.ok(!JSON.stringify(lines.rows).includes("TUCSON AIRPORT AUTHORITY"));
+  assert.equal(root.children[2].children[1].attrs.role,"region");
   ui.render(root,null);
   assert.equal(root.hidden,true);
   assert.equal(root.children.length,0);
 });
 
-test("Preview displays untrusted document values as text only",()=>{
+function makeApprovedReport({draft,type,fieldKeys,lineKeys}){
+  const start=review.indexOf("function escapeCell(value)");
+  const end=review.indexOf("function auditChanges()");
+  assert.ok(start>=0&&end>start);
+  const captured={};
+  const context={
+    approved:true,draft,documentType:type,fieldKeys,lineKeys,
+    download(text,name,mime){captured.text=text;captured.name=name;captured.mime=mime;}
+  };
+  vm.runInNewContext(review.slice(start,end)+"\nvar report=getApprovedSpreadsheetData();exportCSV();",context);
+  return {report:JSON.parse(JSON.stringify(context.report)),csv:captured.text,name:captured.name};
+}
+test("Actual CSV and preview report do not repeat document metadata per handwriting row",()=>{
+  const entries=Array.from({length:7},(_,i)=>({
+    label:"HANDWRITTEN "+(i+1),transcription:String(1700+i)
+  }));
+  const {report,csv,name}=makeApprovedReport({
+    draft:{
+      release_number:"M 04569",supplier_name:"TUCSON AIRPORT AUTHORITY",
+      airport:"MUNICIPAL AIRPORT",aircraft_registration:"1719P",
+      handwritten_entries:entries,notes:["Confirmed delivery"]
+    },
+    type:"fuel_release",
+    fieldKeys:[
+      ["release_number","Release #"],["supplier_name","Fuel supplier"],
+      ["airport","Airport"],["aircraft_registration","Registration"]
+    ],
+    lineKeys:[["label","Original field label"],["transcription","Raw handwriting"]]
+  });
+  assert.equal(report.details.length,5);
+  assert.equal(report.entries.rows.length,7);
+  assert.equal(report.entries.title,"Handwritten entries");
+  assert.equal(name,"billy-approved.csv");
+  assert.equal((csv.match(/M 04569/g)||[]).length,1);
+  assert.equal((csv.match(/TUCSON AIRPORT AUTHORITY/g)||[]).length,1);
+  assert.equal((csv.match(/1719P/g)||[]).length,1);
+  assert.match(csv,/"Document details"\r\n"Field","Value"/);
+  assert.match(csv,/"Handwritten entries"\r\n"Original field label","Raw handwriting"/);
+  assert.match(csv,/"HANDWRITTEN 7","1706"/);
+  assert.match(csv,/"Note 1","Confirmed delivery"/);
+  const ui=boot(),root=node("section");
+  ui.render(root,report);
+  assert.equal(tableRows(root.children[1]).rows.length,5);
+  assert.equal(tableRows(root.children[2]).rows.length,7);
+});
+
+test("Invoice report has one summary and item rows without duplicated supplier or amount",()=>{
+  const {report,csv}=makeApprovedReport({
+    draft:{
+      invoice_number:"F-22",supplier_name:"Supplier Ltd",grand_total:"120.00",
+      lines:[
+        {description:"Pump",quantity:"1",net_amount:"100"},
+        {description:"Filter",quantity:"2",net_amount:"20"}
+      ],notes:[]
+    },
+    type:"invoice",
+    fieldKeys:[["invoice_number","Invoice #"],["supplier_name","Supplier"],["grand_total","Grand total"]],
+    lineKeys:[["description","Description"],["quantity","Quantity"],["net_amount","Net"]]
+  });
+  assert.equal(report.details.length,3);
+  assert.equal(report.entries.title,"Invoice line items");
+  assert.deepEqual(report.entries.rows,[["Pump","1","100"],["Filter","2","20"]]);
+  assert.equal((csv.match(/Supplier Ltd/g)||[]).length,1);
+  assert.equal((csv.match(/120\.00/g)||[]).length,1);
+  assert.match(csv,/"Invoice line items"/);
+});
+
+test("A document with no extracted lines does not invent a blank line item",()=>{
+  const {report}=makeApprovedReport({
+    draft:{invoice_number:"INV-0",lines:[],notes:[]},
+    type:"invoice",
+    fieldKeys:[["invoice_number","Invoice #"]],lineKeys:[["description","Description"]]
+  });
+  assert.equal(report.entries.rows.length,0);
+  const ui=boot(),root=node("section");
+  ui.render(root,report);
+  assert.equal(root.children.length,2); // No fake extra table.
+});
+
+test("Preview renders untrusted document values as literal text, never executable HTML",()=>{
   const ui=boot(),root=node("section");
   const payload='<img src=x onerror=alert(1)>';
-  ui.render(root,{columns:[{key:"description",label:"Description"}],rows:[[payload]]});
-  assert.equal(root.children[1].children[0].children[2].children[1].children[1].textContent,payload);
+  ui.render(root,{details:[{key:"notes[0]",label:"Note",value:payload}],
+    entries:{title:"Handwritten entries",columns:[{key:"transcription",label:"Raw handwriting"}],rows:[[payload]]}
+  });
+  assert.equal(tableRows(root.children[1]).rows[0][1],payload);
+  assert.equal(tableRows(root.children[2]).rows[0][0],payload);
   assert.doesNotMatch(preview,/innerHTML|insertAdjacentHTML/);
 });
