@@ -74,3 +74,24 @@ independently and not to copy prior totals, registrations or other values.
 - Test actual live AI responses and a long, mixed document history.
 - Before production use, add organization-admin memory review/deletion,
   retention settings, and explicit company policy for any future visual crops.
+
+## Approved target rule: Gemini-first, handwriting-only on-demand verification (2026-11-09)
+
+**Product decision / implementation specification — NOT yet active in production.**
+
+**Principle:** Gemini stays the primary document-intelligence engine and performs its current full-document extraction, interpretation, field mapping, validation and structured JSON output **unchanged**. Billy Intelligence is a specialist second opinion for *handwritten text only*, triggered **after Gemini identifies visually uncertain handwriting**. It is not a replacement for Gemini and it does not interpret printed fields.
+
+1. Gemini first returns the entire document and each evidenced region with `field_path`, `script_type`, `visual_clarity`, `transcription`, `page`, and `box_2d`, as currently supported.
+2. **Skip the Billy Intelligence call** for `script_type=printed`, or when the handwritten region is `visual_clarity=clear` with no competing reading or other concern. No second OCR pass is required for clear handwriting.
+3. **Invoke Billy Intelligence only on an uncertain handwritten crop:** `script_type=handwritten` (or confirmed handwritten part of `mixed`) and `visual_clarity=slight_uncertainty | ambiguous | unreadable`. The engine independently reads the **original image crop**, without being primed with Gemini's proposed answer. Missing/corrupt region coordinates mean no ungrounded comparison; send to review instead.
+4. Normalize harmless formatting differences in a **field-aware** manner for comparison (e.g. space or case), but **never normalize away meaningful decimal points, digits, minus signs, units or identifying characters**. Compare the handwriting transcription with Gemini's transcription for the **same region / field**, not unrelated extracted values.
+5. **Match:** The two OCR readings agree. The handwriting-related *soft uncertainty* can be cleared to green **only** where the crop is genuinely readable and **no other warnings, missing-evidence flags, high-risk validation failures or hard review gates are present**. A match is *corroboration*, not proof or a calibrated 100% certainty. `unreadable` remains manual review even on agreement.
+6. **Mismatch, missing/unavailable Billy result, unclear crop, or failed localization:** Keep the applicable handwritten field yellow/review-required (or retain red if already critical); never substitute Billy's reading silently for Gemini's value.
+7. All **printed fields and other document interpretation** keep the existing Gemini + Confidence Engine behavior. Independent arithmetic, translation, source-evidence, and operator-review requirements are **not overridden** by OCR agreement.
+8. Retain bounded per-region provenance for audit: field path, region id/crop reference, Gemini reading, Billy reading, model/version, match/mismatch/unavailable, original risk status, final risk status and trigger reason. Store sensitive crops only with company-authorized retention and access controls.
+
+**Acceptance tests:** clear handwriting does not invoke Billy; uncertain handwriting does; printed text never invokes Billy; agreement can clear a *soft* handwriting flag but not a critical error; disagreement stays yellow; unchanged Gemini extraction; unavailable Billy leaves Gemini values unchanged; mixed/unknown script and bad boxes never cause false-green.
+
+**Why:** Gemini generally has broader contextual document understanding, while a separately trained Billy Intelligence recognizer may become stronger on the narrow task of reading handwriting. Invoke the specialist only when needed to reduce cost, latency, and needless review without bypassing safeguards.
+
+**Rollout note:** The currently hosted Supabase Edge Function is Gemini-only, and the earlier local optional second-opinion implementation uses TrOCR. Connecting a validated Billy Intelligence Lab model and implementing the status rules above are future work; documenting this decision does not deploy them.
