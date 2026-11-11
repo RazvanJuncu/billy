@@ -182,12 +182,3 @@
 
 /* Autonomous lookup feedback is only a small context cue, not a new step. */
 .ramp-external-summary{font-size:11px;color:#afb8c0;line-height:1.5;margin:0 0 12px}
-
-/* Manual web double-check is optional and appears only for public entity fields. */
-.ramp-minor-actions .ramp-double-check{
-  width:auto;min-height:39px;padding:8px 2px!important;border:0!important;
-  background:transparent!important;color:#f4f5f6!important;
-  font-size:12px!important;font-weight:600;cursor:pointer
-}
-.ramp-minor-actions .ramp-double-check[hidden]{display:none!important}
-.ramp-minor-actions .ramp-double-check:disabled{opacity:.4;cursor:progress}
