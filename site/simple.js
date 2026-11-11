@@ -57,9 +57,27 @@
     $("simpleFlowNotice").hidden = !message;
   }
 
-  const manualProfiles=["generic_invoice","fuel_release","fuel_invoice","handling_invoice","taxi_receipt",
-    "generic_receipt","payment_slip","supplier_statement","generic_document"];
-  const forcedCategories={fuel_release:"fuel",fuel_invoice:"fuel",handling_invoice:"handling",taxi_receipt:"taxi"};
+  const manualProfiles=[
+    "generic_invoice","fuel_release","fuel_invoice","handling_invoice","taxi_receipt",
+    "city_tax_receipt","catering_bill","hotel_bill","pax_gifts_receipt",
+    "parking_receipt","crew_expense_receipt","aircraft_supplies_invoice",
+    "other_expense","generic_receipt","payment_slip","supplier_statement","generic_document"
+  ];
+  const forcedCategories={
+    fuel_release:"fuel",fuel_invoice:"fuel",handling_invoice:"handling",taxi_receipt:"taxi",
+    city_tax_receipt:"city_tax",catering_bill:"catering",hotel_bill:"hotel",
+    pax_gifts_receipt:"pax_gifts",parking_receipt:"parking",
+    crew_expense_receipt:"crew_expenses",aircraft_supplies_invoice:"aircraft_supplies",
+    other_expense:"other"
+  };
+  function syncManualCategory(){
+    const fixed=forcedCategories[$("simpleManualProfile").value];
+    const category=$("simpleManualCategory");
+    if(fixed)category.value=fixed;
+    // A fixed profile cannot contradict its category, but generic profiles may
+    // be associated with any expense category or no expense at all.
+    category.disabled=Boolean(fixed);
+  }
   function selectedDocumentType() {
     const value=$("documentType").value;
     return ["auto","invoice","fuel_release"].includes(value)?value:null;
@@ -76,6 +94,7 @@
   function chooseManualProfile() {
     if(!activeFile)return;
     const profile=$("simpleManualProfile").value;
+    syncManualCategory();
     const category=$("simpleManualCategory").value;
     if(!manualProfiles.includes(profile))return;
     const select=$("documentType");
@@ -100,6 +119,7 @@
     const options=["fuel","handling","taxi","city_tax","catering","hotel","pax_gifts","parking",
       "crew_expenses","aircraft_supplies","other","unknown"];
     $("simpleManualCategory").value=options.includes(category)?category:"unknown";
+    syncManualCategory();
     const reason=typeof detail?.reason==="string"?detail.reason:"";
     $("simpleTypeReason").textContent=reason||
       "Billy could not classify this document confidently. Select a profile to continue.";
@@ -430,6 +450,7 @@
   bind("simpleCapture", () => $("scanOpenCamera").click());
   bind("simpleAddFiles", () => $("filePicker").click());
   bind("simpleContinue", startAutomaticProcessing);
+  $("simpleManualProfile").addEventListener("change",syncManualCategory);
   bind("simpleUseManualProfile", chooseManualProfile);
   bind("simpleReviewChangeProfile", () => {
     if(window.BillyApp?.isBusy?.())return;
@@ -437,6 +458,7 @@
       $("simpleManualProfile").value=reviewedProfile.profile;
       $("simpleManualCategory").value=reviewedProfile.expense_category;
     }
+    syncManualCategory();
     $("simpleTypeReason").textContent="Change the profile or category, then Billy will re-read this document.";
     showScreen("type");
   });

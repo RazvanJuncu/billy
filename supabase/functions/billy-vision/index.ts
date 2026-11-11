@@ -8,17 +8,42 @@ const PROFILE_FIELDS = {
   fuel_invoice:["aircraft_registration","flight_number","airport_icao","service_date","fuel_quantity","fuel_unit","fuel_density"],
   handling_invoice:["aircraft_registration","flight_number","airport_icao","service_date"],
   taxi_receipt:["service_date","route_from","route_to","payment_method"],
+  city_tax_receipt:["property_name","guest_name","stay_start","stay_end","night_count","tax_rate"],
+  catering_bill:["service_date","delivery_location","flight_number","aircraft_registration","service_reference","meal_count"],
+  hotel_bill:["guest_name","check_in_date","check_out_date","number_of_nights","booking_reference","property_city"],
+  pax_gifts_receipt:["service_date","gift_description","item_count","aircraft_registration","flight_number"],
+  parking_receipt:["parking_location","parking_start","parking_end","vehicle_registration","service_date"],
+  crew_expense_receipt:["service_date","expense_purpose","crew_member","aircraft_registration","flight_number","payment_method"],
+  aircraft_supplies_invoice:["aircraft_registration","part_number","purchase_order_number","service_date"],
+  other_expense:["service_date","expense_purpose","payment_method"],
   generic_invoice:[],generic_receipt:[],payment_slip:[],supplier_statement:[],generic_document:[]
 };
 const INVOICE_FIELDS = [...BASE_INVOICE_FIELDS,...new Set(Object.values(PROFILE_FIELDS).flat())];
 const CATEGORIES = ["fuel","handling","taxi","city_tax","catering","hotel","pax_gifts","parking","crew_expenses","aircraft_supplies","other","unknown"];
 const PROFILE_NAMES = ["fuel_release",...Object.keys(PROFILE_FIELDS),"unknown"];
-const FORCED_CATEGORY = {fuel_release:"fuel",fuel_invoice:"fuel",handling_invoice:"handling",taxi_receipt:"taxi"};
+const FORCED_CATEGORY = {
+  fuel_release:"fuel",fuel_invoice:"fuel",handling_invoice:"handling",taxi_receipt:"taxi",
+  city_tax_receipt:"city_tax",catering_bill:"catering",hotel_bill:"hotel",
+  pax_gifts_receipt:"pax_gifts",parking_receipt:"parking",
+  crew_expense_receipt:"crew_expenses",aircraft_supplies_invoice:"aircraft_supplies",
+  other_expense:"other"
+};
+// These do not represent independent charges. Unknown category is allowed for
+// payment evidence/statements, but NOT used as an automatic expense category.
+const NON_EXPENSE_PROFILES = ["payment_slip","supplier_statement","generic_document"];
 const PROFILE_INSTRUCTIONS = {
   fuel_release:"Read the fuel delivery ticket itself; capture meters, delivered fuel and handwriting. Never derive unreadable meter digits.",
   fuel_invoice:"Fuel invoice: extract invoice totals, line items, delivered volume, unit, density, aircraft, flight and airport ONLY if printed.",
   handling_invoice:"Aviation handling invoice: extract services, charges, aircraft, flight, ICAO airport and service date ONLY if printed.",
   taxi_receipt:"Taxi/transport receipt: extract vendor, receipt number as invoice_number, transaction date, currency, total, route and payment method if printed. VAT and invoice number can be absent.",
+  city_tax_receipt:"City / tourist tax charge: extract accommodation property, guest if printed, stay dates, taxable nights, rate, amount and currency. Do not mistake the whole hotel bill for a standalone tax; never duplicate a hotel expense.",
+  catering_bill:"Aviation catering bill or receipt: extract items, service date, delivery location, flight and aircraft only if printed. Meal count is NOT passenger count unless explicitly stated.",
+  hotel_bill:"Hotel accommodation bill or receipt: extract hotel, guest, check-in/out dates, nights, booking reference, room charges, other fees and total if visible. Never invent stay dates from an invoice date.",
+  pax_gifts_receipt:"Passenger-gift expense: extract supplier, gifts/items, units, transaction date and total. No personal recipient details or flight assignment unless visibly printed.",
+  parking_receipt:"Parking payment receipt: capture facility, check-in/out time, vehicle if printed, paid amount and date. This is NOT automatically aircraft parking unless the document says so.",
+  crew_expense_receipt:"Crew expense receipt: read merchant, amount, date and expense purpose. Crew member, flight and aircraft only if explicitly present; do not infer from uploader.",
+  aircraft_supplies_invoice:"Aircraft supplies invoice: read supplier, item names, part numbers, quantities, purchase order if printed, totals and aircraft reference only if printed. Do not invent maintenance/airworthiness claims.",
+  other_expense:"Other operational expense: identify its actual nature from printed items, amount, currency and date. Do not force a different category or infer operational details.",
   generic_invoice:"Extract only visible invoice facts, without making up fields.",
   generic_receipt:"Extract visible receipt date, vendor, amount and currency. Do not invent invoice fields.",
   payment_slip:"Proof of card payment, NOT a new invoice or expense. Extract merchant, transaction date, amount and currency.",
@@ -69,7 +94,12 @@ const CLASSIFIER_PROMPT =
   "Select ONE primary document profile: "+PROFILE_NAMES.join(", ")+". Expense category (independent of document profile): "+CATEGORIES.join(", ")+". " +
   "A fuel release is a delivery ticket with quantities/meters, not a fuel invoice. Handling invoices itemize airport services. " +
   "Taxi receipts are transportation receipts. Payment card slips are payment_slip, not expenses. A supplier statement summarizes other invoices. " +
-  "Use generic_invoice, generic_receipt, generic_document when appropriate. If unclear use ambiguous or unknown, category unknown rather than inventing. " +
+  "For airport City Tax use city_tax_receipt, for catering use catering_bill, for hotel lodging use hotel_bill, " +
+  "for passenger gifts use pax_gifts_receipt, for parking use parking_receipt, for crew expenses use crew_expense_receipt, " +
+  "for aircraft consumables and supplies use aircraft_supplies_invoice, and for miscellaneous expenses use other_expense. " +
+  "Determine the PRIMARY financial purpose from visible item descriptions; do not classify a hotel bill as City Tax just because it includes a small tourist-tax line. " +
+  "Distinguish expense category from physical document form: a payment slip supports a charge, it is not another expense. " +
+  "Use generic_invoice, generic_receipt, generic_document ONLY when no specific profile fits. If unclear use ambiguous or unknown, category unknown rather than inventing. " +
   "If two or more PHYSICAL documents appear in one picture/page (invoice with attached POS slip), mark multiple_documents_visible true. " +
   "Do not confuse a multi-line invoice with multiple papers. Reason: one short sentence about visible evidence; exclude private data.";
 const FUEL_SCHEMA = {
@@ -341,8 +371,14 @@ function validate(doc,type,regions=[],profile=type==="fuel_release"?"fuel_releas
       warnings.push("Invoice number not found; verify the source.");
     if(!["generic_document","supplier_statement"].includes(profile) && !doc.supplier_name)
       warnings.push("Supplier not identified; verify the source.");
-    if(!["generic_document","supplier_statement"].includes(profile) && !doc.grand_total)
+    if(!NON_EXPENSE_PROFILES.includes(profile) && !doc.grand_total)
       warnings.push("Total not found; verify the source.");
+    // Some documents (including POS slips and statements) are supporting
+    // evidence, not expenses. Avoid false "total missing" prompts for those.
+    if(profile==="hotel_bill" && /^\d{4}-\d{2}-\d{2}$/.test(doc.check_in_date||"") &&
+      /^\d{4}-\d{2}-\d{2}$/.test(doc.check_out_date||"") &&
+      doc.check_out_date<doc.check_in_date)
+      warnings.push("Hotel check-out is before check-in; inspect both printed dates.");
     if(profile==="fuel_invoice" && doc.fuel_quantity&&!doc.fuel_unit)
       warnings.push("Fuel volume unit missing; verify the source.");
     if(profile==="taxi_receipt" && !doc.issue_date && !doc.service_date)
@@ -488,7 +524,8 @@ async function extract(req,principal){
       return error("Automatic classification failed. Retry or select a document profile manually.",502);
     }
     if(classification.status!=="confident"||classification.profile==="unknown"||
-      classification.expense_category==="unknown"||classification.multiple_documents_visible){
+      (classification.expense_category==="unknown"&&!NON_EXPENSE_PROFILES.includes(classification.profile))||
+      classification.multiple_documents_visible){
       return json({classification_required:true,classification,
         detail:classification.multiple_documents_visible?
           "More than one physical document detected. Multi-document processing is Stage 3; upload each separately for now.":
@@ -547,7 +584,7 @@ async function extract(req,principal){
     document_type:type,source_sha256:hash,state:"extracted",
     extracted_data:fields,regions_data:regions,validation_warnings:warnings,
     translation_metadata:translation,
-    review_metadata:{classification,extraction_profile_version:"1.0"},
+    review_metadata:{classification,extraction_profile_version:"1.1"},
     model_name:MODEL,token_usage:usage
   });
   return json({

@@ -19,16 +19,42 @@
     issue_date:"Issue date",due_date:"Due date",currency:"Currency",
     subtotal:"Subtotal",vat_total:"Tax",grand_total:"Grand total"
   };
+  // Category-specific fields are visible only when present, or when truly
+  // required to process that expense. Optional context must not turn yellow.
   const profileFields={
     fuel_invoice:{aircraft_registration:"Registration",flight_number:"Flight",airport_icao:"Airport",
       service_date:"Delivery date",fuel_quantity:"Fuel volume",fuel_unit:"Fuel unit",fuel_density:"Fuel density"},
     handling_invoice:{aircraft_registration:"Registration",flight_number:"Flight",airport_icao:"Airport",service_date:"Service date"},
-    taxi_receipt:{service_date:"Service date",route_from:"From",route_to:"To",payment_method:"Payment method"}
+    taxi_receipt:{service_date:"Travel date",route_from:"From",route_to:"To",payment_method:"Payment method"},
+    city_tax_receipt:{property_name:"Property",guest_name:"Guest",stay_start:"Stay from",
+      stay_end:"Stay to",night_count:"Taxable nights",tax_rate:"Tax rate"},
+    catering_bill:{service_date:"Service date",delivery_location:"Delivery location",
+      flight_number:"Flight",aircraft_registration:"Registration",service_reference:"Service reference",meal_count:"Meals"},
+    hotel_bill:{guest_name:"Guest",check_in_date:"Check-in",check_out_date:"Check-out",
+      number_of_nights:"Nights",booking_reference:"Booking #",property_city:"City"},
+    pax_gifts_receipt:{service_date:"Purchase date",gift_description:"Gift description",
+      item_count:"Items",aircraft_registration:"Registration",flight_number:"Flight"},
+    parking_receipt:{parking_location:"Parking location",parking_start:"Start",parking_end:"End",
+      vehicle_registration:"Vehicle",service_date:"Parking date"},
+    crew_expense_receipt:{service_date:"Expense date",expense_purpose:"Purpose",
+      crew_member:"Crew member",aircraft_registration:"Registration",
+      flight_number:"Flight",payment_method:"Payment method"},
+    aircraft_supplies_invoice:{aircraft_registration:"Registration",part_number:"Part number",
+      purchase_order_number:"Purchase order",service_date:"Purchase date"},
+    other_expense:{service_date:"Expense date",expense_purpose:"Purpose",payment_method:"Payment method"}
   };
   const requiredByProfile={
     fuel_invoice:["supplier_name","grand_total","fuel_quantity","fuel_unit"],
     handling_invoice:["supplier_name","grand_total","invoice_number"],
     taxi_receipt:["grand_total","supplier_name"],
+    city_tax_receipt:["grand_total"],
+    catering_bill:["supplier_name","grand_total"],
+    hotel_bill:["supplier_name","grand_total"],
+    pax_gifts_receipt:["grand_total"],
+    parking_receipt:["grand_total"],
+    crew_expense_receipt:["grand_total"],
+    aircraft_supplies_invoice:["supplier_name","grand_total","invoice_number"],
+    other_expense:["grand_total"],
     generic_receipt:["grand_total"],
     payment_slip:["grand_total"],
     supplier_statement:["supplier_name"],

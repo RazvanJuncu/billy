@@ -123,3 +123,66 @@ test("Offline file starts only when authenticated engine connects; leaving proce
   cancelled.emit("billy:engine-updated");
   assert.equal(cancelled.getScans(),0);
 });
+
+test("All 11 JetRead expense categories have consistent specialized extraction profiles",()=>{
+  const block=backend.slice(backend.indexOf("const BASE_INVOICE_FIELDS"),
+    backend.indexOf("const FUEL_SCHEMA"));
+  const metadata=vm.runInNewContext(block+`\n({
+    categories:CATEGORIES,profiles:PROFILE_FIELDS,profileNames:PROFILE_NAMES,
+    forced:FORCED_CATEGORY,instructions:PROFILE_INSTRUCTIONS,invoiceSchemaFor
+  })`);
+  const expected={
+    fuel:["fuel_invoice","fuel_release"],handling:["handling_invoice"],taxi:["taxi_receipt"],
+    city_tax:["city_tax_receipt"],catering:["catering_bill"],hotel:["hotel_bill"],
+    pax_gifts:["pax_gifts_receipt"],parking:["parking_receipt"],
+    crew_expenses:["crew_expense_receipt"],aircraft_supplies:["aircraft_supplies_invoice"],
+    other:["other_expense"]
+  };
+  for(const [category,profiles] of Object.entries(expected)){
+    assert.ok(metadata.categories.includes(category),category+" category is missing");
+    for(const profile of profiles){
+      assert.ok(metadata.profileNames.includes(profile),profile+" absent from classifier schema");
+      assert.equal(metadata.forced[profile],category,profile+" wrong category");
+      assert.ok(metadata.instructions[profile]?.length>30,profile+" lacks extraction instructions");
+      assert.match(html,new RegExp('value="'+profile+'"'),profile+" missing from manual fallback");
+      assert.match(flow,new RegExp('"'+profile+'"'),profile+" missing in UI controller");
+      if(profile!=="fuel_release"){
+        assert.ok(metadata.profiles[profile]?.length>=3,profile+" lacks specialist fields");
+        const schema=metadata.invoiceSchemaFor(profile);
+        for(const field of metadata.profiles[profile]){
+          assert.ok(schema.required.includes(field),profile+" schema lost "+field);
+          assert.match(review,new RegExp('"'+field+'"'),profile+" review has no "+field);
+          assert.match(ramp,new RegExp(field+':'),profile+" compact review has no "+field);
+        }
+      }
+    }
+  }
+  assert.ok(metadata.categories.includes("unknown"),"Unknown should remain available");
+  assert.match(backend,/NON_EXPENSE_PROFILES/);
+});
+
+test("Manual category follows a selected specialized profile but remains editable for generic documents",()=>{
+  const h=bootFlow();
+  h.emit("billy:document-loaded",{file:{name:"hotel.jpg"}});
+  h.emit("billy:classification-needs-review",{classification:{
+    status:"ambiguous",profile:"hotel_bill",expense_category:"hotel"
+  }});
+  assert.equal(h.element("simpleManualProfile").value,"hotel_bill");
+  assert.equal(h.element("simpleManualCategory").value,"hotel");
+  assert.equal(h.element("simpleManualCategory").disabled,true);
+  h.element("simpleManualProfile").value="parking_receipt";
+  h.element("simpleManualProfile").dispatchEvent({type:"change"});
+  assert.equal(h.element("simpleManualCategory").value,"parking");
+  h.element("simpleUseManualProfile").click();
+  assert.equal(h.element("documentType").dataset.profileOverride,"parking_receipt");
+  assert.equal(h.element("documentType").dataset.categoryOverride,"parking");
+
+  h.emit("billy:classification-needs-review",{classification:{
+    status:"ambiguous",profile:"generic_invoice",expense_category:"unknown"
+  }});
+  assert.equal(h.element("simpleManualCategory").disabled,false);
+  h.element("simpleManualCategory").value="crew_expenses";
+  h.element("simpleUseManualProfile").click();
+  assert.equal(h.element("documentType").dataset.profileOverride,"generic_invoice");
+  assert.equal(h.element("documentType").dataset.categoryOverride,"crew_expenses");
+});

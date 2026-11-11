@@ -3,6 +3,11 @@
 "use strict";
 const $ = id => document.getElementById(id);
 const invoiceFieldKeys = [["supplier_name","Supplier"],["supplier_tax_id","Supplier tax ID"],["customer_name","Customer"],["invoice_number","Invoice #"],["issue_date","Issue date"],["due_date","Due date"],["currency","Currency"],["subtotal","Subtotal"],["vat_total","VAT total"],["grand_total","Grand total"]];
+// Layouts share existing review, approval, evidence and CSV infrastructure.
+const receiptFields=[
+  ["supplier_name","Vendor"],["invoice_number","Receipt reference"],
+  ["issue_date","Date"],["currency","Currency"],["grand_total","Amount"]
+];
 const invoiceProfiles={
   generic_invoice:{title:"Invoice",fields:invoiceFieldKeys,entries:"Invoice line items"},
   fuel_invoice:{title:"Fuel Invoice",fields:[...invoiceFieldKeys,
@@ -12,18 +17,44 @@ const invoiceProfiles={
   handling_invoice:{title:"Handling Invoice",fields:[...invoiceFieldKeys,
     ["aircraft_registration","Registration"],["flight_number","Flight"],
     ["airport_icao","Airport (ICAO)"],["service_date","Service date"]],entries:"Handling charges"},
-  taxi_receipt:{title:"Taxi Receipt",fields:[
-    ["supplier_name","Provider"],["invoice_number","Receipt #"],["issue_date","Date"],["service_date","Service date"],
-    ["currency","Currency"],["grand_total","Total"],["route_from","From"],["route_to","To"],
-    ["payment_method","Payment method"]],entries:"Receipt items"},
-  generic_receipt:{title:"Receipt",fields:[
-    ["supplier_name","Provider"],["invoice_number","Receipt #"],["issue_date","Date"],
-    ["currency","Currency"],["grand_total","Total"]],entries:"Receipt items"},
+  taxi_receipt:{title:"Taxi Receipt",fields:[...receiptFields,
+    ["service_date","Travel date"],["route_from","From"],["route_to","To"],
+    ["payment_method","Payment method"]],entries:"Transport charges"},
+  city_tax_receipt:{title:"City Tax",fields:[...receiptFields,
+    ["property_name","Property"],["guest_name","Guest"],["stay_start","Stay from"],
+    ["stay_end","Stay to"],["night_count","Taxable nights"],["tax_rate","Tax rate"]],entries:"Tourist tax charges"},
+  catering_bill:{title:"Catering",fields:[...invoiceFieldKeys,
+    ["service_date","Service date"],["delivery_location","Delivery location"],
+    ["flight_number","Flight"],["aircraft_registration","Registration"],
+    ["service_reference","Service reference"],["meal_count","Meal count"]],entries:"Catering items"},
+  hotel_bill:{title:"Hotel",fields:[...invoiceFieldKeys,
+    ["guest_name","Guest"],["check_in_date","Check-in"],["check_out_date","Check-out"],
+    ["number_of_nights","Nights"],["booking_reference","Booking #"],
+    ["property_city","City"]],entries:"Accommodation charges"},
+  pax_gifts_receipt:{title:"Passenger Gifts",fields:[...receiptFields,
+    ["service_date","Purchase date"],["gift_description","Gift description"],
+    ["item_count","Number of items"],["aircraft_registration","Registration"],
+    ["flight_number","Flight"]],entries:"Gift purchases"},
+  parking_receipt:{title:"Parking",fields:[...receiptFields,
+    ["parking_location","Parking location"],["parking_start","Start"],
+    ["parking_end","End"],["vehicle_registration","Vehicle"],
+    ["service_date","Parking date"]],entries:"Parking charges"},
+  crew_expense_receipt:{title:"Crew Expenses",fields:[...receiptFields,
+    ["service_date","Expense date"],["expense_purpose","Purpose"],
+    ["crew_member","Crew member"],["aircraft_registration","Registration"],
+    ["flight_number","Flight"],["payment_method","Payment method"]],entries:"Crew purchases"},
+  aircraft_supplies_invoice:{title:"Aircraft Supplies",fields:[...invoiceFieldKeys,
+    ["aircraft_registration","Registration"],["part_number","Part number"],
+    ["purchase_order_number","Purchase order"],["service_date","Purchase date"]],entries:"Supply line items"},
+  other_expense:{title:"Other Expense",fields:[...receiptFields,
+    ["service_date","Expense date"],["expense_purpose","Purpose"],
+    ["payment_method","Payment method"]],entries:"Other charges"},
+  generic_receipt:{title:"Receipt",fields:receiptFields,entries:"Receipt items"},
   payment_slip:{title:"Payment Slip",fields:[
     ["supplier_name","Merchant"],["invoice_number","Transaction reference"],
     ["issue_date","Date"],["currency","Currency"],["grand_total","Amount"]],entries:"Payment details"},
   supplier_statement:{title:"Supplier Statement",fields:invoiceFieldKeys,entries:"Statement entries"},
-  generic_document:{title:"Document",fields:invoiceFieldKeys,entries:"Document rows"}
+  generic_document:{title:"Document",fields:receiptFields,entries:"Document rows"}
 };
 const invoiceLineKeys = [["description","Description"],["quantity","Quantity"],["unit_price","Unit price"],["net_amount","Net"],["vat_rate","VAT %"],["vat_amount","VAT"]];
 const fuelFieldKeys = [["release_number","Release #"],["supplier_name","Fuel supplier"],["operator_name","Operator"],["airport","Airport"],["aircraft_registration","Registration"],["flight_number","Flight"],["delivery_date","Delivery date"],["fuel_type","Fuel type"],["requested_quantity","Requested fuel"],["delivered_quantity","Delivered fuel"],["quantity_unit","Unit"],["truck_identifier","Truck"],["fueler_name","Fueler"],["receiver_name","Receiver"],["meter_start","Meter start"],["meter_finish","Meter finish"]];
