@@ -47,8 +47,10 @@ test("Review highlights uncertain evidence and browser cache version is advanced
   assert.match(review,/review-field-alert/);
   assert.match(css,/review-field-alert/);
   assert.match(html,/vision-review\.js\?v=0\.11\.2/);
-  assert.match(html,/simple\.js\?v=1\.3\.1/);
-  assert.match(read("site/sw.js"),/v57-streamlined-scan/);
+  const uiVersion=html.match(/simple\.js\?v=(\d+)\.(\d+)\.(\d+)/);
+  assert.ok(uiVersion && (+uiVersion[1]*1e6 + +uiVersion[2]*1e3 + +uiVersion[3]) >= 1003002);
+  const cacheVersion=read("site/sw.js").match(/billydpi-orbit-v(\d+)-/);
+  assert.ok(cacheVersion && Number(cacheVersion[1]) >= 58);
 });
 
 test("Multilingual extraction keeps source-language audit and exports English-readable fields",()=>{
