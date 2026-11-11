@@ -341,6 +341,244 @@ function parseFuelQuantity(value){
   const thousands=/^\d{1,3}(?:,\d{3})+$/;
   return thousands.test(raw)?Number(raw.replace(/,/g,"")):parseAmount(raw);
 }
+// Billy Normalization Engine 1.0: typed, conservative, auditable values.
+// Source OCR and operator-corrected strings are NEVER silently overwritten.
+const NORMALIZATION_VERSION="1.0";
+const ISO_CURRENCIES=new Set(("AED AFN ALL AMD ANG AOA ARS AUD AWG AZN BAM BBD BDT BGN BHD BIF BMD BND BOB BRL BSD BTN BWP BYN BZD CAD CDF CHF CLP CNY COP CRC CUP CVE CZK DJF DKK DOP DZD EGP ERN ETB EUR FJD FKP GBP GEL GHS GIP GMD GNF GTQ GYD HKD HNL HTG HUF IDR ILS INR IQD IRR ISK JMD JOD JPY KES KGS KHR KMF KRW KWD KYD KZT LAK LBP LKR LRD LSL LYD MAD MDL MGA MKD MMK MNT MOP MRU MUR MVR MWK MXN MYR MZN NAD NGN NIO NOK NPR NZD OMR PAB PEN PGK PHP PKR PLN PYG QAR RON RSD RUB RWF SAR SBD SCR SDG SEK SGD SHP SLE SLL SOS SRD SSP STN SVC SYP SZL THB TJS TMT TND TOP TRY TTD TWD TZS UAH UGX USD UYU UZS VES VND VUV WST XAF XCD XOF XPF YER ZAR ZMW").split(" "));
+const NUMERIC_FIELDS=new Set(["grand_total","subtotal","vat_total","unit_price","net_amount","vat_amount","quantity","fuel_quantity","delivered_quantity","requested_quantity","fuel_density","meter_start","meter_finish","night_count","number_of_nights","meal_count","item_count","tax_rate","vat_rate"]);
+const MONETARY_FIELDS=new Set(["grand_total","subtotal","vat_total","unit_price","net_amount","vat_amount"]);
+const COUNT_FIELDS=new Set(["night_count","number_of_nights","meal_count","item_count","meter_start","meter_finish"]);
+const DATE_FIELDS=new Set(["issue_date","due_date","delivery_date","service_date","document_date","check_in_date","check_out_date","stay_start","stay_end","parking_start","parking_end"]);
+function canonicalCurrency(raw){
+  const input=String(raw??"").normalize("NFKC").trim();
+  const aliases={"€":"EUR","EURO":"EUR","EUROS":"EUR","LEI":"RON","LEU":"RON","RON":"RON","£":"GBP"};
+  const normalized=aliases[input.toUpperCase()]||input.toUpperCase();
+  return ISO_CURRENCIES.has(normalized)?
+    {value:normalized,status:"ok"}:
+    {value:null,status:"ambiguous",reason:"Currency is missing, ambiguous or not a recognized ISO 4217 code."};
+}
+function canonicalNumber(raw){
+  if(typeof raw!=="string"&&typeof raw!=="number")return {value:null,status:"invalid",reason:"Number is not text."};
+  let x=String(raw).normalize("NFKC").replace(/[\u00a0\u202f]/g," ").trim().replace(/\u2212/g,"-");
+  // Only documented currency identifiers/symbols can accompany a monetary
+  // amount. Other text stays invalid rather than being stripped destructively.
+  x=x.replace(/^(?:[€£]|(?:[A-Z]{3}|LEI|EURO))\s*/i,"")
+     .replace(/\s*(?:[€£]|(?:[A-Z]{3}|LEI|EURO))$/i,"").trim();
+  if(!x)return {value:null,status:"invalid",reason:"No numeric value."};
+  if(x.includes(" ")){
+    if(!/^[+-]?\d{1,3}(?: \d{3})+(?:[.,]\d{1,6})?$/.test(x))
+      return {value:null,status:"invalid",reason:"Invalid spaced digit grouping."};
+    x=x.replace(/ /g,"");
+  }
+  if(!/^[+-]?\d[\d.,]*$/.test(x))return {value:null,status:"invalid",reason:"Number contains unsupported characters."};
+  const sign=x[0]==="-"||x[0]==="+"?x[0]:"";
+  const body=sign?x.slice(1):x;
+  const dots=(body.match(/\./g)||[]).length,commas=(body.match(/,/g)||[]).length;
+  let numeric=body;
+  if(dots&&commas){
+    const decimal=body.lastIndexOf(".")>body.lastIndexOf(",")?".":",";
+    const grouping=decimal==="."?",":".";
+    const parts=body.split(decimal);
+    if(parts.length!==2||!new RegExp("^\\d{1,3}(?:\\"+grouping+"\\d{3})*$").test(parts[0])||
+      !/^\d{1,6}$/.test(parts[1]))
+      return {value:null,status:"invalid",reason:"Invalid thousands/decimal separator pattern."};
+    numeric=parts[0].split(grouping).join("")+"."+parts[1];
+  }else if(dots+commas){
+    const sep=dots?".":",";
+    const parts=body.split(sep);
+    if(parts.length>2){
+      if(!new RegExp("^\\d{1,3}(?:\\"+sep+"\\d{3}){2,}$").test(body))
+        return {value:null,status:"invalid",reason:"Invalid grouped thousands."};
+      numeric=parts.join("");
+    }else{
+      const [whole,fraction]=parts;
+      if(!whole||!fraction||!/^\d+$/.test(whole)||!/^\d+$/.test(fraction))
+        return {value:null,status:"invalid",reason:"Invalid decimal number."};
+      if(fraction.length===3&&whole!=="0"&&whole.length<=3)
+        return {value:null,status:"ambiguous",reason:"One separator with three trailing digits could mean decimals or thousands."};
+      if(fraction.length>6)return {value:null,status:"invalid",reason:"Unsupported precision."};
+      numeric=whole+"."+fraction;
+    }
+  }
+  const value=Number(sign+numeric);
+  if(!Number.isFinite(value)||!Number.isSafeInteger(Math.trunc(value))||Math.abs(value)>1e12)
+    return {value:null,status:"invalid",reason:"Number exceeds supported safe range."};
+  return {value,status:"ok"};
+}
+function canonicalDate(raw){
+  const text=String(raw??"").normalize("NFKC").trim();
+  let year,month,day;
+  let m=text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(m){year=+m[1];month=+m[2];day=+m[3];}
+  else if((m=text.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/))){
+    year=+m[1];month=+m[2];day=+m[3];
+  }else if((m=text.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/))){
+    day=+m[1];month=+m[2];year=+m[3];
+  }else if((m=text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/))){
+    if(+m[1]<=12&&+m[2]<=12)
+      return {value:null,status:"ambiguous",reason:"Slash date could be DD/MM or MM/DD; confirm the source."};
+    day=+m[1];month=+m[2];year=+m[3];
+    if(month>12)return {value:null,status:"ambiguous",reason:"Likely US-style date; review rather than guessing order."};
+  }else if((m=text.match(/^(\d{1,2})[ -]([a-z]{3,9})[ -](\d{4})$/i))){
+    const months=["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
+    day=+m[1];month=months.indexOf(m[2].toLowerCase().slice(0,3))+1;year=+m[3];
+  }else return {value:null,status:"ambiguous",reason:"Date format or timezone is not sufficiently explicit."};
+  if(year<1900||year>2100||month<1||month>12||day<1||day>31){
+    return {value:null,status:"invalid",reason:"Invalid calendar date."};
+  }
+  const date=new Date(Date.UTC(year,month-1,day));
+  if(date.getUTCFullYear()!==year||date.getUTCMonth()+1!==month||date.getUTCDate()!==day)
+    return {value:null,status:"invalid",reason:"Calendar day does not exist."};
+  return {value:[year,String(month).padStart(2,"0"),String(day).padStart(2,"0")].join("-"),status:"ok"};
+}
+function canonicalRegistration(raw){
+  const name=String(raw??"").normalize("NFKC").replace(/[\u2010-\u2015]/g,"-").trim().toUpperCase();
+  const domestic=name.match(/^YR[-\s]?([A-Z0-9]{3})$/);
+  if(domestic)return {value:"YR-"+domestic[1],status:"ok"};
+  if(name.startsWith("YR"))
+    return {value:null,status:"ambiguous",reason:"Romanian registration must be verified before applying YR-XXX format."};
+  return /^[A-Z0-9]+(?:-[A-Z0-9]+)*$/.test(name)&&name.length>=4&&name.length<=12?
+    {value:name,status:"ok"}:
+    {value:null,status:"ambiguous",reason:"Foreign registration is not reliably recognizable; keep as printed."};
+}
+function canonicalUnit(raw){
+  const u=String(raw??"").normalize("NFKC").trim().toLowerCase().replace(/\s+/g," ");
+  if(/^(?:l|lt|ltr|litres?|liters?)$/.test(u))return {value:"L",status:"ok"};
+  if(/^(?:kg|kilograms?|kilogrammes?)$/.test(u))return {value:"kg",status:"ok"};
+  if(/^(?:t|tonnes?|metric tons?)$/.test(u))return {value:"t",status:"ok"};
+  if(/^(?:m3|m³|cubic meters?|cubic metres?)$/.test(u))return {value:"m³",status:"ok"};
+  if(/^(?:us gal|us gallons?|gallons? us|usg)$/.test(u))return {value:"US gal",status:"ok"};
+  if(/^(?:imp gal|imperial gallons?|uk gallons?)$/.test(u))return {value:"Imp gal",status:"ok"};
+  if(/^(?:gal|gallons?)$/.test(u))
+    return {value:null,status:"ambiguous",reason:"Gallons need explicit US or Imperial qualification."};
+  return {value:null,status:"invalid",reason:"Unrecognized fuel measurement unit."};
+}
+function canonicalDensity(raw){
+  const s=String(raw??"").normalize("NFKC").trim().replace(/^[Dd]\s*=\s*/,"");
+  let unit=null,number=s;
+  const m=s.match(/^(.+?)\s*(kg\s*\/\s*L|kg\s*\/\s*m[³3]|g\s*\/\s*cm[³3]|g\s*\/\s*mL)$/i);
+  if(m){number=m[1].trim();unit=m[2].toLowerCase().replace(/\s+/g,"");}
+  const n=canonicalNumber(number);
+  if(n.status!=="ok")return n;
+  if(!unit)return {value:null,status:"ambiguous",reason:"Fuel density has no explicit unit; do not assume kg/L."};
+  const value=unit==="kg/l"||unit==="g/cm3"||unit==="g/cm³"||unit==="g/ml"?n.value:n.value/1000;
+  if(value<=0||value>2)return {value:null,status:"invalid",reason:"Density outside a conservative plausible range; verify source."};
+  return {value,status:"ok",unit:"kg/L"};
+}
+function canonicalFlight(raw){
+  const value=String(raw??"").normalize("NFKC").trim().toUpperCase();
+  const compact=value.replace(/[\s-]/g,"");
+  return /^[A-Z]{2,4}\d{1,5}[A-Z]?$/.test(compact)?
+    {value:compact,status:"ok"}:{value:null,status:"ambiguous",reason:"Flight number format not confidently identified."};
+}
+function normalizeDocument(document,type,profile="generic_invoice"){
+  const fields={},values={},issues=[],line_items=[];
+  const issue=(path,code,message)=>{
+    if(issues.length<100)issues.push({field_path:path,code,message});
+  };
+  const add=(path,raw,parse)=>{
+    if(raw===null||raw===undefined||String(raw).trim()==="")return;
+    const result=parse(raw);
+    const item={raw:String(raw),value:result.value??null,
+      status:result.status==="ok"?(String(raw).trim()===String(result.value)?"unchanged":"normalized"):result.status};
+    if(result.unit)item.unit=result.unit;
+    if(result.status!=="ok"){
+      item.reason=result.reason||"Cannot normalize confidently.";
+      issue(path,result.status,item.reason);
+    }else values[path]=result.value;
+    fields[path]=item;
+  };
+  if(!document||typeof document!=="object")return {
+    version:NORMALIZATION_VERSION,status:"needs_review",fields,values,issues:[{field_path:"",code:"missing_document",message:"No document."}]};
+  const money=(raw)=>canonicalNumber(raw);
+  for(const [name,raw] of Object.entries(document)){
+    if(raw===null||raw===undefined||Array.isArray(raw)||name==="notes")continue;
+    if(name==="aircraft_registration")add(name,raw,canonicalRegistration);
+    else if(name==="currency")add(name,raw,canonicalCurrency);
+    else if(name==="flight_number")add(name,raw,canonicalFlight);
+    else if(name==="airport_icao")add(name,raw,v=>/^[A-Z]{4}$/.test(String(v).trim().toUpperCase())?
+      {value:String(v).trim().toUpperCase(),status:"ok"}:
+      {value:null,status:"ambiguous",reason:"ICAO identifier must have four letters."});
+    else if(DATE_FIELDS.has(name))add(name,raw,canonicalDate);
+    else if(name==="fuel_density")add(name,raw,canonicalDensity);
+    else if(name==="fuel_unit"||name==="quantity_unit")add(name,raw,canonicalUnit);
+    else if(NUMERIC_FIELDS.has(name)){
+      if(name==="delivered_quantity"||name==="fuel_quantity"||name==="requested_quantity"){
+        const match=String(raw).trim().match(/^(.+?)\s+(US gal|Imp gal|imperial gallons?|us gallons?|litres?|liters?|l|kg|tonnes?|t|m³|m3)$/i);
+        if(match){
+          add(name,match[1],canonicalNumber);
+          const inline=canonicalUnit(match[2]);
+          if(inline.status==="ok")values[name+"_inline_unit"]=inline.value;
+          else issue(name,"unit_ambiguous",inline.reason);
+          continue;
+        }
+      }
+      add(name,raw,canonicalNumber);
+      if(COUNT_FIELDS.has(name)&&name in values&&(!Number.isInteger(values[name])||values[name]<0)){
+        delete values[name];fields[name].status="invalid";fields[name].value=null;
+        fields[name].reason="Expected a non-negative whole number.";issue(name,"invalid",fields[name].reason);
+      }
+    }
+  }
+  const currency=values.currency||null;
+  const amounts={};
+  for(const name of ["subtotal","vat_total","grand_total"]){
+    if(name in values)amounts[name]={value:values[name],currency};
+  }
+  const lines=Array.isArray(document.lines)?document.lines:[];
+  for(let i=0;i<lines.length;i++){
+    const raw=lines[i],item={index:i,values:{}};
+    for(const name of ["quantity","unit_price","net_amount","vat_rate","vat_amount"]){
+      if(raw?.[name]===null||raw?.[name]===undefined||String(raw[name]).trim()==="")continue;
+      let text=raw[name];
+      if(name==="vat_rate"&&typeof text==="string"&&text.trim().endsWith("%")){
+        text=text.trim().slice(0,-1).trim();
+      }else if(name==="vat_rate"){
+        issue("lines["+i+"].vat_rate","rate_unit_missing","VAT rate must explicitly use % for a standardized percentage.");
+        continue;
+      }
+      const parsed=canonicalNumber(text);
+      const path="lines["+i+"]."+name;
+      if(parsed.status==="ok"){
+        item.values[name]=MONETARY_FIELDS.has(name)?{value:parsed.value,currency}:parsed.value;
+        fields[path]={raw:String(raw[name]),value:parsed.value,status:String(raw[name]).trim()===String(parsed.value)?"unchanged":"normalized"};
+      }else{
+        fields[path]={raw:String(raw[name]),value:null,status:parsed.status,reason:parsed.reason};
+        issue(path,parsed.status,parsed.reason);
+      }
+    }
+    line_items.push(item);
+  }
+  const unit=values.fuel_unit||values.quantity_unit||values.fuel_quantity_inline_unit||
+    values.delivered_quantity_inline_unit||null;
+  const volumeValue=values.fuel_quantity??values.delivered_quantity??null;
+  const fuel={unit,quantity:volumeValue,litres:null,kilograms:null,metric_tonnes:null,density_kg_per_litre:values.fuel_density??null};
+  if(unit&&volumeValue!==null){
+    if(unit==="L")fuel.litres=volumeValue;
+    else if(unit==="m³")fuel.litres=volumeValue*1000;
+    else if(unit==="US gal")fuel.litres=volumeValue*3.785411784;
+    else if(unit==="Imp gal")fuel.litres=volumeValue*4.54609;
+    else if(unit==="kg")fuel.kilograms=volumeValue;
+    else if(unit==="t")fuel.kilograms=volumeValue*1000;
+    if(fuel.litres!==null&&fuel.density_kg_per_litre!==null)
+      fuel.kilograms=fuel.litres*fuel.density_kg_per_litre;
+    if(fuel.kilograms!==null)fuel.metric_tonnes=fuel.kilograms/1000;
+    for(const name of ["litres","kilograms","metric_tonnes"])
+      if(fuel[name]!==null)fuel[name]=Math.round(fuel[name]*1e6)/1e6;
+  }else if(volumeValue!==null){
+    issue(type==="fuel_release"?"delivered_quantity":"fuel_quantity","unit_missing","Fuel quantity has no verified unit for inventory conversion.");
+  }
+  if((unit==="L"||unit==="m³"||unit==="US gal"||unit==="Imp gal")&&
+    fuel.litres!==null&&fuel.density_kg_per_litre===null){
+    // Missing density does not invalidate volume. Do not infer fuel mass.
+    fuel.kilograms=null;fuel.metric_tonnes=null;
+  }
+  if(currency===null&&Object.keys(amounts).length)
+    issue("currency","currency_missing","Amounts cannot be inventoried in a currency without a verified ISO code.");
+  return {version:NORMALIZATION_VERSION,document_type:type,profile,status:issues.length?"needs_review":"ready",
+    values,amounts,fuel,line_items,fields,issues};
+}
+
 function validate(doc,type,regions=[],profile=type==="fuel_release"?"fuel_release":"generic_invoice") {
   const warnings=[];
   if(type==="fuel_release"){
