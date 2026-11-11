@@ -211,7 +211,7 @@ test("Confidence Engine v1 ignores positive meter equality but retains real risk
 test("Machine translation alone never turns an otherwise valid field yellow",()=>{
   assert.doesNotMatch(ramp,/translation_needs_review/);
   assert.match(ramp,/originalSourceText\?\?value/);
-  assert.match(ramp,/translated\.source_text/);
+  assert.match(ramp,/translated\?\.source_text/);
   assert.match(ramp,/translatedPaths\.get\(path\)/);
   assert.match(ramp,/pair\.source_text/);
   const injected=ramp.replace("  function mount(result,endpoint,getHeaders,sourceFile){",
