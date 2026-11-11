@@ -5,15 +5,18 @@ const path=require("node:path");
 const read=p=>fs.readFileSync(path.join(__dirname,"..",p),"utf8");
 const html=read("site/index.html");
 const scanner=read("site/scanner.js");
-const styles=read("site/brand.css");
+const styles=read("site/scanner-enhance.css");
 
-test("Scan editor offers an optional enhancement switch, defaulting to original",()=>{
-  assert.match(html,/id="scanEnhance"/);
-  assert.match(html,/Enhance text/);
-  assert.match(scanner,/let enhanceText = false/);
-  assert.match(scanner,/enhanceText = false;\s*\$\("scanEnhance"\)\.checked = false/);
-  assert.match(scanner,/scanEnhance"\)\.addEventListener\("change"/);
-  assert.match(styles,/\.scan-enhance-toggle/);
+test("Scan editor has a white/gray sparkles icon enabled by default, not a text toggle",()=>{
+  assert.match(html,/id="scanEnhance" class="scan-enhance-icon" type="button" aria-pressed="true"/);
+  assert.doesNotMatch(html,/<span>Enhance text<\/span>/);
+  assert.match(html,/id="scanCanvasWrap"[\s\S]*?id="scanEnhance"/);
+  assert.match(scanner,/let enhanceText = true/);
+  assert.match(scanner,/enhanceText = true;\s*updateEnhanceControl\(\)/);
+  assert.match(scanner,/scanEnhance"\)\.addEventListener\("click"/);
+  assert.match(scanner,/aria-pressed/);
+  assert.match(styles,/\.scan-enhance-icon\[aria-pressed="false"\]/);
+  assert.match(styles,/color:#fff/);
 });
 test("Enhanced scan creates a derivative; original pixels remain available",()=>{
   assert.match(scanner,/if \(!enhanceText\) return out/);
