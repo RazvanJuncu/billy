@@ -35,6 +35,11 @@ test("Autonomous entity checks are selective, public and bounded",()=>{
     "No source fragment means no responsible online identification");
   const truncated=h.plan({supplier_name:"Airserv..."},[]);
   assert.equal(truncated.length,1);
+  assert.equal(h.plan({supplier_name:"CAT Air Service AG"},[],["supplier_name"]).length,1,
+    "AI should be allowed to request a targeted public lookup even for clear text when identity itself is uncertain");
+  assert.equal(h.plan({customer_name:"My Jet"},[],["customer_name"]).length,0,
+    "AI must not search private customer fields");
+
 });
 test("Search grounding is a provenance sidecar, never an OCR auto-correction",()=>{
   assert.match(backend,/async function autoVerifyEntities\(fields,regions\)/);
@@ -43,6 +48,7 @@ test("Search grounding is a provenance sidecar, never an OCR auto-correction",()
   assert.match(backend,/tools:\[\{google_search:\{\}\}\]/);
   assert.match(backend,/candidate\?\.groundingMetadata/);
   assert.match(backend,/MAX_AUTO_ENTITY_LOOKUPS=2/);
+  assert.match(backend,/entity_check_fields:ENTITY_HINTS/);
   assert.match(backend,/status==="possible_match"/);
   assert.doesNotMatch(backend,/api\/vision\/verify-entity/);
   assert.match(review,/result\.external_checks\?\.checks/);
