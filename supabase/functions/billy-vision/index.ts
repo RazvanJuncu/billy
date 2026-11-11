@@ -443,7 +443,7 @@ function canonicalRegistration(raw){
 }
 function canonicalUnit(raw){
   const u=String(raw??"").normalize("NFKC").trim().toLowerCase().replace(/\s+/g," ");
-  if(/^(?:l|lt|ltr|litres?|liters?)$/.test(u))return {value:"L",status:"ok"};
+  if(/^(?:l|lt|ltr|ltrs|litres?|liters?|litri|litru|litrii)$/.test(u))return {value:"L",status:"ok"};
   if(/^(?:kg|kilograms?|kilogrammes?)$/.test(u))return {value:"kg",status:"ok"};
   if(/^(?:t|tonnes?|metric tons?)$/.test(u))return {value:"t",status:"ok"};
   if(/^(?:m3|m³|cubic meters?|cubic metres?)$/.test(u))return {value:"m³",status:"ok"};
@@ -502,11 +502,27 @@ function normalizeDocument(document,type,profile="generic_invoice"){
     else if(DATE_FIELDS.has(name))add(name,raw,canonicalDate);
     else if(name==="fuel_density")add(name,raw,canonicalDensity);
     else if(name==="fuel_unit"||name==="quantity_unit")add(name,raw,canonicalUnit);
+    else if(name==="tax_rate"||name==="vat_rate"){
+      const rate=String(raw).trim();
+      const percent=rate.match(/^(.+?)\s*%$/);
+      const perNight=name==="tax_rate"?rate.match(/^(.+?)\s+(RON|EUR|USD|CHF|GBP)\s*\/\s*(?:night|noapte)$/i):null;
+      if(percent){
+        add(name,percent[1],canonicalNumber);
+        if(fields[name]){fields[name].raw=rate;fields[name].unit="%";values[name+"_unit"]="%";}
+      }else if(perNight){
+        add(name,perNight[1],canonicalNumber);
+        if(fields[name]){fields[name].raw=rate;fields[name].unit=perNight[2].toUpperCase()+"/night";values[name+"_unit"]=fields[name].unit;}
+      }else{
+        fields[name]={raw:rate,value:null,status:"ambiguous",reason:"Rate is missing an explicit % or currency/night unit."};
+        issue(name,"rate_unit_missing",fields[name].reason);
+      }
+    }
     else if(NUMERIC_FIELDS.has(name)){
       if(name==="delivered_quantity"||name==="fuel_quantity"||name==="requested_quantity"){
-        const match=String(raw).trim().match(/^(.+?)\s+(US gal|Imp gal|imperial gallons?|us gallons?|litres?|liters?|l|kg|tonnes?|t|m³|m3)$/i);
+        const match=String(raw).trim().match(/^(.+?)\s*(US gal|Imp gal|imperial gallons?|us gallons?|litres?|liters?|litri|litru|l|kg|tonnes?|t|m³|m3)$/i);
         if(match){
           add(name,match[1],canonicalNumber);
+          if(fields[name])fields[name].raw=String(raw);
           const inline=canonicalUnit(match[2]);
           if(inline.status==="ok")values[name+"_inline_unit"]=inline.value;
           else issue(name,"unit_ambiguous",inline.reason);
@@ -523,7 +539,11 @@ function normalizeDocument(document,type,profile="generic_invoice"){
   const currency=values.currency||null;
   const amounts={};
   for(const name of ["subtotal","vat_total","grand_total"]){
-    if(name in values)amounts[name]={value:values[name],currency};
+    if(!(name in values))continue;
+    amounts[name]={value:values[name],currency};
+    const written=String(document[name]||"").match(/(?:^|\s)(CHF|EUR|RON|USD|GBP|RSD|PLN|HUF|CZK|TRY|MDL)(?:$|\s)/i);
+    if(written&&currency&&written[1].toUpperCase()!==currency)
+      issue(name,"currency_mismatch","Currency explicitly printed beside this amount conflicts with the document currency.");
   }
   const lines=Array.isArray(document.lines)?document.lines:[];
   for(let i=0;i<lines.length;i++){
@@ -549,8 +569,12 @@ function normalizeDocument(document,type,profile="generic_invoice"){
     }
     line_items.push(item);
   }
-  const unit=values.fuel_unit||values.quantity_unit||values.fuel_quantity_inline_unit||
-    values.delivered_quantity_inline_unit||null;
+  const explicitUnits=[values.fuel_unit,values.quantity_unit,
+    values.fuel_quantity_inline_unit,values.delivered_quantity_inline_unit].filter(Boolean);
+  const conflictingUnits=new Set(explicitUnits).size>1;
+  if(conflictingUnits)issue("fuel_unit","unit_mismatch",
+    "Different fuel units are printed for the same quantity; verify before inventory conversion.");
+  const unit=conflictingUnits?null:(explicitUnits[0]||null);
   const volumeValue=values.fuel_quantity??values.delivered_quantity??null;
   const fuel={unit,quantity:volumeValue,litres:null,kilograms:null,metric_tonnes:null,density_kg_per_litre:values.fuel_density??null};
   if(unit&&volumeValue!==null){
