@@ -88,7 +88,7 @@
   };
   // Confidence Engine v1: risk flags, NOT a statistically calibrated
   // probability. Green means no active flag, not guaranteed correctness.
-  function classification(path,doc,type,regions,warnings,profile="generic_invoice") {
+  function classification(path,doc,type,regions,warnings,profile="generic_invoice",originalSourceText=null) {
     const value=valueAt(doc,path);
     const important=highRisk.has(path)||(profile==="fuel_invoice"&&path==="fuel_quantity");
     if(!substantive(value))return {
@@ -118,7 +118,10 @@
           return /^(meter_start|meter_finish|delivered_quantity|requested_quantity|grand_total|subtotal|vat_total)$/.test(path)
             ?text.replace(/\s+/g,""):text.replace(/[^A-Z0-9]/g,"");
         };
-        const chosen=normalized(value);
+        // The region alternatives refer to ORIGINAL source text. When a display
+        // field is translated, comparing Romanian source alternatives to its
+        // English value would invent a false competing reading.
+        const chosen=normalized(originalSourceText??value);
         const alternate=(region.alternate_readings||[]).find(a=>{
           const other=normalized(a);
           if(!other||other===chosen)return false;
@@ -174,13 +177,12 @@
     const englishPairs=Array.isArray(translation?.translations)?translation.translations:[];
     const translatedPaths=new Map(englishPairs.map(pair=>[pair.field_path,pair]));
     const state=new Map(paths.map(path=>{
-      const entry=classification(path,doc,type,regions,warnings,profile);
-      if(translatedPaths.has(path)&&entry.level==="green"){
-        entry.level="yellow";
-        entry.reason="Machine-translated field: compare the English meaning with the original wording.";
-        entry.signal="translation_needs_review";
-      }
-      return [path,entry];
+      const translated=translatedPaths.get(path);
+      // Translating a clear field is not itself evidence of an OCR error.
+      // Only source legibility, genuinely competing source readings, missing
+      // critical values and document validation warnings can raise severity.
+      return [path,classification(path,doc,type,regions,warnings,profile,
+        typeof translated?.source_text==="string"?translated.source_text:null)];
     }));
     // Snapshot the initial decisions; later operator/recheck state is separate.
     const initialState=new Map([...state].map(([path,entry])=>[path,{
@@ -212,13 +214,9 @@
       const category=String(result.classification.expense_category||"unknown").replaceAll("_"," ");
       compact.append(create("p","ramp-profile",title+" · "+category));
     }
-    if(translation?.status==="translated"){
-      const info=create("p","ramp-translation-note",
-        "Translated "+englishPairs.length+" text field(s) from "+
-        String(translation.source_language||"unknown").toUpperCase()+
-        " to English · original wording retained for review.");
-      compact.append(info);
-    }else if(translation?.status==="not_applied"&&
+    // Successful translations remain visible in each field's original/English
+    // detail and in the audit metadata, not as a global warning banner.
+    if(translation?.status==="not_applied"&&
       !["en","und"].includes(translation.source_language)){
       compact.append(create("p","ramp-translation-note",
         "Detected "+String(translation.source_language).toUpperCase()+
