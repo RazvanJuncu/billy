@@ -13,7 +13,8 @@ const state = {
   previewUrl: null,
   result: null,
   page: 0,
-  tab: "document"
+  tab: "document",
+  lastProcessingTiming: null
 };
 
 function showNotification(message, error = false) {
@@ -333,6 +334,10 @@ async function scanInvoice() {
     return;
   }
   state.busy = true;
+  const processingStarted = Date.now();
+  let headersReady = processingStarted;
+  let apiReturned = processingStarted;
+  let jsonParsed = processingStarted;
   window.BillyLoader?.startWork("ai","Processing document");
   setStage(2);
   updateScanButton();
@@ -343,8 +348,11 @@ async function scanInvoice() {
   form.append("document_type", $("documentType").value);
   try {
     const headers = await window.BillyAccounts.sessionHeaders();
+    headersReady = Date.now();
     const response = await fetch(state.api + "/api/vision/extract", { method: "POST", body: form, headers });
+    apiReturned = Date.now();
     const responseBody = await response.json();
+    jsonParsed = Date.now();
     if (!response.ok) throw new Error(responseBody.detail || ("HTTP " + response.status));
     if (!(responseBody.invoice || responseBody.fuel_release) || !responseBody.extraction_id) throw new Error("Vision returned no reviewable document.");
     if (state.file !== currentFile) return;
@@ -353,6 +361,18 @@ async function scanInvoice() {
     state.tab = "document";
     renderResult();
     if (state.file !== currentFile) return;
+    const reviewReady = Date.now();
+    // Local diagnostics only: no document content, filenames or tokens are logged.
+    // The request duration includes upload, authentication, AI and database writes;
+    // it cannot attribute that duration to Gemini alone.
+    state.lastProcessingTiming = {
+      auth_ms: headersReady - processingStarted,
+      request_ms: apiReturned - headersReady,
+      parse_ms: jsonParsed - apiReturned,
+      review_ms: reviewReady - jsonParsed,
+      total_ms: reviewReady - processingStarted
+    };
+    console.info("BillyDPI extraction timing (ms)",state.lastProcessingTiming);
     window.dispatchEvent(new CustomEvent("billy:ocr-ready", {detail:{model:responseBody.model}}));
     showNotification(""); // Review screen and colored fields already communicate the next action.
   } catch (error) {
@@ -464,6 +484,8 @@ window.addEventListener("billy:account-ready", () => {
    No backend keys or elevated access are provided here. */
 window.BillyApp = {
   isOnline: () => state.online,
+  isBusy: () => state.busy,
+  lastProcessingTiming: () => state.lastProcessingTiming,
   visionStatus: () => ({online: state.online, connecting: state.connecting, error: state.connectionError}),
   connectVision: () => {
     if (!window.BillyAccounts?.active?.()) {
