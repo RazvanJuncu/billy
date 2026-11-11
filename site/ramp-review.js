@@ -19,6 +19,21 @@
     issue_date:"Issue date",due_date:"Due date",currency:"Currency",
     subtotal:"Subtotal",vat_total:"Tax",grand_total:"Grand total"
   };
+  const profileFields={
+    fuel_invoice:{aircraft_registration:"Registration",flight_number:"Flight",airport_icao:"Airport",
+      service_date:"Delivery date",fuel_quantity:"Fuel volume",fuel_unit:"Fuel unit",fuel_density:"Fuel density"},
+    handling_invoice:{aircraft_registration:"Registration",flight_number:"Flight",airport_icao:"Airport",service_date:"Service date"},
+    taxi_receipt:{service_date:"Service date",route_from:"From",route_to:"To",payment_method:"Payment method"}
+  };
+  const requiredByProfile={
+    fuel_invoice:["supplier_name","grand_total","fuel_quantity","fuel_unit"],
+    handling_invoice:["supplier_name","grand_total","invoice_number"],
+    taxi_receipt:["grand_total","supplier_name"],
+    generic_receipt:["grand_total"],
+    payment_slip:["grand_total"],
+    supplier_statement:["supplier_name"],
+    generic_document:[]
+  };
   const fuelFields={
     release_number:"Release number",supplier_name:"Supplier",
     operator_name:"Operator",airport:"Airport",aircraft_registration:"Registration",
@@ -33,7 +48,7 @@
   };
   const highRisk=new Set(["grand_total","invoice_number","delivered_quantity","meter_start","meter_finish","aircraft_registration"]);
   const severity={green:0,yellow:1,red:2};
-  const labelFor=(path,type,doc)=>{
+  const labelFor=(path,type,doc,profile="generic_invoice")=>{
     if(path.includes("[")){
       const match=path.match(/^(lines|handwritten_entries)\[(\d+)\]\.(\w+)$/);
       if(match){
@@ -43,7 +58,7 @@
           (match[3]==="transcription"?(row?.label||"Transcription"):match[3].replaceAll("_"," "));
       }
     }
-    return (type==="invoice"?invoiceFields:fuelFields)[path]||path.replaceAll("_"," ");
+    return (type==="invoice"?{...invoiceFields,...(profileFields[profile]||{})}:fuelFields)[path]||path.replaceAll("_"," ");
   };
   const valueAt=(doc,path)=>{
     const match=path.match(/^(lines|handwritten_entries)\[(\d+)\]\.(\w+)$/);
@@ -55,11 +70,13 @@
     else doc[path]=value;
   };
   const substantive=value=>value!==null&&value!==undefined&&String(value).trim()!=="";
-  const fieldsFor=(doc,type)=>{
+  const fieldsFor=(doc,type,profile="generic_invoice")=>{
     const items=[];
-    const labels=type==="invoice"?invoiceFields:fuelFields;
+    const labels=type==="invoice"?{...invoiceFields,...(profileFields[profile]||{})}:fuelFields;
+    const needed=type==="invoice"?(requiredByProfile[profile]||required.invoice):required.fuel_release;
     for(const key of Object.keys(labels)){
-      if(substantive(doc[key])||required[type].includes(key))items.push(key);
+      // The compact review only exposes relevant fields for its profile.
+      if(substantive(doc[key])||needed.includes(key))items.push(key);
     }
     const array=type==="invoice"?"lines":"handwritten_entries";
     const keys=type==="invoice"?["description","quantity","unit_price","net_amount","vat_rate","vat_amount"]:["transcription"];
@@ -71,12 +88,13 @@
   };
   // Confidence Engine v1: risk flags, NOT a statistically calibrated
   // probability. Green means no active flag, not guaranteed correctness.
-  function classification(path,doc,type,regions,warnings) {
+  function classification(path,doc,type,regions,warnings,profile="generic_invoice") {
     const value=valueAt(doc,path);
+    const important=highRisk.has(path)||(profile==="fuel_invoice"&&path==="fuel_quantity");
     if(!substantive(value))return {
-      level:highRisk.has(path)?"red":"yellow",
+      level:important?"red":"yellow",
       reason:"No value extracted. Verify the source, or choose Not on document if this field is absent.",
-      signal:highRisk.has(path)?"missing_critical":"missing_value"
+      signal:important?"missing_critical":"missing_value"
     };
     let level="green",reason="No issue flagged by the first AI pass. Still review before final approval.",
       signal="no_flag";
@@ -116,7 +134,7 @@
           signal="competing_reading";
         }
       }
-    }else if(highRisk.has(path)){
+    }else if(important){
       level="yellow";reason="No localized visual evidence is available. Verify this value.";
       signal="missing_visual_evidence";
     }else{
@@ -145,17 +163,18 @@
   function mount(result,endpoint,getHeaders,sourceFile){
     const root=$("formattedOutput");
     const type=result.document_type;
+    const profile=result.classification?.profile||"generic_invoice";
     const source=type==="fuel_release"?result.fuel_release:result.invoice;
     if(!source||!sourceFile||!endpoint.includes("/functions/v1/billy-vision"))return;
     const doc=structuredClone(source);
     const regions=Array.isArray(result.regions)?result.regions:[];
     const warnings=Array.isArray(result.validation_warnings)?result.validation_warnings:[];
-    const paths=fieldsFor(doc,type);
+    const paths=fieldsFor(doc,type,profile);
     const translation=result.translation||null;
     const englishPairs=Array.isArray(translation?.translations)?translation.translations:[];
     const translatedPaths=new Map(englishPairs.map(pair=>[pair.field_path,pair]));
     const state=new Map(paths.map(path=>{
-      const entry=classification(path,doc,type,regions,warnings);
+      const entry=classification(path,doc,type,regions,warnings,profile);
       if(translatedPaths.has(path)&&entry.level==="green"){
         entry.level="yellow";
         entry.reason="Machine-translated field: compare the English meaning with the original wording.";
@@ -188,6 +207,11 @@
       create("p","ramp-intro","Yellow/red = needs attention. Blue ✓ = operator-checked. Green = no flagged issue, not proof of accuracy.")
     );
     compact.append(intro);
+    if(result.classification){
+      const title=profile.replaceAll("_"," ").replace(/\b\w/g,letter=>letter.toUpperCase());
+      const category=String(result.classification.expense_category||"unknown").replaceAll("_"," ");
+      compact.append(create("p","ramp-profile",title+" · "+category));
+    }
     if(translation?.status==="translated"){
       const info=create("p","ramp-translation-note",
         "Translated "+englishPairs.length+" text field(s) from "+
@@ -327,9 +351,9 @@
       for(const path of paths){
         const item=state.get(path),button=create("button","ramp-segment ramp-"+item.level);
         button.type="button";
-        button.setAttribute("aria-label",labelFor(path,type,doc)+": "+
+        button.setAttribute("aria-label",labelFor(path,type,doc,profile)+": "+
           (item.level==="blue"?"checked by operator":item.level)+". "+item.reason);
-        button.setAttribute("title",labelFor(path,type,doc)+" · "+item.reason);
+        button.setAttribute("title",labelFor(path,type,doc,profile)+" · "+item.reason);
         button.setAttribute("aria-pressed",String(selected===path));
         button.dataset.fieldPath=path;
         index++;
@@ -406,7 +430,7 @@
       const entry=state.get(path);
       const missing=!substantive(valueAt(doc,path));
       detail.className=missing?"ramp-field-detail ramp-missing":"ramp-field-detail";
-      fieldTitle.textContent=labelFor(path,type,doc)+(missing?" · Missing":"");
+      fieldTitle.textContent=labelFor(path,type,doc,profile)+(missing?" · Missing":"");
       fieldInput.value=valueAt(doc,path)??"";
       currentValue.textContent=missing?"":String(valueAt(doc,path));
       fieldNotPresent.textContent=notOnDocument.has(path)?"Not on document ✓":"Not on document";
