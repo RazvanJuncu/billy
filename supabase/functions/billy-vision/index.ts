@@ -460,7 +460,8 @@ async function database(principal,method,path,query,body) {
 // numbers or flight identifiers to public search. No automatic data overwrite.
 const PUBLIC_ENTITY_FIELDS={
   supplier_name:"company",operator_name:"company",property_name:"company",
-  airport:"airport",airport_icao:"airport"
+  airport:"airport",airport_icao:"airport",
+  parking_location:"place",delivery_location:"place"
 };
 const MAX_AUTO_ENTITY_LOOKUPS=2;
 function cleanPublicEntity(value,kind="company"){
