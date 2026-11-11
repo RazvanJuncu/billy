@@ -11,6 +11,8 @@
   let activeFile = null;
   let approved = false;
   let pendingAutoProcess = false;
+  let reviewAvailable = false;
+  let reviewedType = null;
   let greetingSelected = false;
   const greetings = [
     ["Welcome back, {name}.", "Ready when you are."],
@@ -66,6 +68,11 @@
     select.dispatchEvent(new Event("change",{bubbles:true}));
     const rec = sessionFiles.find(item => item.file === activeFile);
     if (rec) rec.documentType = type;
+    // Returning from Document check must not pay for another identical AI call.
+    if (reviewAvailable && reviewedType === type) {
+      showScreen("review");
+      return;
+    }
     // Choosing a type is consent to process. If the engine is still connecting,
     // start as soon as its authenticated health check succeeds.
     pendingAutoProcess = true;
@@ -87,6 +94,8 @@
     const action = $("simpleRunProcess");
     if (action.disabled) return;
     pendingAutoProcess = false;
+    reviewAvailable = false;
+    reviewedType = null;
     action.disabled = true;
     $("scanButton").click();
   }
@@ -165,6 +174,8 @@
   function recordFile(file) {
     activeFile = file;
     approved = false;
+    reviewAvailable = false;
+    reviewedType = null;
     // Every new document must be classified explicitly; never inherit Invoice or the last choice.
     $("documentType").value = "";
     let record = sessionFiles.find(record => record.file === file);
@@ -395,7 +406,13 @@
   bind("simpleContinue", () => showScreen("type"));
   bind("simpleChooseInvoice", () => chooseDocumentType("invoice"));
   bind("simpleChooseFuelRelease", () => chooseDocumentType("fuel_release"));
-  bind("simpleChangeType", () => showScreen("type"));
+  bind("simpleChangeType", () => {
+    if (window.BillyApp?.isBusy?.()) {
+      announce("Document processing is in progress. Document check will open automatically.");
+      return;
+    }
+    showScreen("type");
+  });
   bind("simpleRetryVision", () => {
     if(window.BillyAccounts?.active?.()) window.BillyApp?.connectVision?.();
     updateProcess();
@@ -437,6 +454,8 @@
     if (event.detail?.file) recordFile(event.detail.file);
   });
   window.addEventListener("billy:ocr-ready",() => {
+    reviewAvailable = true;
+    reviewedType = selectedDocumentType();
     if (activeFile) {
       const rec = sessionFiles.find(item => item.file === activeFile);
       if (rec) rec.status = "Extracted · pending review";
@@ -452,6 +471,8 @@
   });
   window.addEventListener("billy:document-revised",() => {
     approved = false;
+    reviewAvailable = false;
+    reviewedType = null;
     const rec = sessionFiles.find(item => item.file === activeFile);
     if (rec) rec.status = "Not processed";
     if (body.dataset.billyScreen === "review" || body.dataset.billyScreen === "upload") showScreen("type");
