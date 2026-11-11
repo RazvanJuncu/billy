@@ -206,11 +206,17 @@
     const translatedPaths=new Map(englishPairs.map(pair=>[pair.field_path,pair]));
     const state=new Map(paths.map(path=>{
       const translated=translatedPaths.get(path);
-      // Translating a clear field is not itself evidence of an OCR error.
-      // Only source legibility, genuinely competing source readings, missing
-      // critical values and document validation warnings can raise severity.
-      return [path,classification(path,doc,type,regions,warnings,profile,
-        typeof translated?.source_text==="string"?translated.source_text:null)];
+      const entry=classification(path,doc,type,regions,warnings,profile,
+        typeof translated?.source_text==="string"?translated.source_text:null);
+      // A public identity that prompted a lookup remains an operator task.
+      // Search can offer a suggestion, never certify the OCR transcription.
+      const check=externalChecks.find(item=>item.field_path===path);
+      if(check&&entry.level==="green"){
+        entry.level="yellow";
+        entry.signal="external_identity_needs_confirmation";
+        entry.reason="Entity identity needs double-check. Compare the document with the public sources.";
+      }
+      return [path,entry];
     }));
     // Snapshot the initial decisions; later operator/recheck state is separate.
     const initialState=new Map([...state].map(([path,entry])=>[path,{
