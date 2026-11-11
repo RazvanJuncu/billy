@@ -946,6 +946,7 @@ async function extract(req,principal){
   }
   const externalChecks=await autoVerifyEntities(fields,regions,identityHints);
   const warnings=validate(fields,type,regions,profile);
+  const normalized=normalizeDocument(fields,type,profile);
   const usage={
     input_tokens:response.usageMetadata?.promptTokenCount??null,
     output_tokens:response.usageMetadata?.candidatesTokenCount??null,
@@ -957,7 +958,8 @@ async function extract(req,principal){
     document_type:type,source_sha256:hash,state:"extracted",
     extracted_data:fields,regions_data:regions,validation_warnings:warnings,
     translation_metadata:translation,
-          review_metadata:{classification,extraction_profile_version:"1.1",external_checks:externalChecks},
+    review_metadata:{classification,extraction_profile_version:"1.1",external_checks:externalChecks,
+      normalization:{version:NORMALIZATION_VERSION,extracted:normalized}},
     model_name:MODEL,token_usage:usage
   });
   return json({
@@ -967,6 +969,7 @@ async function extract(req,principal){
     invoice:type==="invoice"?fields:null,
     fuel_release:type==="fuel_release"?fields:null,
     validation_warnings:warnings,usage,regions,confidence:null,external_checks:externalChecks,
+    normalized_data:normalized,
     translation,
     handwriting_training_capture_enabled:false
 
@@ -1162,10 +1165,14 @@ async function approve(req,principal){
   const corrections=Object.keys(checked).filter(k=>JSON.stringify(checked[k])!==JSON.stringify(source.extracted_data?.[k])).length;
   const warnings=validate(checked,data.document_type,source.regions_data||[],source.review_metadata?.classification?.profile);
   const confidenceAudit=cleanConfidenceAudit(data.confidence_engine,data.document_type);
+  const approvedNormalized=normalizeDocument(checked,data.document_type,
+    source.review_metadata?.classification?.profile);
   const reviewMetadata={
     ...(source.review_metadata||{}),
     not_on_document:absentPaths,manual_confirmations:confirmationClaims,
     origin:"operator_confirmation",
+    normalization:{...(source.review_metadata?.normalization||{}),version:NORMALIZATION_VERSION,
+      approved:approvedNormalized},
     ...(confidenceAudit?{confidence_engine:confidenceAudit}:{})
   };
   // Compare-and-swap makes repeated approvals return 409 instead of overwriting.
@@ -1181,7 +1188,7 @@ async function approve(req,principal){
   if(!Array.isArray(updated)||updated.length!==1)return error("This document was already approved.",409);
   return json({status:"approved",approval_id:source.id,document_type:data.document_type,
     correction_count:corrections,validation_warnings:warnings,
-    review_metadata:reviewMetadata,
+    normalized_data:approvedNormalized,review_metadata:reviewMetadata,
     posted_to_excel:false});
 }
 async function listRecords(principal,req) {
