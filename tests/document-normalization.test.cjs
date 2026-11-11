@@ -89,6 +89,27 @@ test("Fuel quantities convert with explicit units, but mass requires density",()
   assert.equal(ambiguous.fuel.quantity,null);
   assert.ok(ambiguous.issues.some(i=>i.field_path==="fuel_quantity"));
 });
+test("Inline units, conflicting units, VAT rates, and currency disagreement remain auditable",()=>{
+  const c=normalizer();
+  assert.equal(c.unit("litri").value,"L");
+  const inline=c.convert({fuel_quantity:"1500L"},"invoice","fuel_invoice");
+  assert.equal(inline.fuel.litres,1500);
+  assert.equal(inline.fields.fuel_quantity.raw,"1500L");
+  const mismatch=c.convert({fuel_quantity:"100 kg",fuel_unit:"L"},"invoice","fuel_invoice");
+  assert.equal(mismatch.fuel.unit,null);
+  assert.equal(mismatch.fuel.litres,null);
+  assert.ok(mismatch.issues.some(issue=>issue.code==="unit_mismatch"));
+  const taxes=c.convert({tax_rate:"3 CHF/night",currency:"CHF",grand_total:"12.00",
+    lines:[{vat_rate:"8,1%",vat_amount:"1,20"}]},"invoice","city_tax_receipt");
+  assert.equal(taxes.values.tax_rate,3);
+  assert.equal(taxes.values.tax_rate_unit,"CHF/night");
+  assert.equal(taxes.line_items[0].values.vat_rate,8.1);
+  const contradiction=c.convert({grand_total:"CHF 100.00",currency:"EUR"},"invoice","generic_invoice");
+  assert.ok(contradiction.issues.some(i=>i.code==="currency_mismatch"));
+  const noUnit=c.convert({tax_rate:"3",currency:"CHF"},"invoice","city_tax_receipt");
+  assert.ok(noUnit.issues.some(i=>i.code==="rate_unit_missing"));
+});
+
 test("Normalization is recalculated after approval and stored as metadata, not OCR overwrite",()=>{
   assert.match(edge,/const normalized=normalizeDocument\(fields,type,profile\)/);
   assert.match(edge,/normalization:\{version:NORMALIZATION_VERSION,extracted:normalized\}/);
