@@ -473,9 +473,9 @@ const ENTITY_LOOKUP_SCHEMA={
 };
 function cleanPublicEntity(value) {
   if(typeof value!=="string")return null;
-  const term=value.normalize("NFKC").replace(/[\\r\\n\\t]+/g," ").trim();
-  if(term.length<3||term.length>90||!/\\p{L}/u.test(term)||
-     /(?:https?:\\/\\/|www\\.|@|\\d{9,})/i.test(term)||
+  const term=value.normalize("NFKC").replace(/[\r\n\t]+/g," ").trim();
+  if(term.length<3||term.length>90||!/\p{L}/u.test(term)||
+     /(?:https?:\/\/|www\.|@|\d{9,})/i.test(term)||
      /[<>\u0000-\u001f]/.test(term))return null;
   return term;
 }
