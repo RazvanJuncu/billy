@@ -127,7 +127,7 @@ test("QuickScan combines two photos into one PDF instead of making separate draf
   assert.equal(h.openedFiles[0].type,"application/pdf");
   assert.equal(h.window.BillyQuickScan.isActive(),false);
   assert.equal(h.window.BillyQuickScan.getCount(),0);
-  assert.deepEqual(h.shownScreens,["edit"]);
+  assert.deepEqual(h.shownScreens,["type"]);
 });
 
 test("A one-page capture remains a single photo without unnecessary PDF conversion",async()=>{
