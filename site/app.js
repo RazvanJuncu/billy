@@ -390,7 +390,7 @@ async function scanInvoice() {
       total_ms: reviewReady - processingStarted
     };
     console.info("BillyDPI extraction timing (ms)",state.lastProcessingTiming);
-    window.dispatchEvent(new CustomEvent("billy:ocr-ready", {detail:{model:responseBody.model}}));
+    window.dispatchEvent(new CustomEvent("billy:ocr-ready", {detail:{model:responseBody.model,classification:responseBody.classification||null}}));
     showNotification(""); // Review screen and colored fields already communicate the next action.
   } catch (error) {
     showNotification("Could not scan this document: " + (error.message || "Connection error"), true);
