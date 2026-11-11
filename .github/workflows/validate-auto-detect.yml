@@ -1,0 +1,22 @@
+name: Validate Auto-Detect Changes
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Validate JavaScript syntax
+        run: |
+          for source in site/*.js; do node --check "$source"; done
+      - name: Validate Supabase Edge TypeScript
+        run: deno check supabase/functions/billy-vision/index.ts
+      - name: Run all browser regression tests
+        run: node --test tests/*.test.cjs
