@@ -44,9 +44,10 @@ test("Search grounding is a provenance sidecar, never an OCR auto-correction",()
   assert.match(backend,/candidate\?\.groundingMetadata/);
   assert.match(backend,/MAX_AUTO_ENTITY_LOOKUPS=2/);
   assert.match(backend,/status==="possible_match"/);
-  assert.doesNotMatch(backend,/api\/vision\/verify-entity/);
+  assert.match(backend,/api\/vision\/verify-entity/);
+  assert.match(backend,/BILLY_AUTO_ENTITY_LOOKUP/);
   assert.match(review,/result\.external_checks\?\.checks/);
   assert.match(review,/Possible public match/);
   assert.match(review,/Public sources are suggestions/);
-  assert.doesNotMatch(review,/doubleCheck\.addEventListener/);
+  assert.match(review,/doubleCheck\.addEventListener/);
 });
