@@ -10,6 +10,7 @@
   const sessionFiles = [];
   let activeFile = null;
   let approved = false;
+  let pendingAutoProcess = false;
   let greetingSelected = false;
   const greetings = [
     ["Welcome back, {name}.", "Ready when you are."],
@@ -65,17 +66,27 @@
     select.dispatchEvent(new Event("change",{bubbles:true}));
     const rec = sessionFiles.find(item => item.file === activeFile);
     if (rec) rec.documentType = type;
+    // Choosing a type is consent to process. If the engine is still connecting,
+    // start as soon as its authenticated health check succeeds.
+    pendingAutoProcess = true;
     showScreen("process");
-    // Choosing the document type is the final confirmation; process immediately
-    // when the authenticated engine is available.
-    if (window.BillyApp?.isOnline()) startProcessing();
+    maybeStartProcessing();
+  }
+
+  function maybeStartProcessing() {
+    if (!pendingAutoProcess || body.dataset.billyScreen !== "process" ||
+        !window.BillyApp?.isOnline() || window.BillyApp?.isBusy?.()) return;
+    pendingAutoProcess = false;
+    startProcessing();
   }
 
   function startProcessing() {
     if (!activeFile || !selectedDocumentType()) { showScreen("type"); return; }
     if (!window.BillyApp?.isOnline()) { updateProcess(); return; }
+    if (window.BillyApp?.isBusy?.()) return;
     const action = $("simpleRunProcess");
     if (action.disabled) return;
+    pendingAutoProcess = false;
     action.disabled = true;
     $("scanButton").click();
   }
@@ -84,6 +95,8 @@
     let next = screens.includes(name) ? name : "home";
     if (next === "process" && !selectedDocumentType()) next = activeFile ? "type" : "new";
     if (next === "type" && !activeFile) next = "new";
+    // Leaving extraction must cancel any delayed auto-start.
+    if (next !== "process") pendingAutoProcess = false;
     body.dataset.billyScreen = next;
     for (const section of screens) {
       const el = $("simple" + section.charAt(0).toUpperCase() + section.slice(1));
@@ -120,7 +133,7 @@
     const ready = Boolean(window.BillyApp?.isOnline());
     const action = $("simpleRunProcess");
     const type = selectedDocumentType();
-    action.disabled = !ready || !type;
+    action.disabled = !ready || !type || Boolean(window.BillyApp?.isBusy?.());
     $("simpleSelectedType").textContent = type === "fuel_release" ? "Fuel Release" : type === "invoice" ? "Invoice" : "Not selected";
     $("simpleRetryVision").hidden = ready || Boolean(state.connecting);
     // Connection success is represented by the enabled Process button.
@@ -331,10 +344,13 @@
 
   function goBack() {
     const now = body.dataset.billyScreen;
-    if (now === "edit") showScreen("new");
-    else if (now === "process") showScreen("type");
-    else if (now === "type") showScreen("edit");
-    else if (now === "review") showScreen("process");
+    // Never return to the obsolete source-panel editor or extraction form.
+    if (now === "process" && window.BillyApp?.isBusy?.()) {
+      announce("Document processing is in progress. Document check will open automatically.");
+      return;
+    }
+    if (now === "edit" || now === "type") showScreen("new");
+    else if (now === "process" || now === "review") showScreen("type");
     else if (now === "upload") showScreen("review");
     else showScreen("home");
   }
@@ -429,12 +445,16 @@
     showScreen("review");
   });
   window.addEventListener("billy:process-complete",() => updateProcess());
-  window.addEventListener("billy:engine-updated",() => { if (body.dataset.billyScreen === "process") updateProcess(); });
+  window.addEventListener("billy:engine-updated",() => {
+    if (body.dataset.billyScreen !== "process") return;
+    updateProcess();
+    maybeStartProcessing();
+  });
   window.addEventListener("billy:document-revised",() => {
     approved = false;
     const rec = sessionFiles.find(item => item.file === activeFile);
     if (rec) rec.status = "Not processed";
-    if (body.dataset.billyScreen === "review" || body.dataset.billyScreen === "upload") showScreen("edit");
+    if (body.dataset.billyScreen === "review" || body.dataset.billyScreen === "upload") showScreen("type");
   });
   window.addEventListener("billy:account-ready",event => {
     chooseGreeting(String(event.detail?.firstName || "").trim().slice(0,32));
