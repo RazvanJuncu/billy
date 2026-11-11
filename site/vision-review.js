@@ -3,6 +3,28 @@
 "use strict";
 const $ = id => document.getElementById(id);
 const invoiceFieldKeys = [["supplier_name","Supplier"],["supplier_tax_id","Supplier tax ID"],["customer_name","Customer"],["invoice_number","Invoice #"],["issue_date","Issue date"],["due_date","Due date"],["currency","Currency"],["subtotal","Subtotal"],["vat_total","VAT total"],["grand_total","Grand total"]];
+const invoiceProfiles={
+  generic_invoice:{title:"Invoice",fields:invoiceFieldKeys,entries:"Invoice line items"},
+  fuel_invoice:{title:"Fuel Invoice",fields:[...invoiceFieldKeys,
+    ["aircraft_registration","Registration"],["flight_number","Flight"],["airport_icao","Airport (ICAO)"],
+    ["service_date","Delivery date"],["fuel_quantity","Fuel quantity"],["fuel_unit","Fuel unit"],
+    ["fuel_density","Fuel density"]],entries:"Fuel / invoice line items"},
+  handling_invoice:{title:"Handling Invoice",fields:[...invoiceFieldKeys,
+    ["aircraft_registration","Registration"],["flight_number","Flight"],
+    ["airport_icao","Airport (ICAO)"],["service_date","Service date"]],entries:"Handling charges"},
+  taxi_receipt:{title:"Taxi Receipt",fields:[
+    ["supplier_name","Provider"],["invoice_number","Receipt #"],["issue_date","Date"],["service_date","Service date"],
+    ["currency","Currency"],["grand_total","Total"],["route_from","From"],["route_to","To"],
+    ["payment_method","Payment method"]],entries:"Receipt items"},
+  generic_receipt:{title:"Receipt",fields:[
+    ["supplier_name","Provider"],["invoice_number","Receipt #"],["issue_date","Date"],
+    ["currency","Currency"],["grand_total","Total"]],entries:"Receipt items"},
+  payment_slip:{title:"Payment Slip",fields:[
+    ["supplier_name","Merchant"],["invoice_number","Transaction reference"],
+    ["issue_date","Date"],["currency","Currency"],["grand_total","Amount"]],entries:"Payment details"},
+  supplier_statement:{title:"Supplier Statement",fields:invoiceFieldKeys,entries:"Statement entries"},
+  generic_document:{title:"Document",fields:invoiceFieldKeys,entries:"Document rows"}
+};
 const invoiceLineKeys = [["description","Description"],["quantity","Quantity"],["unit_price","Unit price"],["net_amount","Net"],["vat_rate","VAT %"],["vat_amount","VAT"]];
 const fuelFieldKeys = [["release_number","Release #"],["supplier_name","Fuel supplier"],["operator_name","Operator"],["airport","Airport"],["aircraft_registration","Registration"],["flight_number","Flight"],["delivery_date","Delivery date"],["fuel_type","Fuel type"],["requested_quantity","Requested fuel"],["delivered_quantity","Delivered fuel"],["quantity_unit","Unit"],["truck_identifier","Truck"],["fueler_name","Fueler"],["receiver_name","Receiver"],["meter_start","Meter start"],["meter_finish","Meter finish"]];
 const handwritingKeys = [["label","Original field label"],["transcription","Raw handwriting"],["legibility","Legibility"],["interpreted_as","Interpreted as"]];
@@ -11,7 +33,7 @@ const translatedHandwritingKeys = [
   ["transcription","Raw handwriting"],["english_translation","English meaning"],
   ["legibility","Legibility"],["interpreted_as","Interpreted as"]
 ];
-let fieldKeys=invoiceFieldKeys,lineKeys=invoiceLineKeys,documentType="invoice",extractId="",getHeaders=null;
+let fieldKeys=invoiceFieldKeys,lineKeys=invoiceLineKeys,documentType="invoice",extractId="",getHeaders=null,classification=null,profileTitle="Invoice",entryTitle="Invoice line items";
 
 let original=null,draft=null,sha="",api="",approved=false,approveButton=null,notice=null,exportPanel=null,auditMeta=null,approvalResult=null;
 const node=(tag,cls="",content)=>{const e=document.createElement(tag);e.className=cls;if(content!==undefined)e.textContent=content;return e;};
@@ -21,6 +43,9 @@ function download(text,name,mime){const u=URL.createObjectURL(new Blob([text],{t
 function escapeCell(value){const s=String(value??"");const dangerous=/^\s*[=+@]/.test(s) || (/^\s*-/.test(s) && !/^\s*-\d+(?:[.,]\d+)?\s*$/.test(s));const safe=dangerous?"'"+s:s;return '"'+safe.replaceAll('"','""')+'"';}
 function getApprovedSpreadsheetData(){
   if(!approved||!draft)return null;
+  // These fallbacks also keep independent CSV preview helpers self-contained.
+  const reportProfile=typeof classification!=="undefined"?classification:null;
+  const reportEntryTitle=typeof entryTitle!=="undefined"?entryTitle:"Invoice line items";
   // Document-level metadata describes ONE document. Never repeat it once for
   // every handwritten field / invoice line: the preview is a report, not a JOIN.
   const details=fieldKeys
@@ -36,9 +61,13 @@ function getApprovedSpreadsheetData(){
   const rows=(Array.isArray(sourceRows)?sourceRows:[]).map(item=>
     columns.map(column=>item?.[column.key]??""));
   const entries={
-    title:documentType==="fuel_release"?"Handwritten entries":"Invoice line items",
+    title:documentType==="fuel_release"?"Handwritten entries":reportEntryTitle,
     columns,rows
   };
+  if(reportProfile){
+    details.unshift({key:"expense_category",label:"Expense category",value:String(reportProfile.expense_category||"unknown").replaceAll("_"," ")});
+    details.unshift({key:"extraction_profile",label:"Document profile",value:String(reportProfile.profile||"unknown").replaceAll("_"," ")});
+  }
   return {documentType,details,entries};
 }
 function exportCSV(){
@@ -66,7 +95,7 @@ function exportRawJSON(){
   download(JSON.stringify({
     schema_version:"0.7",approved:false,review_status:"unverified_gemini_output",
     document_type:documentType,source_sha256:sha,extraction_id:extractId,
-    model:auditMeta?.model||null,document:original,
+    model:auditMeta?.model||null,classification:auditMeta?.classification||null,document:original,
     original_validation_warnings:auditMeta?.warnings||[],
     translation:auditMeta?.translation||null,
     evidence_regions:auditMeta?.regions||[]
@@ -76,7 +105,7 @@ function exportJSON(){
   if(!approved)return;
   download(JSON.stringify({
     schema_version:"0.7",approved:true,document_type:documentType,
-    document:draft,original_extraction:original,
+    classification:auditMeta?.classification||null,document:draft,original_extraction:original,
     changes_from_original:auditChanges(),
     original_validation_warnings:auditMeta?.warnings||[],
     review_validation_warnings:approvalResult?.validation_warnings||[],
@@ -111,17 +140,22 @@ function render(result,endpoint,authHeaders,sourceFile=null){
  documentType=result?.document_type||"invoice";
  const source=documentType==="fuel_release"?result?.fuel_release:result?.invoice;
  if(!source||!result.extraction_id||!result.source_sha256)throw Error("Incomplete extraction.");
- fieldKeys=documentType==="fuel_release"?fuelFieldKeys:invoiceFieldKeys;
+ classification=result.classification||null;
+ const selected=invoiceProfiles[classification?.profile]||invoiceProfiles.generic_invoice;
+ profileTitle=documentType==="fuel_release"?"Fuel Release":selected.title;
+ entryTitle=selected.entries;
+ fieldKeys=documentType==="fuel_release"?fuelFieldKeys:selected.fields;
  lineKeys=documentType==="fuel_release"?
    (source.handwritten_entries||[]).some(row=>row.english_label||row.english_translation)?
      translatedHandwritingKeys:handwritingKeys
    :invoiceLineKeys;
  original=structuredClone(source);draft=structuredClone(source);sha=result.source_sha256;
  extractId=result.extraction_id;api=endpoint;getHeaders=authHeaders;approved=false;approvalResult=null;
- auditMeta={model:result.model||null,warnings:structuredClone(result.validation_warnings||[]),regions:structuredClone(result.regions||[]),translation:structuredClone(result.translation||null)};
+ auditMeta={model:result.model||null,classification:structuredClone(classification),warnings:structuredClone(result.validation_warnings||[]),regions:structuredClone(result.regions||[]),translation:structuredClone(result.translation||null)};
  const root=$("formattedOutput");root.replaceChildren();root.hidden=false;root.classList.add("vision-review");
  const title=node("div","review-intro");
- title.append(node("span","review-eyebrow","BILLYDPI / VERIFIED DOCUMENT WORKFLOW"),node("h3","review-title",documentType==="fuel_release"?"Review Fuel Release":"Review extracted invoice"),node("p","review-note","Verify and correct the extracted fields."));
+ title.append(node("span","review-eyebrow","BILLYDPI / VERIFIED DOCUMENT WORKFLOW"),node("h3","review-title","Review "+profileTitle),node("p","review-note",classification?"Category: "+String(classification.expense_category||"unknown").replaceAll("_"," ")+
+  ". Verify against the source.":"Verify and correct the extracted fields."));
  root.appendChild(title);
  if(auditMeta?.translation?.status==="translated"){
    const lang=String(auditMeta.translation.source_language||"unknown").toUpperCase();
@@ -146,7 +180,7 @@ function render(result,endpoint,authHeaders,sourceFile=null){
  const meterNote=node("p","review-meter-check","");
  if(documentType==="fuel_release"){meterNote.textContent=localMeterCheck(draft);root.appendChild(meterNote);}
 
- const heading=node("div","review-list-header");heading.appendChild(node("strong","",documentType==="fuel_release"?"Handwritten fields":"Invoice line items"));const add=node("button","review-add-line",documentType==="fuel_release"?"+ Add handwritten field":"+ Add line");add.type="button";heading.appendChild(add);root.appendChild(heading);
+ const heading=node("div","review-list-header");heading.appendChild(node("strong","",documentType==="fuel_release"?"Handwritten fields":entryTitle));const add=node("button","review-add-line",documentType==="fuel_release"?"+ Add handwritten field":"+ Add line");add.type="button";heading.appendChild(add);root.appendChild(heading);
  const scroll=node("div","review-table-scroll");const table=node("table","review-items");const head=node("thead");const hrow=node("tr");lineKeys.forEach(x=>hrow.appendChild(node("th","",x[1])));hrow.appendChild(node("th","",""));head.appendChild(hrow);table.appendChild(head);
  const body=node("tbody");table.appendChild(body);scroll.appendChild(table);root.appendChild(scroll);
  function paint(){

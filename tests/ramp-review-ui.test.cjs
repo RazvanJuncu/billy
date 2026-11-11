@@ -169,7 +169,7 @@ test("Human checks remain audit metadata; no training consent or document memory
 });
 
 test("Only Gemini source evidence and business rules classify fields",()=>{
-  assert.match(ramp,/function classification\(path,doc,type,regions,warnings\)/);
+  assert.match(ramp,/function classification\(path,doc,type,regions,warnings/);
   assert.match(ramp,/alternate_readings/);
   assert.match(ramp,/Meter mismatch/);
   assert.doesNotMatch(ramp,/compareLocalOCR|TrOCR read:|localStatus/);

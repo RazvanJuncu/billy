@@ -13,6 +13,8 @@
   let pendingAutoProcess = false;
   let reviewAvailable = false;
   let reviewedType = null;
+  let reviewedProfile = null;
+  let lastClassification = null;
   let greetingSelected = false;
   const greetings = [
     ["Welcome back, {name}.", "Ready when you are."],
@@ -55,29 +57,53 @@
     $("simpleFlowNotice").hidden = !message;
   }
 
+  const manualProfiles=["generic_invoice","fuel_release","fuel_invoice","handling_invoice","taxi_receipt",
+    "generic_receipt","payment_slip","supplier_statement","generic_document"];
+  const forcedCategories={fuel_release:"fuel",fuel_invoice:"fuel",handling_invoice:"handling",taxi_receipt:"taxi"};
   function selectedDocumentType() {
-    const value = $("documentType").value;
-    return value === "invoice" || value === "fuel_release" ? value : null;
+    const value=$("documentType").value;
+    return ["auto","invoice","fuel_release"].includes(value)?value:null;
   }
-
-  function chooseDocumentType(type) {
-    if (!activeFile || (type !== "invoice" && type !== "fuel_release")) return;
-    const select = $("documentType");
-    select.value = type;
-    // Keep the original extraction engine's document-type value authoritative.
-    select.dispatchEvent(new Event("change",{bubbles:true}));
-    const rec = sessionFiles.find(item => item.file === activeFile);
-    if (rec) rec.documentType = type;
-    // Returning from Document check must not pay for another identical AI call.
-    if (reviewAvailable && reviewedType === type) {
-      showScreen("review");
-      return;
-    }
-    // Choosing a type is consent to process. If the engine is still connecting,
-    // start as soon as its authenticated health check succeeds.
-    pendingAutoProcess = true;
+  function startAutomaticProcessing() {
+    if(!activeFile)return;
+    $("documentType").value="auto";
+    delete $("documentType").dataset.profileOverride;
+    delete $("documentType").dataset.categoryOverride;
+    pendingAutoProcess=true;
     showScreen("process");
     maybeStartProcessing();
+  }
+  function chooseManualProfile() {
+    if(!activeFile)return;
+    const profile=$("simpleManualProfile").value;
+    const category=$("simpleManualCategory").value;
+    if(!manualProfiles.includes(profile))return;
+    const select=$("documentType");
+    select.value=profile==="fuel_release"?"fuel_release":"invoice";
+    select.dataset.profileOverride=profile;
+    select.dataset.categoryOverride=forcedCategories[profile]||category||"unknown";
+    // Changing the profile intentionally starts a new extraction; prior results
+    // remain unapproved and are never silently reused with the wrong layout.
+    select.dispatchEvent(new Event("change",{bubbles:true}));
+    const record=sessionFiles.find(item=>item.file===activeFile);
+    if(record)record.documentType=profile;
+    pendingAutoProcess=true;
+    showScreen("process");
+    maybeStartProcessing();
+  }
+  function showManualClassification(detail) {
+    lastClassification=detail?.classification||null;
+    const chosen=lastClassification?.profile;
+    if(manualProfiles.includes(chosen))$("simpleManualProfile").value=chosen;
+    else $("simpleManualProfile").value="generic_invoice";
+    const category=lastClassification?.expense_category;
+    const options=["fuel","handling","taxi","city_tax","catering","hotel","pax_gifts","parking",
+      "crew_expenses","aircraft_supplies","other","unknown"];
+    $("simpleManualCategory").value=options.includes(category)?category:"unknown";
+    const reason=typeof detail?.reason==="string"?detail.reason:"";
+    $("simpleTypeReason").textContent=reason||
+      "Billy could not classify this document confidently. Select a profile to continue.";
+    showScreen("type");
   }
 
   function maybeStartProcessing() {
@@ -88,7 +114,7 @@
   }
 
   function startProcessing() {
-    if (!activeFile || !selectedDocumentType()) { showScreen("type"); return; }
+    if (!activeFile || !selectedDocumentType()) { showScreen("new"); return; }
     if (!window.BillyApp?.isOnline()) { updateProcess(); return; }
     if (window.BillyApp?.isBusy?.()) return;
     const action = $("simpleRunProcess");
@@ -96,6 +122,7 @@
     pendingAutoProcess = false;
     reviewAvailable = false;
     reviewedType = null;
+    reviewedProfile = null;
     action.disabled = true;
     $("scanButton").click();
   }
@@ -114,14 +141,9 @@
     $("simpleFlowHeader").hidden = next === "home";
     $("simpleFlowTitle").textContent = names[next] || "";
     $("simpleReviewToUpload").hidden = !(next === "review" && approved);
+    $("simpleReviewChangeProfile").hidden = next !== "review" || approved;
     if (next === "edit") window.BillyWorkspace?.showView("capture");
-    if (next === "type") {
-      window.BillyWorkspace?.showView("capture");
-      const selected = selectedDocumentType();
-      for (const card of document.querySelectorAll(".simple-type-card")) {
-        card.setAttribute("aria-pressed",String(card.dataset.documentType === selected));
-      }
-    }
+    if (next === "type") window.BillyWorkspace?.showView("capture");
     if (next === "review") window.BillyWorkspace?.showView("review");
     if (next === "process" || next === "upload" || next === "new" || next === "uploaded" || next === "home") {
       window.BillyWorkspace?.showView("capture");
@@ -143,7 +165,9 @@
     const action = $("simpleRunProcess");
     const type = selectedDocumentType();
     action.disabled = !ready || !type || Boolean(window.BillyApp?.isBusy?.());
-    $("simpleSelectedType").textContent = type === "fuel_release" ? "Fuel Release" : type === "invoice" ? "Invoice" : "Not selected";
+    const profile=$("documentType").dataset.profileOverride;
+    const label=profile?profile.replaceAll("_"," "):"Auto-detect";
+    $("simpleSelectedType").textContent=label;
     $("simpleRetryVision").hidden = ready || Boolean(state.connecting);
     // Connection success is represented by the enabled Process button.
     // Show status copy only when a connection needs attention.
@@ -176,8 +200,11 @@
     approved = false;
     reviewAvailable = false;
     reviewedType = null;
-    // Every new document must be classified explicitly; never inherit Invoice or the last choice.
-    $("documentType").value = "";
+    reviewedProfile = null;
+    lastClassification = null;
+    $("documentType").value = "auto";
+    delete $("documentType").dataset.profileOverride;
+    delete $("documentType").dataset.categoryOverride;
     let record = sessionFiles.find(record => record.file === file);
     if (!record) {
       record = {file, status:"Not processed", documentType:null};
@@ -186,9 +213,8 @@
       record.status = "Not processed";
       record.documentType = null;
     }
-    // Go straight from import/crop confirmation to document classification.
-    // The edit screen is still available using Back if corrections are needed.
-    showScreen("type");
+    // No mandatory classification screen: process after scan/crop confirmation.
+    startAutomaticProcessing();
   }
 
   // Development cleanup. Removing a session entry only forgets this browser's
@@ -403,9 +429,17 @@
   bind("simpleUploadedDocuments", () => showScreen("uploaded"));
   bind("simpleCapture", () => $("scanOpenCamera").click());
   bind("simpleAddFiles", () => $("filePicker").click());
-  bind("simpleContinue", () => showScreen("type"));
-  bind("simpleChooseInvoice", () => chooseDocumentType("invoice"));
-  bind("simpleChooseFuelRelease", () => chooseDocumentType("fuel_release"));
+  bind("simpleContinue", startAutomaticProcessing);
+  bind("simpleUseManualProfile", chooseManualProfile);
+  bind("simpleReviewChangeProfile", () => {
+    if(window.BillyApp?.isBusy?.())return;
+    if(reviewedProfile){
+      $("simpleManualProfile").value=reviewedProfile.profile;
+      $("simpleManualCategory").value=reviewedProfile.expense_category;
+    }
+    $("simpleTypeReason").textContent="Change the profile or category, then Billy will re-read this document.";
+    showScreen("type");
+  });
   bind("simpleChangeType", () => {
     if (window.BillyApp?.isBusy?.()) {
       announce("Document processing is in progress. Document check will open automatically.");
@@ -453,9 +487,10 @@
   window.addEventListener("billy:document-loaded",event => {
     if (event.detail?.file) recordFile(event.detail.file);
   });
-  window.addEventListener("billy:ocr-ready",() => {
+  window.addEventListener("billy:ocr-ready",event => {
     reviewAvailable = true;
     reviewedType = selectedDocumentType();
+    reviewedProfile = event.detail?.classification||null;
     if (activeFile) {
       const rec = sessionFiles.find(item => item.file === activeFile);
       if (rec) rec.status = "Extracted · pending review";
@@ -463,7 +498,10 @@
     $("simpleRunProcess").disabled = false;
     showScreen("review");
   });
-  window.addEventListener("billy:process-complete",() => updateProcess());
+  window.addEventListener("billy:classification-needs-review",event => showManualClassification(event.detail));
+  window.addEventListener("billy:process-complete",() => {
+    if(body.dataset.billyScreen==="process")updateProcess();
+  });
   window.addEventListener("billy:engine-updated",() => {
     if (body.dataset.billyScreen !== "process") return;
     updateProcess();
@@ -473,6 +511,7 @@
     approved = false;
     reviewAvailable = false;
     reviewedType = null;
+    reviewedProfile = null;
     const rec = sessionFiles.find(item => item.file === activeFile);
     if (rec) rec.status = "Not processed";
     if (body.dataset.billyScreen === "review" || body.dataset.billyScreen === "upload") showScreen("type");
@@ -493,6 +532,6 @@
     chooseGreeting(String(window.BillyAccounts.firstName?.() || "").trim().slice(0,32));
   }
   window.BillySimple = {showScreen, getState:() => ({
-    screen:body.dataset.billyScreen, sessionFiles:sessionFiles.length, approved, documentType:selectedDocumentType()
+    screen:body.dataset.billyScreen, sessionFiles:sessionFiles.length, approved, documentType:selectedDocumentType(), classification:reviewedProfile
   })};
 })();

@@ -912,3 +912,17 @@ body[data-billy-screen="uploaded"] #simpleFlowTitle{
  .simple-audit-row{grid-template-columns:1fr;gap:2px}
  .simple-audit-row>strong{text-align:left}
 }
+
+/* Auto-Detect 1.0: the manual classifier is an exception screen, not a required step. */
+.simple-manual-fields{display:grid;gap:11px;max-width:500px;margin:24px auto 0;width:100%}
+.simple-manual-fields label{color:#a8adb3;font-size:10px;font-weight:700;letter-spacing:.08em;margin-top:8px}
+.simple-manual-fields select{
+  width:100%;background:#222426!important;color:#f4f4f4!important;
+  border:0!important;border-radius:10px;min-height:48px;padding:0 14px;
+  font:inherit;font-size:13px
+}
+.simple-manual-fields .simple-main-action{width:100%;margin-top:14px}
+.simple-manual-fields select:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.simple-manual-fields select:disabled{opacity:.6}
+.simple-type #simpleTypeReason{max-width:500px;margin:16px auto 0;text-align:left}
+@media(max-width:720px){.simple-manual-fields{margin-top:15px}.simple-type #simpleTypeReason{margin-top:12px}}

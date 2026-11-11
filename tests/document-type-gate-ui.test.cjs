@@ -7,140 +7,118 @@ const read=name=>fs.readFileSync(path.join(__dirname,"..",name),"utf8");
 const html=read("site/index.html");
 const flow=read("site/simple.js");
 const app=read("site/app.js");
-const css=read("site/simple.css");
+const backend=read("supabase/functions/billy-vision/index.ts");
+const review=read("site/vision-review.js");
+const ramp=read("site/ramp-review.js");
 
-test("Dedicated classification step is prominent and has no Invoice default",()=>{
-  assert.match(html,/id="simpleType"/);
-  assert.match(html,/id="simpleChooseInvoice"/);
-  assert.match(html,/id="simpleChooseFuelRelease"/);
-  assert.match(html,/id="simpleSelectedType"/);
-  assert.match(html,/id="simpleChangeType"/);
-  assert.match(html,/<option value="" selected disabled>Choose document type<\/option>/);
-  assert.doesNotMatch(html,/<option value="invoice" selected/);
-  assert.match(css,/\.simple-type-grid/);
-  assert.match(css,/\.simple-type-card/);
-  assert.match(css,/min-height:168px/);
-  assert.match(css,/body\[data-billy-screen\] \.document-type-control\{display:none!important\}/);
-  assert.match(app,/if \(!\["invoice","fuel_release"\]\.includes\(\$\("documentType"\)\.value\)\)/);
-  assert.match(app,/!validType \|\| state\.busy/);
+test("Auto-Detect starts by default and has an accessible manual correction screen",()=>{
+  assert.match(html,/<option value="auto" selected>Auto-detect<\/option>/);
+  assert.match(html,/id="simpleManualProfile"/);
+  assert.match(html,/id="simpleManualCategory"/);
+  assert.match(html,/id="simpleUseManualProfile"/);
+  assert.match(html,/id="simpleReviewChangeProfile"/);
+  assert.doesNotMatch(html,/What kind of document is this\?/);
+  assert.match(app,/\["auto","invoice","fuel_release"\]\.includes/);
+  assert.match(app,/form\.append\("profile_override"/);
+  assert.match(app,/billy:classification-needs-review/);
+  assert.match(backend,/CLASSIFIER_SCHEMA/);
+  assert.match(backend,/invoiceSchemaFor\(profile\)/);
+  for(const label of ["fuel","handling","taxi","city_tax","catering","hotel",
+    "pax_gifts","parking","crew_expenses","aircraft_supplies","other"]){
+    assert.match(backend,new RegExp('"'+label+'"'));
+  }
+  for(const profile of ["fuel_release","fuel_invoice","handling_invoice","taxi_receipt"]){
+    assert.match(backend,new RegExp(profile));
+    assert.match(html,new RegExp('value="'+profile+'"'));
+  }
+  assert.match(review,/invoiceProfiles/);
+  assert.match(ramp,/requiredByProfile/);
 });
-
 function bootFlow(onlineInitially=true){
-  const elements=new Map(),windowEvents=new Map();
+  const elements=new Map(),events=new Map();
   const element=id=>{
     if(elements.has(id))return elements.get(id);
-    const handlers=new Map(),attributes=new Map();
+    const handlers=new Map(),attrs=new Map();
     const node={
       id,hidden:false,disabled:false,value:"",textContent:"",dataset:{},
       classList:{toggle:()=>false,add:()=>{},remove:()=>{}},
       addEventListener(type,fn){handlers.set(type,fn);},
-      dispatchEvent(event){handlers.get(event.type)?.(event);return true;},
-      setAttribute(name,value){attributes.set(name,value);},
-      getAttribute(name){return attributes.get(name)},
-      click(){handlers.get("click")?.({type:"click",preventDefault(){}});},
-      querySelector:()=>null,
+      dispatchEvent(e){handlers.get(e.type)?.(e);return true;},
+      setAttribute(name,value){attrs.set(name,value);},
+      getAttribute(name){return attrs.get(name);},
+      click(){handlers.get("click")?.({preventDefault(){}})},
+      querySelector(){return null;},
+      append(){},replaceChildren(){},
     };
-    elements.set(id,node);
-    return node;
+    elements.set(id,node);return node;
   };
-  const invoice=element("simpleChooseInvoice");
-  invoice.dataset.documentType="invoice";
-  const fuel=element("simpleChooseFuelRelease");
-  fuel.dataset.documentType="fuel_release";
   const body={dataset:{},classList:{toggle:()=>false,add:()=>{},remove:()=>{}}};
-  const doc={
-    body,documentElement:{dataset:{}},
-    getElementById:element,
-    querySelectorAll:selector=>selector===".simple-type-card"?[invoice,fuel]:[],
+  const document={
+    body,documentElement:{dataset:{}},getElementById:element,querySelectorAll:()=>[]
   };
   let scans=0,online=onlineInitially;
   element("scanButton").click=()=>{scans++;};
   const sandbox={
     window:{
-      BillyApp:{isOnline:()=>online,visionStatus:()=>({online})},
+      BillyApp:{isOnline:()=>online,isBusy:()=>false,visionStatus:()=>({online})},
       BillyAccounts:{active:()=>false},
-      addEventListener(type,fn){windowEvents.set(type,fn)}
-    },
-    document:doc,Event,
-    console,Math,
+      addEventListener(type,fn){events.set(type,fn)}
+    },document,Event,console,Math
   };
   vm.runInNewContext(flow,sandbox,{filename:"simple.js"});
-  return {element,sandbox,getScans:()=>scans,setOnline:value=>{online=value;},emit:(type,detail)=>windowEvents.get(type)?.({detail})};
+  return {element,sandbox,getScans:()=>scans,setOnline:value=>{online=value;},
+    emit:(type,detail)=>events.get(type)?.({detail})};
 }
-
-test("Each new document requires explicit type selection and selecting the type starts processing",()=>{
-  const {element,sandbox,getScans,emit}=bootFlow();
-  assert.equal(sandbox.window.BillySimple.getState().screen,"home");
-  const first={name:"fuel-ticket.jpg"};
-  emit("billy:document-loaded",{file:first});
-  // Crop confirmation/import now goes straight to classification.
-  assert.equal(sandbox.window.BillySimple.getState().screen,"type");
-  assert.equal(element("documentType").value,"");
-  element("simpleRunProcess").click();
-  assert.equal(getScans(),0);
-  assert.equal(sandbox.window.BillySimple.getState().screen,"type");
-  element("simpleChooseFuelRelease").click();
-  assert.equal(element("documentType").value,"fuel_release");
-  assert.equal(sandbox.window.BillySimple.getState().screen,"process");
-  assert.equal(element("simpleSelectedType").textContent,"Fuel Release");
-  assert.equal(getScans(),1);
-  assert.equal(element("simpleRunProcess").disabled,true);
-  element("simpleChangeType").click();
-  assert.equal(sandbox.window.BillySimple.getState().screen,"type");
-  assert.equal(element("simpleChooseFuelRelease").getAttribute("aria-pressed"),"true");
-  const next={name:"invoice-2.pdf"};
-  emit("billy:document-loaded",{file:next});
-  assert.equal(sandbox.window.BillySimple.getState().screen,"type");
-  assert.equal(element("documentType").value,"");
-  element("simpleChooseInvoice").click();
-  assert.equal(element("documentType").value,"invoice");
-  assert.equal(element("simpleSelectedType").textContent,"Invoice");
-  assert.equal(getScans(),2);
-});
-
-test("Back navigation stays in the new flow and never opens the legacy editor",()=>{
+test("Every new file automatically starts classification without choosing a document type",()=>{
   const h=bootFlow();
-  h.emit("billy:document-loaded",{file:{name:"ticket.jpg"}});
-  assert.equal(h.sandbox.window.BillySimple.getState().screen,"type");
-  h.element("simpleBack").click();
-  assert.equal(h.sandbox.window.BillySimple.getState().screen,"new");
-  h.sandbox.window.BillySimple.showScreen("type");
-  h.element("simpleChooseInvoice").click();
+  assert.equal(h.sandbox.window.BillySimple.getState().screen,"home");
+  h.emit("billy:document-loaded",{file:{name:"fuel.jpg"}});
   assert.equal(h.sandbox.window.BillySimple.getState().screen,"process");
-  h.emit("billy:ocr-ready");
-  assert.equal(h.sandbox.window.BillySimple.getState().screen,"review");
-  h.element("simpleBack").click();
-  assert.equal(h.sandbox.window.BillySimple.getState().screen,"type");
-  // Going Back and picking the already extracted type reuses the result.
-  h.element("simpleChooseInvoice").click();
-  assert.equal(h.sandbox.window.BillySimple.getState().screen,"review");
+  assert.equal(h.element("documentType").value,"auto");
+  assert.equal(h.element("simpleSelectedType").textContent,"Auto-detect");
   assert.equal(h.getScans(),1);
-  h.element("simpleBack").click();
-  h.element("simpleChooseFuelRelease").click();
-  assert.equal(h.sandbox.window.BillySimple.getState().screen,"process");
-  assert.equal(h.getScans(),2);
-  h.emit("billy:ocr-ready");
-  h.emit("billy:document-revised");
-  assert.equal(h.sandbox.window.BillySimple.getState().screen,"type");
+  h.emit("billy:ocr-ready",{classification:{profile:"fuel_invoice",expense_category:"fuel"}});
+  assert.equal(h.sandbox.window.BillySimple.getState().screen,"review");
+  assert.equal(h.sandbox.window.BillySimple.getState().classification.profile,"fuel_invoice");
 });
-
-test("Choosing a type while engine connects starts once on readiness, not after Back",()=>{
+test("Ambiguous classification pauses for manual profile/category and then extracts",()=>{
+  const h=bootFlow();
+  h.emit("billy:document-loaded",{file:{name:"receipt.jpg"}});
+  h.emit("billy:classification-needs-review",{
+    classification:{profile:"generic_receipt",expense_category:"unknown"},
+    reason:"Classification uncertain."
+  });
+  assert.equal(h.sandbox.window.BillySimple.getState().screen,"type");
+  assert.equal(h.element("simpleTypeReason").textContent,"Classification uncertain.");
+  h.element("simpleManualProfile").value="taxi_receipt";
+  h.element("simpleManualCategory").value="taxi";
+  h.element("simpleUseManualProfile").click();
+  assert.equal(h.element("documentType").value,"invoice");
+  assert.equal(h.element("documentType").dataset.profileOverride,"taxi_receipt");
+  assert.equal(h.element("documentType").dataset.categoryOverride,"taxi");
+  assert.equal(h.getScans(),2);
+  h.emit("billy:ocr-ready",{classification:{profile:"taxi_receipt",expense_category:"taxi"}});
+  h.element("simpleReviewChangeProfile").click();
+  assert.equal(h.sandbox.window.BillySimple.getState().screen,"type");
+  h.element("simpleManualProfile").value="fuel_release";
+  h.element("simpleManualCategory").value="other";
+  h.element("simpleUseManualProfile").click();
+  assert.equal(h.element("documentType").dataset.categoryOverride,"fuel");
+  assert.equal(h.element("documentType").value,"fuel_release");
+  assert.equal(h.getScans(),3);
+});
+test("Offline file starts only when authenticated engine connects; leaving process cancels",()=>{
   const h=bootFlow(false);
-  h.emit("billy:document-loaded",{file:{name:"ticket.jpg"}});
-  h.element("simpleChooseFuelRelease").click();
-  assert.equal(h.sandbox.window.BillySimple.getState().screen,"process");
+  h.emit("billy:document-loaded",{file:{name:"flight.jpg"}});
   assert.equal(h.getScans(),0);
   h.setOnline(true);
   h.emit("billy:engine-updated");
   assert.equal(h.getScans(),1);
   h.emit("billy:engine-updated");
   assert.equal(h.getScans(),1);
-
   const cancelled=bootFlow(false);
-  cancelled.emit("billy:document-loaded",{file:{name:"other.jpg"}});
-  cancelled.element("simpleChooseInvoice").click();
+  cancelled.emit("billy:document-loaded",{file:{name:"flight.jpg"}});
   cancelled.element("simpleBack").click();
-  assert.equal(cancelled.sandbox.window.BillySimple.getState().screen,"type");
   cancelled.setOnline(true);
   cancelled.emit("billy:engine-updated");
   assert.equal(cancelled.getScans(),0);

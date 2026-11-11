@@ -24,17 +24,17 @@ test("Scanner removes decorative breadcrumb and trailing arrows, without changin
   assert.match(html,/id="scanButton"[^>]*><span id="scanLabel">Select a document first<\/span><\/button>/);
 });
 
-test("Document classification uses a clear title and arrow-free choice cards",()=>{
-  assert.match(html,/What kind of document is this\?/);
+test("Auto-Detect hides manual choices unless classification needs correction",()=>{
+  assert.match(html,/Check document type/);
   assert.doesNotMatch(html,/DOCUMENT CLASSIFICATION/);
-  assert.doesNotMatch(html,/Choose the correct type before Billy sends it to Gemini/);
-  assert.doesNotMatch(html,/simple-type-arrow/);
-  assert.doesNotMatch(simpleCss,/\.simple-type-kicker/);
-  assert.doesNotMatch(simpleCss,/\.simple-type-help/);
-  assert.match(html,/id="simpleChooseInvoice"/);
-  assert.match(html,/id="simpleChooseFuelRelease"/);
+  assert.match(html,/id="simpleManualProfile"/);
+  assert.match(html,/id="simpleManualCategory"/);
+  assert.match(html,/id="simpleUseManualProfile"/);
+  assert.match(html,/id="simpleReviewChangeProfile"/);
+  assert.match(html,/<option value="auto" selected>Auto-detect<\/option>/);
+  assert.match(simple,/startAutomaticProcessing\(\)/);
+  assert.match(simple,/billy:classification-needs-review/);
   assert.match(html,/<span>Process document<\/span><\/button>/);
-  // Continue is navigation: preserve its arrow, unlike other action buttons.
   assert.match(html,/id="simpleContinue"[\s\S]*?<span>Continue<\/span><svg[^>]*>[\s\S]*?<\/svg><\/button>/);
 });
 
