@@ -68,17 +68,14 @@ function bootFlow(){
   return {element,sandbox,getScans:()=>scans,emit:(type,detail)=>windowEvents.get(type)?.({detail})};
 }
 
-test("Each document requires a fresh explicit classification before processing",()=>{
+test("Each new document requires explicit type selection and selecting the type starts processing",()=>{
   const {element,sandbox,getScans,emit}=bootFlow();
   assert.equal(sandbox.window.BillySimple.getState().screen,"home");
   const first={name:"fuel-ticket.jpg"};
   emit("billy:document-loaded",{file:first});
-  assert.equal(sandbox.window.BillySimple.getState().screen,"edit");
-  assert.equal(element("documentType").value,"");
-  element("simpleContinue").click();
+  // Crop confirmation/import now goes straight to classification.
   assert.equal(sandbox.window.BillySimple.getState().screen,"type");
-  assert.equal(element("simpleRunProcess").disabled,false);
-  // Even an attempted bypass cannot trigger extraction without a type.
+  assert.equal(element("documentType").value,"");
   element("simpleRunProcess").click();
   assert.equal(getScans(),0);
   assert.equal(sandbox.window.BillySimple.getState().screen,"type");
@@ -86,18 +83,17 @@ test("Each document requires a fresh explicit classification before processing",
   assert.equal(element("documentType").value,"fuel_release");
   assert.equal(sandbox.window.BillySimple.getState().screen,"process");
   assert.equal(element("simpleSelectedType").textContent,"Fuel Release");
-  assert.equal(element("simpleRunProcess").disabled,false);
-  element("simpleRunProcess").click();
   assert.equal(getScans(),1);
+  assert.equal(element("simpleRunProcess").disabled,true);
   element("simpleChangeType").click();
   assert.equal(sandbox.window.BillySimple.getState().screen,"type");
   assert.equal(element("simpleChooseFuelRelease").getAttribute("aria-pressed"),"true");
   const next={name:"invoice-2.pdf"};
   emit("billy:document-loaded",{file:next});
-  assert.equal(element("documentType").value,"");
-  element("simpleContinue").click();
   assert.equal(sandbox.window.BillySimple.getState().screen,"type");
+  assert.equal(element("documentType").value,"");
   element("simpleChooseInvoice").click();
   assert.equal(element("documentType").value,"invoice");
   assert.equal(element("simpleSelectedType").textContent,"Invoice");
+  assert.equal(getScans(),2);
 });
