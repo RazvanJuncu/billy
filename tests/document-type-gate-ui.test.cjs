@@ -111,6 +111,14 @@ test("Back navigation stays in the new flow and never opens the legacy editor",(
   assert.equal(h.sandbox.window.BillySimple.getState().screen,"review");
   h.element("simpleBack").click();
   assert.equal(h.sandbox.window.BillySimple.getState().screen,"type");
+  // Going Back and picking the already extracted type reuses the result.
+  h.element("simpleChooseInvoice").click();
+  assert.equal(h.sandbox.window.BillySimple.getState().screen,"review");
+  assert.equal(h.getScans(),1);
+  h.element("simpleBack").click();
+  h.element("simpleChooseFuelRelease").click();
+  assert.equal(h.sandbox.window.BillySimple.getState().screen,"process");
+  assert.equal(h.getScans(),2);
   h.emit("billy:document-revised");
   assert.equal(h.sandbox.window.BillySimple.getState().screen,"type");
 });
