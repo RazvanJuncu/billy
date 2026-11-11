@@ -207,3 +207,24 @@ test("Confidence Engine v1 ignores positive meter equality but retains real risk
   assert.match(ramp,/confidence_engine:\{/);
   assert.match(ramp,/ai_assessment_not_a_calibrated_confidence:true/);
 });
+
+test("Machine translation alone never turns an otherwise valid field yellow",()=>{
+  assert.doesNotMatch(ramp,/translation_needs_review/);
+  assert.match(ramp,/originalSourceText\?\?value/);
+  assert.match(ramp,/translated\.source_text/);
+  assert.match(ramp,/translatedPaths\.get\(path\)/);
+  assert.match(ramp,/pair\.source_text/);
+  const injected=ramp.replace("  function mount(result,endpoint,getHeaders,sourceFile){",
+    "  window.__testClassify=classification;\n  function mount(result,endpoint,getHeaders,sourceFile){");
+  const ctx={window:{BillyReview:{render:()=>{}}}};
+  vm.runInNewContext(injected,ctx);
+  const classify=ctx.window.__testClassify;
+  const doc={lines:[{description:"Travel fare"}]};
+  const clear=[{field_path:"lines[0].description",visual_clarity:"clear",
+    alternate_readings:[],visual_reason:"Printed words are clear"}];
+  assert.equal(classify("lines[0].description",doc,"invoice",clear,[],"taxi_receipt","Tarif de călătorie").level,"green");
+  const genuineAlternative=[{...clear[0],alternate_readings:["Tarif de călătorie redus"]}];
+  assert.equal(classify("lines[0].description",doc,"invoice",genuineAlternative,[],"taxi_receipt","Tarif de călătorie").level,"yellow");
+  const unreadable=[{...clear[0],visual_clarity:"ambiguous"}];
+  assert.equal(classify("lines[0].description",doc,"invoice",unreadable,[],"taxi_receipt","Tarif de călătorie").level,"red");
+});
