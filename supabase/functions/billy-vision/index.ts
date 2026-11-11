@@ -72,13 +72,16 @@ const EVIDENCE = arraySchema(evidenceKeys,{
 const ENGLISH_TRANSLATIONS = arraySchema(["field_path","source_text","english_text"],{
   field_path:{type:"string"},source_text:{type:"string"},english_text:{type:"string"}
 });
+const ENTITY_HINTS = {type:"array",items:{type:"string",enum:[
+  "supplier_name","operator_name","property_name","airport","airport_icao"
+]}};
 const invoiceSchemaFor = profile => {
   const fields=[...BASE_INVOICE_FIELDS,...(PROFILE_FIELDS[profile]||[])];
   return {type:"object",properties:{...props(fields),
     lines:arraySchema(LINE_FIELDS,props(LINE_FIELDS)),
     notes:{type:"array",items:{type:"string"}},regions:EVIDENCE,
-    document_language:{type:"string"},english_translations:ENGLISH_TRANSLATIONS},
-    required:[...fields,"lines","notes","regions","document_language","english_translations"],additionalProperties:false};
+    document_language:{type:"string"},english_translations:ENGLISH_TRANSLATIONS,entity_check_fields:ENTITY_HINTS},
+    required:[...fields,"lines","notes","regions","document_language","english_translations","entity_check_fields"],additionalProperties:false};
 };
 const CLASSIFIER_SCHEMA = {
   type:"object",properties:{
@@ -109,8 +112,8 @@ const FUEL_SCHEMA = {
       legibility:{type:"string",enum:["clear","uncertain","illegible"]},
       interpreted_as:textSchema
     }),notes:{type:"array",items:{type:"string"}},regions:EVIDENCE,
-    document_language:{type:"string"},english_translations:ENGLISH_TRANSLATIONS},
-  required:[...FUEL_FIELDS,"handwritten_entries","notes","regions","document_language","english_translations"],additionalProperties:false
+    document_language:{type:"string"},english_translations:ENGLISH_TRANSLATIONS,entity_check_fields:ENTITY_HINTS},
+  required:[...FUEL_FIELDS,"handwritten_entries","notes","regions","document_language","english_translations","entity_check_fields"],additionalProperties:false
 };
 const RECHECK_SCHEMA = {
   type:"object",properties:{
@@ -160,6 +163,11 @@ const INSTRUCTIONS =
   "For example, NET JETS written under AIRCRAFT TYPE may be interpreted as operator_name, but retain AIRCRAFT TYPE and NET JETS unchanged in the handwritten entry. " +
   "Never infer a signers identity. Do not confuse transcription with interpretation. " +
   "For faint or unclear regions, mark visual_clarity as slight_uncertainty, ambiguous or unreadable; identify the field and explain why. " +
+  "Additionally, return entity_check_fields as a list of 0-2 PUBLIC supplier/operator/property/airport name fields. " +
+  "Select a field ONLY if its public identity remains materially ambiguous despite reading the page, " +
+  "and a narrowly scoped Google search of that printed PUBLIC label could clarify it. " +
+  "Do not request search for legible, unambiguous names, personal names, flight details, invoices, tax IDs or prices. " +
+  "When nothing merits external lookup, use entity_check_fields=[]. Do not guess unseen identity. " +
   "Do not assert calibrated probabilities. Include regions for fields that can truly be located, " +
   "with field_path, page (1-based), normalized [ymin,xmin,ymax,xmax] 0..1000, " +
   "exact transcription, script_type and visual_clarity. Give up to 3 supported alternative " +
@@ -474,7 +482,7 @@ function cleanPublicEntity(value,kind="company"){
   if(kind==="airport"&&/^[A-Z]{4}$/i.test(term))return term.toUpperCase();
   return term;
 }
-function entityLookupPlan(fields,regions){
+function entityLookupPlan(fields,regions,modelHints=[]){
   const requests=[],used=new Set();
   // Prefer the issuer; airport is second. Generic descriptions, tax IDs,
   // crew members and email addresses must never become search strings.
@@ -489,7 +497,7 @@ function entityLookupPlan(fields,regions){
       /\.{2,}$|\?{1,}|\b(?:unknown|unreadable|illegible|n\/a)\b/i.test(extracted));
     // Missing names cannot be resolved from the web without a usable
     // source fragment; never "identify" a vendor from transaction context.
-    if(!weak&&!incomplete)continue;
+    if(!weak&&!incomplete&&!modelHints.includes(path))continue;
     const source=fieldRegions.find(r=>typeof r.transcription==="string"&&r.transcription.trim())?.transcription;
     const term=cleanPublicEntity(extracted||source,kind);
     if(!term)continue;
@@ -560,9 +568,9 @@ async function publicEntityCheck(request){
       metadata.searchEntryPoint.renderedContent.slice(0,18000):null
   };
 }
-async function autoVerifyEntities(fields,regions){
+async function autoVerifyEntities(fields,regions,modelHints=[]){
   // Auto-search is enabled only when field evidence is genuinely uncertain.
-  const plan=entityLookupPlan(fields,regions);
+  const plan=entityLookupPlan(fields,regions,modelHints);
   if(!plan.length)return {checks:[],attempts:0,search_queries_count:0};
   // Search only after the OCR has completed; independent of the review.
   // Provider outages cannot block processing, and billed calls are capped by
@@ -681,13 +689,15 @@ async function extract(req,principal){
     return error("The AI engine returned HTTP "+google.status+". Check provider billing, quota and model access.",502);
   }
   const response=await google.json();
-  let fields,sourceDoc,regions,translation;
+  let fields,sourceDoc,regions,translation,identityHints=[];
   try{
     const message=(response.candidates?.[0]?.content?.parts||[]).filter(p=>!p.thought).map(p=>p.text||"").join("");
     const parsed=JSON.parse(message);
     regions=cleanRegions(parsed.regions,type);
     const {regions: _evidence,document_language:_language,
-      english_translations:_translations,...structured}=parsed;
+      english_translations:_translations,entity_check_fields:_identityHints,...structured}=parsed;
+    identityHints=Array.isArray(_identityHints)?
+      _identityHints.filter(path=>Object.hasOwn(PUBLIC_ENTITY_FIELDS,path)).slice(0,MAX_AUTO_ENTITY_LOOKUPS):[];
     sourceDoc=cleanDoc(structured,type);
     const translated=applyEnglishTranslations(sourceDoc,type,_language,_translations);
     fields=cleanDoc(translated.document,type);
@@ -696,7 +706,7 @@ async function extract(req,principal){
     console.error("Gemini invalid structured response",String(e).slice(0,180));
     return error("The AI engine returned an invalid structured document. Try another scan.",502);
   }
-  const externalChecks=await autoVerifyEntities(fields,regions);
+  const externalChecks=await autoVerifyEntities(fields,regions,identityHints);
   const warnings=validate(fields,type,regions,profile);
   const usage={
     input_tokens:response.usageMetadata?.promptTokenCount??null,
