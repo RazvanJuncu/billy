@@ -24,6 +24,6 @@ test("Process Document retries automatically, with a manual visible fallback",()
 });
 test("PWA uses refreshed assets after an earlier disconnected session",()=>{
  assert.match(html,/app\.js\?v=0\.7\.0/);
- assert.match(html,/simple\.js\?v=1\.3\.0/);
+ assert.match(html,/simple\.js\?v=1\.3\.1/);
  assert.match(sw,/v56-confidence-v1/);
 });
