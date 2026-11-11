@@ -119,6 +119,7 @@ test("Back navigation stays in the new flow and never opens the legacy editor",(
   h.element("simpleChooseFuelRelease").click();
   assert.equal(h.sandbox.window.BillySimple.getState().screen,"process");
   assert.equal(h.getScans(),2);
+  h.emit("billy:ocr-ready");
   h.emit("billy:document-revised");
   assert.equal(h.sandbox.window.BillySimple.getState().screen,"type");
 });
