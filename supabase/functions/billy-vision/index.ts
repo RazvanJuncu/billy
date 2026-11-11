@@ -584,48 +584,6 @@ async function autoVerifyEntities(fields,regions){
 }
 // Explicit, authenticated verification of a PUBLIC field in the current
 // unapproved record. A web suggestion never changes OCR data or approvals.
-async function verifyEntityOnline(req,principal){
-  if(!providerKey())return error("Online double-check is not configured.",503);
-  let body;
-  try{body=await req.json();}catch{return error("Invalid online check request.",400);}
-  const path=body?.field_path,kind=PUBLIC_ENTITY_FIELDS[path];
-  const term=kind?cleanPublicEntity(body.observed_text,kind):null;
-  const id=body?.extraction_id;
-  if(!kind||!term||typeof id!=="string"||
-    !/^[0-9a-f]{8}-[0-9a-f-]{27,36}$/i.test(id))
-    return error("Enter a short visible company or airport name.",400);
-  const rows=await database(principal,"GET","document_records",{
-    select:"id,state,document_type,review_metadata",
-    id:"eq."+id,organization_id:"eq."+principal.organization_id,
-    created_by:"eq."+principal.user_id,limit:"1"
-  });
-  const record=rows[0];
-  if(!record||record.state!=="extracted")
-    return error("Only your pending documents can be checked.",404);
-  const allowed=record.document_type==="fuel_release"?FUEL_FIELDS:INVOICE_FIELDS;
-  if(!allowed.includes(path))return error("This field cannot be checked online.",400);
-  const attempts=Number(record.review_metadata?.entity_lookup_attempts||0);
-  if(!Number.isSafeInteger(attempts)||attempts>=4)
-    return error("Online double-check limit reached for this document (4 searches).",429);
-  // Record an attempt before the billable call. A single call may generate
-  // more than one billed Google Search query.
-  await database(principal,"PATCH","document_records",{
-    select:"id",id:"eq."+record.id,organization_id:"eq."+principal.organization_id,
-    created_by:"eq."+principal.user_id,state:"eq.extracted"
-  },{review_metadata:{
-    ...(record.review_metadata||{}),entity_lookup_attempts:attempts+1
-  }});
-  try{
-    const result=await publicEntityCheck({field_path:path,kind,observed_text:term});
-    return json({
-      ...result,
-      note:"Online suggestions never replace the document's original reading."
-    });
-  }catch(e){
-    console.error("Online double-check failed",e instanceof Error?e.message:"unknown");
-    return error("Online verification unavailable. Inspect the document manually.",502);
-  }
-}
 function safeFileName(name) {
   return name.split(/[\\/]/).pop().slice(0,180);
 }
@@ -1028,10 +986,10 @@ Deno.serve(async req=>{
   const path=new URL(req.url).pathname;
   // Supabase may present the public path, function-local path, or a slug-prefixed path.
   // Match only known routes regardless of which valid prefix the edge runtime preserves.
-  const routes=["/api/vision/health","/api/vision/extract","/api/vision/recheck","/api/vision/verify-entity","/api/vision/approve","/api/vision/records","/api/vision/delete"];
+  const routes=["/api/vision/health","/api/vision/extract","/api/vision/recheck","/api/vision/approve","/api/vision/records","/api/vision/delete"];
   const suffix=routes.find(route=>path===route||path.endsWith("/billy-vision"+route));
   if(!suffix)return error("Not found.",404);
-  if(req.method!==(suffix==="/api/vision/extract"||suffix==="/api/vision/recheck"||suffix==="/api/vision/verify-entity"||suffix==="/api/vision/approve"||suffix==="/api/vision/delete"?"POST":"GET"))return error("Method not allowed.",405);
+  if(req.method!==(suffix==="/api/vision/extract"||suffix==="/api/vision/recheck"||suffix==="/api/vision/approve"||suffix==="/api/vision/delete"?"POST":"GET"))return error("Method not allowed.",405);
   try{
     const principal=await trusted(req);
     if(!principal)return error("Sign in to an approved Billy team first.",401);
@@ -1043,7 +1001,6 @@ Deno.serve(async req=>{
     });
     if(suffix==="/api/vision/extract")return await extract(req,principal);
     if(suffix==="/api/vision/recheck")return await recheck(req,principal);
-    if(suffix==="/api/vision/verify-entity")return await verifyEntityOnline(req,principal);
     if(suffix==="/api/vision/approve")return await approve(req,principal);
     if(suffix==="/api/vision/delete")return await deleteRecord(req,principal);
     return await listRecords(principal,req);
