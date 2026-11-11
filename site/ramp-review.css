@@ -163,3 +163,6 @@
   .ramp-field-detail.ramp-missing{padding:18px 15px 15px}
   .ramp-field-detail.ramp-missing .ramp-field-title{font-size:20px}
 }
+
+/* Classification shown only once in the exception-first review. */
+.formatted-output .ramp-profile{font-size:12px;line-height:1.4;color:#b9bec4;margin:0 0 13px;font-weight:560;text-transform:capitalize}
