@@ -62,17 +62,17 @@ window.addEventListener("billy:scanner-stage", (event) => {
 
 function updateScanButton() {
   const type = $("documentType").value;
-  const validType = type === "invoice" || type === "fuel_release";
+  const validType = ["auto","invoice","fuel_release"].includes(type);
   $("scanButton").disabled = !state.file || !validType || state.busy;
   $("scanLabel").textContent = state.busy ? "Processing document…" :
     !state.file ? "Select a document first" :
-    !validType ? "Choose document type first" :
+    !validType ? "Document type unavailable" :
     state.online ? "Extract with Vision AI" : "Connect Vision AI";
   $("ocrHint").textContent = !state.file
     ? "Capture an invoice or handwritten Fuel Release."
-    : !validType ? "Select Invoice or Fuel Release before processing."
+    : !validType ? "Select a document before processing."
     : state.online
-      ? "AI can extract the selected document. Human review is required."
+      ? "AI detects the document profile and extracts the relevant fields. Human review is required."
       : "Document ready. Connect Vision to read this document.";
   $("ocrHint").classList.toggle("ready", state.online);
   $("ocrHint").classList.toggle("need-engine", !state.online);
@@ -161,7 +161,9 @@ function selectFile(file) {
     showNotification("Choose a non-empty document no larger than 10 MiB.", true);
     return;
   }
-  $("documentType").value = ""; // New file, new explicit classification.
+  $("documentType").value = "auto"; // Every new file starts with automatic classification.
+  delete $("documentType").dataset.profileOverride;
+  delete $("documentType").dataset.categoryOverride;
   state.file = file;
   setStage(2);
   state.result = null;
@@ -321,8 +323,8 @@ function renderResult() {
 
 async function scanInvoice() {
   if (!state.file || state.busy) return;
-  if (!["invoice","fuel_release"].includes($("documentType").value)) {
-    showNotification("Choose Invoice or Fuel Release before processing this document.",true);
+  if (!["auto","invoice","fuel_release"].includes($("documentType").value)) {
+    showNotification("Choose a document to process.",true);
     return;
   }
   if (!state.online) {
@@ -346,6 +348,10 @@ async function scanInvoice() {
   const form = new FormData();
   form.append("file", currentFile, currentFile.name);
   form.append("document_type", $("documentType").value);
+  if ($("documentType").dataset.profileOverride) {
+    form.append("profile_override", $("documentType").dataset.profileOverride);
+    form.append("category_override", $("documentType").dataset.categoryOverride || "unknown");
+  }
   try {
     const headers = await window.BillyAccounts.sessionHeaders();
     headersReady = Date.now();
@@ -354,9 +360,20 @@ async function scanInvoice() {
     const responseBody = await response.json();
     jsonParsed = Date.now();
     if (!response.ok) throw new Error(responseBody.detail || ("HTTP " + response.status));
+    if (responseBody.classification_required) {
+      if (state.file !== currentFile) return;
+      state.lastClassification = responseBody.classification || null;
+      window.dispatchEvent(new CustomEvent("billy:classification-needs-review",{
+        detail:{classification:responseBody.classification||null,reason:responseBody.detail||""}
+      }));
+      showNotification("");
+      return;
+    }
     if (!(responseBody.invoice || responseBody.fuel_release) || !responseBody.extraction_id) throw new Error("Vision returned no reviewable document.");
     if (state.file !== currentFile) return;
     state.result = responseBody;
+    // Record type stays invoice/fuel_release; profile and category are separate.
+    $("documentType").value = responseBody.document_type;
     state.page = 0;
     state.tab = "document";
     renderResult();
