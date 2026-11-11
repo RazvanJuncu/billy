@@ -325,13 +325,9 @@
       }
       close();
       window.BillyApp?.openFile?.(result);
-      // Only process when the authorized Vision endpoint is actually connected.
-      if (window.BillyApp?.isOnline?.()) {
-        window.BillySimple?.showScreen?.("process");
-        $("simpleRunProcess")?.click();
-      } else {
-        window.BillySimple?.showScreen?.("edit");
-      }
+      // Require an explicit document type; choosing it starts processing
+      // when the authenticated AI engine is ready.
+      window.BillySimple?.showScreen?.("type");
     } catch (error) {
       message(error.message || "Could not create the document.",true);
     } finally {
