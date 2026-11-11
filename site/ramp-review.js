@@ -74,7 +74,8 @@
   };
   const highRisk=new Set(["grand_total","invoice_number","delivered_quantity","meter_start","meter_finish","aircraft_registration"]);
   const severity={green:0,yellow:1,red:2};
-  // External checks run autonomously on the backend during extraction.
+  const manualEntityFields=new Set(["supplier_name","operator_name","property_name","airport",
+    "airport_icao","parking_location","delivery_location"]);
   const labelFor=(path,type,doc,profile="generic_invoice")=>{
     if(path.includes("[")){
       const match=path.match(/^(lines|handwritten_entries)\[(\d+)\]\.(\w+)$/);
@@ -218,6 +219,7 @@
     }]));
     const humanReviewed=new Set(),manualAcknowledged=new Set(),notOnDocument=new Set();
     let revision=0,checkedRevision=-1,busy=false,recheckCount=0;
+    let lookupBusy=false;
     let selected=null,editMode=false;
     const cropper=window.BillyQuickVerifyCrop?.create(sourceFile)||null;
     disposeActiveCrop=()=>cropper?.dispose();
@@ -274,12 +276,14 @@
     fieldNotPresent.type="button";
     const fieldCancel=create("button","ramp-close","Close");
     fieldCancel.type="button";
+    const doubleCheck=create("button","ramp-double-check","Double-check online");
+    doubleCheck.type="button";
     const onlinePanel=create("section","ramp-online-panel");
     onlinePanel.hidden=true;
     const minorActions=create("div","ramp-minor-actions");
     const inspectOriginal=create("button","ramp-inspect-original","View full document");
     inspectOriginal.type="button";
-    minorActions.append(fieldNotPresent,inspectOriginal,fieldCancel);
+    minorActions.append(doubleCheck,fieldNotPresent,inspectOriginal,fieldCancel);
     fieldButtons.append(fieldConfirm,fieldEdit);
     detail.append(fieldTitle,sourceTitle,sourceCrop,currentCaption,
       currentValue,fieldInput,reason,onlinePanel,fieldButtons,minorActions);
@@ -464,6 +468,8 @@
       detail.className=missing?"ramp-field-detail ramp-missing":"ramp-field-detail";
       onlinePanel.replaceChildren();
       onlinePanel.hidden=true;
+      doubleCheck.hidden=!manualEntityFields.has(path);
+      doubleCheck.disabled=lookupBusy;
       const publicCheck=externalChecks.find(item=>item.field_path===path);
       if(publicCheck){
         onlinePanel.hidden=false;
@@ -528,6 +534,65 @@
       paint();
       detail.scrollIntoView?.({block:"nearest",behavior:"smooth"});
     }
+    doubleCheck.addEventListener("click",async()=>{
+      if(!selected||lookupBusy||busy||!manualEntityFields.has(selected))return;
+      const path=selected;
+      const term=String(editMode?fieldInput.value:valueAt(doc,path)||"").trim();
+      onlinePanel.replaceChildren();
+      onlinePanel.hidden=false;
+      const status=create("p","ramp-online-status");
+      onlinePanel.append(status);
+      if(term.length<3){
+        status.textContent="Enter a visible fragment of at least 3 characters using Edit, then double-check again.";
+        return;
+      }
+      status.textContent="Checking public sources…";
+      lookupBusy=true;doubleCheck.disabled=true;
+      try{
+        const response=await fetch(endpoint+"/api/vision/verify-entity",{
+          method:"POST",headers:{"Content-Type":"application/json",...await getHeaders()},
+          body:JSON.stringify({extraction_id:result.extraction_id,field_path:path,observed_text:term})
+        });
+        const resultBody=await response.json();
+        if(!response.ok)throw Error(resultBody.detail||"Online lookup failed");
+        if(selected!==path)return;
+        onlinePanel.replaceChildren(
+          create("p","ramp-online-status",
+            resultBody.status==="possible_match"&&resultBody.suggested_name?
+              "Possible public match: "+resultBody.suggested_name:
+              resultBody.status==="conflicting"?"Multiple plausible public identities.":
+              "Identity not confirmed from public sources.")
+        );
+        if(resultBody.explanation)
+          onlinePanel.append(create("p","ramp-online-description",String(resultBody.explanation).slice(0,230)));
+        if(resultBody.airport_icao)
+          onlinePanel.append(create("p","ramp-online-description","Airport code: "+resultBody.airport_icao));
+        for(const source of (Array.isArray(resultBody.sources)?resultBody.sources:[]).slice(0,4)){
+          try{
+            const url=new URL(source.url);
+            if(url.protocol!=="https:")continue;
+            const anchor=create("a","ramp-online-link",String(source.title||"Public source").slice(0,95));
+            anchor.href=url.href;anchor.target="_blank";anchor.rel="noopener noreferrer";
+            onlinePanel.append(anchor);
+          }catch{}
+        }
+        if(typeof resultBody.search_suggestions==="string"&&resultBody.search_suggestions){
+          const widget=create("iframe","ramp-search-suggestions");
+          widget.title="Google Search suggestions";
+          widget.setAttribute("sandbox","allow-popups allow-popups-to-escape-sandbox");
+          widget.setAttribute("referrerpolicy","no-referrer");
+          widget.srcdoc=resultBody.search_suggestions;onlinePanel.append(widget);
+        }
+        onlinePanel.append(create("p","ramp-online-disclaimer",
+          "Public information is only a suggestion, never proof of text printed on this document. Billy never changes it automatically."));
+      }catch(error){
+        if(selected===path)onlinePanel.replaceChildren(
+          create("p","ramp-online-status",error.message||"Online lookup unavailable. Check the original."));
+      }finally{
+        lookupBusy=false;
+        doubleCheck.disabled=false;
+      }
+    });
     fieldCancel.addEventListener("click",closeEditor);
     inspectOriginal.addEventListener("click",()=>{
       evidence.hidden=false;
