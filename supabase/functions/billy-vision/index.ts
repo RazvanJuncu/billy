@@ -561,10 +561,7 @@ async function publicEntityCheck(request){
   };
 }
 async function autoVerifyEntities(fields,regions){
-  // Automatic web grounding is opt-in at the server level to prevent surprise
-  // search charges. Operator-triggered double-check is available by default.
-  if(Deno.env.get("BILLY_AUTO_ENTITY_LOOKUP")!=="true")
-    return {checks:[],attempts:0,search_queries_count:0};
+  // Auto-search is enabled only when field evidence is genuinely uncertain.
   const plan=entityLookupPlan(fields,regions);
   if(!plan.length)return {checks:[],attempts:0,search_queries_count:0};
   // Search only after the OCR has completed; independent of the review.
@@ -582,8 +579,6 @@ async function autoVerifyEntities(fields,regions){
   return {checks:results,attempts:plan.length,
     search_queries_count:results.reduce((sum,item)=>sum+item.search_queries_count,0)};
 }
-// Explicit, authenticated verification of a PUBLIC field in the current
-// unapproved record. A web suggestion never changes OCR data or approvals.
 function safeFileName(name) {
   return name.split(/[\\/]/).pop().slice(0,180);
 }
