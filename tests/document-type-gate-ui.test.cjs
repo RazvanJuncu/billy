@@ -25,7 +25,7 @@ test("Dedicated classification step is prominent and has no Invoice default",()=
   assert.match(app,/!validType \|\| state\.busy/);
 });
 
-function bootFlow(){
+function bootFlow(onlineInitially=true){
   const elements=new Map(),windowEvents=new Map();
   const element=id=>{
     if(elements.has(id))return elements.get(id);
@@ -53,11 +53,11 @@ function bootFlow(){
     getElementById:element,
     querySelectorAll:selector=>selector===".simple-type-card"?[invoice,fuel]:[],
   };
-  let scans=0;
+  let scans=0,online=onlineInitially;
   element("scanButton").click=()=>{scans++;};
   const sandbox={
     window:{
-      BillyApp:{isOnline:()=>true,visionStatus:()=>({online:true})},
+      BillyApp:{isOnline:()=>online,visionStatus:()=>({online})},
       BillyAccounts:{active:()=>false},
       addEventListener(type,fn){windowEvents.set(type,fn)}
     },
@@ -65,7 +65,7 @@ function bootFlow(){
     console,Math,
   };
   vm.runInNewContext(flow,sandbox,{filename:"simple.js"});
-  return {element,sandbox,getScans:()=>scans,emit:(type,detail)=>windowEvents.get(type)?.({detail})};
+  return {element,sandbox,getScans:()=>scans,setOnline:value=>{online=value;},emit:(type,detail)=>windowEvents.get(type)?.({detail})};
 }
 
 test("Each new document requires explicit type selection and selecting the type starts processing",()=>{
@@ -96,4 +96,43 @@ test("Each new document requires explicit type selection and selecting the type 
   assert.equal(element("documentType").value,"invoice");
   assert.equal(element("simpleSelectedType").textContent,"Invoice");
   assert.equal(getScans(),2);
+});
+
+test("Back navigation stays in the new flow and never opens the legacy editor",()=>{
+  const h=bootFlow();
+  h.emit("billy:document-loaded",{file:{name:"ticket.jpg"}});
+  assert.equal(h.sandbox.window.BillySimple.getState().screen,"type");
+  h.element("simpleBack").click();
+  assert.equal(h.sandbox.window.BillySimple.getState().screen,"new");
+  h.sandbox.window.BillySimple.showScreen("type");
+  h.element("simpleChooseInvoice").click();
+  assert.equal(h.sandbox.window.BillySimple.getState().screen,"process");
+  h.emit("billy:ocr-ready");
+  assert.equal(h.sandbox.window.BillySimple.getState().screen,"review");
+  h.element("simpleBack").click();
+  assert.equal(h.sandbox.window.BillySimple.getState().screen,"type");
+  h.emit("billy:document-revised");
+  assert.equal(h.sandbox.window.BillySimple.getState().screen,"type");
+});
+
+test("Choosing a type while engine connects starts once on readiness, not after Back",()=>{
+  const h=bootFlow(false);
+  h.emit("billy:document-loaded",{file:{name:"ticket.jpg"}});
+  h.element("simpleChooseFuelRelease").click();
+  assert.equal(h.sandbox.window.BillySimple.getState().screen,"process");
+  assert.equal(h.getScans(),0);
+  h.setOnline(true);
+  h.emit("billy:engine-updated");
+  assert.equal(h.getScans(),1);
+  h.emit("billy:engine-updated");
+  assert.equal(h.getScans(),1);
+
+  const cancelled=bootFlow(false);
+  cancelled.emit("billy:document-loaded",{file:{name:"other.jpg"}});
+  cancelled.element("simpleChooseInvoice").click();
+  cancelled.element("simpleBack").click();
+  assert.equal(cancelled.sandbox.window.BillySimple.getState().screen,"type");
+  cancelled.setOnline(true);
+  cancelled.emit("billy:engine-updated");
+  assert.equal(cancelled.getScans(),0);
 });
