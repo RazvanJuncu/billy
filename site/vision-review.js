@@ -43,6 +43,9 @@ function download(text,name,mime){const u=URL.createObjectURL(new Blob([text],{t
 function escapeCell(value){const s=String(value??"");const dangerous=/^\s*[=+@]/.test(s) || (/^\s*-/.test(s) && !/^\s*-\d+(?:[.,]\d+)?\s*$/.test(s));const safe=dangerous?"'"+s:s;return '"'+safe.replaceAll('"','""')+'"';}
 function getApprovedSpreadsheetData(){
   if(!approved||!draft)return null;
+  // These fallbacks also keep independent CSV preview helpers self-contained.
+  const reportProfile=typeof classification!=="undefined"?classification:null;
+  const reportEntryTitle=typeof entryTitle!=="undefined"?entryTitle:"Invoice line items";
   // Document-level metadata describes ONE document. Never repeat it once for
   // every handwritten field / invoice line: the preview is a report, not a JOIN.
   const details=fieldKeys
@@ -58,12 +61,12 @@ function getApprovedSpreadsheetData(){
   const rows=(Array.isArray(sourceRows)?sourceRows:[]).map(item=>
     columns.map(column=>item?.[column.key]??""));
   const entries={
-    title:documentType==="fuel_release"?"Handwritten entries":entryTitle,
+    title:documentType==="fuel_release"?"Handwritten entries":reportEntryTitle,
     columns,rows
   };
-  if(classification){
-    details.unshift({key:"expense_category",label:"Expense category",value:String(classification.expense_category||"unknown").replaceAll("_"," ")});
-    details.unshift({key:"extraction_profile",label:"Document profile",value:String(classification.profile||"unknown").replaceAll("_"," ")});
+  if(reportProfile){
+    details.unshift({key:"expense_category",label:"Expense category",value:String(reportProfile.expense_category||"unknown").replaceAll("_"," ")});
+    details.unshift({key:"extraction_profile",label:"Document profile",value:String(reportProfile.profile||"unknown").replaceAll("_"," ")});
   }
   return {documentType,details,entries};
 }
