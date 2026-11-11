@@ -229,7 +229,7 @@ test("Machine translation alone never turns an otherwise valid field yellow",()=
   assert.equal(classify("lines[0].description",doc,"invoice",unreadable,[],"taxi_receipt","Tarif de călătorie").level,"red");
 });
 
-test("External entity double-check is evidence-only, optional, and confined to public labels",()=>{
+test("External entity double-check is autonomous, evidence-only, and confined to public labels",()=>{
   const backend=read("supabase/functions/billy-vision/index.ts");
   const start=backend.indexOf("const PUBLIC_ENTITY_FIELDS=");
   const end=backend.indexOf("function safeFileName(name)",start);
@@ -239,14 +239,14 @@ test("External entity double-check is evidence-only, optional, and confined to p
   assert.match(section,/MAX_AUTO_ENTITY_LOOKUPS=2/);
   assert.match(section,/observed_text/);
   assert.doesNotMatch(section,/inline_data|base64Document/);
-  assert.match(backend,/api\/vision\/verify-entity/);
-  assert.match(backend,/BILLY_AUTO_ENTITY_LOOKUP/);
+  assert.doesNotMatch(backend,/api\/vision\/verify-entity/);
+  assert.match(backend,/MAX_AUTO_ENTITY_LOOKUPS=2/);
   assert.match(backend,/review_metadata:\{classification,extraction_profile_version:"1\.1",external_checks:externalChecks\}/);
   assert.match(backend,/const externalChecks=await autoVerifyEntities\(fields,regions\)/);
   assert.match(ramp,/result\.external_checks\?\.checks/);
   assert.match(ramp,/Possible public match/);
   assert.match(ramp,/widget\.setAttribute\("sandbox"/);
-  assert.match(ramp,/doubleCheck\.addEventListener/);
+  assert.doesNotMatch(ramp,/doubleCheck\.addEventListener/);
   assert.doesNotMatch(ramp,/saveValue\(path,\s*publicCheck\.suggested_name/);
 });
 
