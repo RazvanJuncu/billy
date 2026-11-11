@@ -66,6 +66,18 @@
     const rec = sessionFiles.find(item => item.file === activeFile);
     if (rec) rec.documentType = type;
     showScreen("process");
+    // Choosing the document type is the final confirmation; process immediately
+    // when the authenticated engine is available.
+    if (window.BillyApp?.isOnline()) startProcessing();
+  }
+
+  function startProcessing() {
+    if (!activeFile || !selectedDocumentType()) { showScreen("type"); return; }
+    if (!window.BillyApp?.isOnline()) { updateProcess(); return; }
+    const action = $("simpleRunProcess");
+    if (action.disabled) return;
+    action.disabled = true;
+    $("scanButton").click();
   }
 
   function showScreen(name) {
@@ -150,7 +162,9 @@
       record.status = "Not processed";
       record.documentType = null;
     }
-    showScreen("edit");
+    // Go straight from import/crop confirmation to document classification.
+    // The edit screen is still available using Back if corrections are needed.
+    showScreen("type");
   }
 
   // Development cleanup. Removing a session entry only forgets this browser's
@@ -370,12 +384,7 @@
     if(window.BillyAccounts?.active?.()) window.BillyApp?.connectVision?.();
     updateProcess();
   });
-  bind("simpleRunProcess", () => {
-    if (!activeFile || !selectedDocumentType()) { showScreen("type"); return; }
-    if (!window.BillyApp?.isOnline()) { updateProcess(); return; }
-    $("simpleRunProcess").disabled = true;
-    $("scanButton").click();
-  });
+  bind("simpleRunProcess", startProcessing);
   bind("simpleExportCsv", () => window.BillyReview?.exportCSV());
   bind("simpleExportJson", () => window.BillyReview?.exportJSON());
   bind("simpleReviewAgain", () => showScreen("review"));
