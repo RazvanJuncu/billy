@@ -74,6 +74,7 @@
   };
   const highRisk=new Set(["grand_total","invoice_number","delivered_quantity","meter_start","meter_finish","aircraft_registration"]);
   const severity={green:0,yellow:1,red:2};
+  // External checks run autonomously on the backend during extraction.
   const labelFor=(path,type,doc,profile="generic_invoice")=>{
     if(path.includes("[")){
       const match=path.match(/^(lines|handwritten_entries)\[(\d+)\]\.(\w+)$/);
@@ -198,17 +199,24 @@
     const doc=structuredClone(source);
     const regions=Array.isArray(result.regions)?result.regions:[];
     const warnings=Array.isArray(result.validation_warnings)?result.validation_warnings:[];
+    const externalChecks=Array.isArray(result.external_checks?.checks)?result.external_checks.checks:[];
     const paths=fieldsFor(doc,type,profile);
     const translation=result.translation||null;
     const englishPairs=Array.isArray(translation?.translations)?translation.translations:[];
     const translatedPaths=new Map(englishPairs.map(pair=>[pair.field_path,pair]));
     const state=new Map(paths.map(path=>{
       const translated=translatedPaths.get(path);
-      // Translating a clear field is not itself evidence of an OCR error.
-      // Only source legibility, genuinely competing source readings, missing
-      // critical values and document validation warnings can raise severity.
-      return [path,classification(path,doc,type,regions,warnings,profile,
-        typeof translated?.source_text==="string"?translated.source_text:null)];
+      const entry=classification(path,doc,type,regions,warnings,profile,
+        typeof translated?.source_text==="string"?translated.source_text:null);
+      // A public identity that prompted a lookup remains an operator task.
+      // Search can offer a suggestion, never certify the OCR transcription.
+      const check=externalChecks.find(item=>item.field_path===path);
+      if(check&&entry.level==="green"){
+        entry.level="yellow";
+        entry.signal="external_identity_needs_confirmation";
+        entry.reason="Entity identity needs double-check. Compare the document with the public sources.";
+      }
+      return [path,entry];
     }));
     // Snapshot the initial decisions; later operator/recheck state is separate.
     const initialState=new Map([...state].map(([path,entry])=>[path,{
@@ -235,6 +243,8 @@
       create("p","ramp-intro","Yellow/red = needs attention. Blue ✓ = operator-checked. Green = no flagged issue, not proof of accuracy.")
     );
     compact.append(intro);
+    if(externalChecks.length)compact.append(create("p","ramp-external-summary",
+      "Billy checked "+externalChecks.length+" unclear public reference(s) online. Review original and sources where needed."));
     if(result.classification){
       const title=profile.replaceAll("_"," ").replace(/\b\w/g,letter=>letter.toUpperCase());
       const category=String(result.classification.expense_category||"unknown").replaceAll("_"," ");
@@ -270,13 +280,15 @@
     fieldNotPresent.type="button";
     const fieldCancel=create("button","ramp-close","Close");
     fieldCancel.type="button";
+    const onlinePanel=create("section","ramp-online-panel");
+    onlinePanel.hidden=true;
     const minorActions=create("div","ramp-minor-actions");
     const inspectOriginal=create("button","ramp-inspect-original","View full document");
     inspectOriginal.type="button";
     minorActions.append(fieldNotPresent,inspectOriginal,fieldCancel);
     fieldButtons.append(fieldConfirm,fieldEdit);
     detail.append(fieldTitle,sourceTitle,sourceCrop,currentCaption,
-      currentValue,fieldInput,reason,fieldButtons,minorActions);
+      currentValue,fieldInput,reason,onlinePanel,fieldButtons,minorActions);
     compact.append(detail);
     const feedback=create("p","ramp-feedback");
     feedback.setAttribute("role","status");feedback.setAttribute("aria-live","polite");
@@ -426,6 +438,8 @@
     }
     function closeEditor(){
       selected=null;editMode=false;
+      onlinePanel.replaceChildren();
+      onlinePanel.hidden=true;
       cropper?.cancel();
       sourceCrop.replaceChildren();
       detail.hidden=true;paint();
@@ -454,6 +468,40 @@
       const entry=state.get(path);
       const missing=!substantive(valueAt(doc,path));
       detail.className=missing?"ramp-field-detail ramp-missing":"ramp-field-detail";
+      onlinePanel.replaceChildren();
+      onlinePanel.hidden=true;
+      const publicCheck=externalChecks.find(item=>item.field_path===path);
+      if(publicCheck){
+        onlinePanel.hidden=false;
+        const message=publicCheck.status==="possible_match"&&publicCheck.suggested_name?
+          "Possible public match: "+publicCheck.suggested_name:
+          publicCheck.status==="conflicting"?"Multiple plausible public identities.":
+          publicCheck.status==="unavailable"?"Online lookup unavailable.":
+          "Identity not confirmed from public sources.";
+        onlinePanel.append(create("p","ramp-online-status","Billy · External Double-Check"));
+        onlinePanel.append(create("p","ramp-online-description",message));
+        if(publicCheck.airport_icao)onlinePanel.append(create("p","ramp-online-description","Airport code: "+publicCheck.airport_icao));
+        if(publicCheck.explanation)onlinePanel.append(create("p","ramp-online-description",String(publicCheck.explanation).slice(0,230)));
+        const sources=create("div","ramp-online-sources");
+        for(const source of (Array.isArray(publicCheck.sources)?publicCheck.sources:[]).slice(0,4)){
+          try{
+            const u=new URL(source.url);
+            if(u.protocol!=="https:")continue;
+            const a=create("a","ramp-online-link",String(source.title||"Public source").slice(0,95));
+            a.href=u.href;a.target="_blank";a.rel="noopener noreferrer";sources.append(a);
+          }catch{}
+        }
+        onlinePanel.append(sources);
+        if(typeof publicCheck.search_suggestions==="string"&&publicCheck.search_suggestions){
+          const widget=create("iframe","ramp-search-suggestions");
+          widget.title="Google Search suggestions";
+          widget.setAttribute("sandbox","allow-popups allow-popups-to-escape-sandbox");
+          widget.setAttribute("referrerpolicy","no-referrer");
+          widget.srcdoc=publicCheck.search_suggestions;onlinePanel.append(widget);
+        }
+        onlinePanel.append(create("p","ramp-online-disclaimer",
+          "Public sources are suggestions, not proof of wording printed on this document. Billy never fills this field automatically."));
+      }
       fieldTitle.textContent=labelFor(path,type,doc,profile)+(missing?" · Missing":"");
       fieldInput.value=valueAt(doc,path)??"";
       currentValue.textContent=missing?"":String(valueAt(doc,path));

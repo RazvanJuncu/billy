@@ -228,3 +228,27 @@ test("Machine translation alone never turns an otherwise valid field yellow",()=
   const unreadable=[{...clear[0],visual_clarity:"ambiguous"}];
   assert.equal(classify("lines[0].description",doc,"invoice",unreadable,[],"taxi_receipt","Tarif de călătorie").level,"red");
 });
+
+test("External entity double-check is autonomous, evidence-only, and confined to public labels",()=>{
+  const backend=read("supabase/functions/billy-vision/index.ts");
+  const start=backend.indexOf("const PUBLIC_ENTITY_FIELDS=");
+  const end=backend.indexOf("function safeFileName(name)",start);
+  assert.ok(start>=0&&end>start);
+  const section=backend.slice(start,end);
+  assert.match(section,/tools:\[\{google_search:\{\}\}\]/);
+  assert.match(section,/MAX_AUTO_ENTITY_LOOKUPS=2/);
+  assert.match(section,/observed_text/);
+  assert.doesNotMatch(section,/inline_data|base64Document/);
+  assert.doesNotMatch(backend,/api\/vision\/verify-entity/);
+  assert.match(backend,/review_metadata:\{classification,extraction_profile_version:"1\.1",external_checks:externalChecks\}/);
+  assert.match(backend,/const externalChecks=await autoVerifyEntities\(fields,regions,identityHints\)/);
+  assert.match(ramp,/result\.external_checks\?\.checks/);
+  assert.match(ramp,/external_identity_needs_confirmation/);
+  assert.match(ramp,/entry\.level="yellow"/);
+  assert.match(ramp,/Entity identity needs double-check/);
+  assert.match(ramp,/Possible public match/);
+  assert.match(ramp,/widget\.setAttribute\("sandbox"/);
+  assert.doesNotMatch(ramp,/doubleCheck\.addEventListener/);
+  assert.doesNotMatch(ramp,/saveValue\(path,\s*publicCheck\.suggested_name/);
+});
+
