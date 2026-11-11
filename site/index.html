@@ -20,7 +20,7 @@
   <link rel="stylesheet" href="./vision-regions.css?v=3">
   <link rel="stylesheet" href="./accounts.css?v=0.7.0">
   <link rel="stylesheet" href="./document-type.css?v=0.6.0">
-  <link rel="stylesheet" href="./simple.css?v=1.0.9">
+  <link rel="stylesheet" href="./simple.css?v=1.1.0">
   <link rel="stylesheet" href="./quickscan.css?v=1">
   <link rel="stylesheet" href="./preloader.css?v=1.2.0">
   <link rel="stylesheet" href="./snap.css?v=0.1.0">
@@ -28,17 +28,17 @@
   <script src="./perspective.js?v=0.4.1" defer></script>
   <script src="./scanner.js?v=0.5.2" defer></script>
   <script src="./vision-regions.js?v=7" defer></script>
-  <script src="./vision-review.js?v=0.11.2" defer></script>
+  <script src="./vision-review.js?v=0.12.0" defer></script>
   <script src="./excel-preview.js?v=0.2.0" defer></script>
   <script src="./quickverify-crop.js?v=1.1.1" defer></script>
-  <script src="./ramp-review.js?v=0.4.1" defer></script>
-  <script src="./app.js?v=0.7.1" defer></script>
+  <script src="./ramp-review.js?v=0.5.0" defer></script>
+  <script src="./app.js?v=0.8.0" defer></script>
   <script src="./workspace.js?v=0.4.1" defer></script>
   <script src="./account-config.js?v=0.6.1" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
   <script src="./accounts.js?v=0.9.2" defer></script>
   <script src="./quickscan.js?v=3" defer></script>
-  <script src="./simple.js?v=1.3.2" defer></script>
+  <script src="./simple.js?v=1.4.0" defer></script>
   <script src="./preloader.js?v=1.2.0" defer></script>
   <script>
     // All phones and tablets open the same Billy in one-button mode.
@@ -181,6 +181,7 @@
         <div class="simple-flow-header" id="simpleFlowHeader" hidden>
           <button id="simpleBack" class="simple-back" type="button" aria-label="Back"><svg viewBox="0 0 24 24" aria-hidden="true" class="ui-icon"><path d="m14 6-6 6 6 6"/></svg></button>
           <span id="simpleFlowTitle" class="simple-flow-title"></span>
+          <button id="simpleReviewChangeProfile" class="simple-secondary-action simple-review-next" type="button" hidden>Change type</button>
           <button id="simpleReviewToUpload" class="simple-secondary-action simple-review-next" type="button" hidden><svg viewBox="0 0 24 24" aria-hidden="true" class="ui-icon"><path d="M12 16V4m-4 4 4-4 4 4"/><path d="M4 16v4h16v-4"/></svg><span>Export</span></button>
         </div>
         <p id="simpleFlowNotice" class="simple-flow-notice" role="status" aria-live="polite" hidden></p>
@@ -244,27 +245,47 @@
           <div><button id="simpleUploadedBackToHome" class="simple-secondary-action" type="button"><svg viewBox="0 0 24 24" aria-hidden="true" class="ui-icon"><path d="m14 6-6 6 6 6"/></svg><span>Home</span></button></div>
         </section>
 
-        <section class="simple-type simple-screen" id="simpleType" aria-label="Choose document type" hidden>
+        <section class="simple-type simple-screen" id="simpleType" aria-label="Correct document classification" hidden>
           <div class="simple-type-wrap">
-            <h1 class="simple-heading">What kind of document is this?</h1>
-            <div class="simple-type-grid" role="group" aria-label="Document type">
-              <button id="simpleChooseInvoice" type="button" class="simple-type-card" data-document-type="invoice" aria-pressed="false">
-                <span class="simple-type-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 2.5h9l3 3v16l-3-2-3 2-3-2-3 2z"/><path d="M9 9h6M9 12.5h6M9 16h4"/></svg></span>
-                <span class="simple-type-copy"><strong>Invoice</strong><small>Suppliers, amounts, tax and line items</small></span>
-              </button>
-              <button id="simpleChooseFuelRelease" type="button" class="simple-type-card" data-document-type="fuel_release" aria-pressed="false">
-                <span class="simple-type-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20V5a2 2 0 0 1 2-2h8v17M4 11h10M8 7h2M4 20h13"/><path d="M14 7h2l3 4v6a2 2 0 0 0 4 0v-5l-2-2"/></svg></span>
-                <span class="simple-type-copy"><strong>Fuel Release</strong><small>Aircraft, fuel quantities, meter readings and handwriting</small></span>
-              </button>
+            <h1 class="simple-heading">Check document type</h1>
+            <p class="simple-type-footnote" id="simpleTypeReason">Billy couldn't identify this document confidently. Select a profile to continue.</p>
+            <div class="simple-manual-fields">
+              <label for="simpleManualProfile">DOCUMENT PROFILE</label>
+              <select id="simpleManualProfile" aria-label="Document extraction profile">
+                <option value="generic_invoice">Invoice · general</option>
+                <option value="fuel_release">Fuel Release</option>
+                <option value="fuel_invoice">Fuel Invoice</option>
+                <option value="handling_invoice">Handling Invoice</option>
+                <option value="taxi_receipt">Taxi Receipt</option>
+                <option value="generic_receipt">Receipt · general</option>
+                <option value="payment_slip">Payment Slip / POS</option>
+                <option value="supplier_statement">Supplier Statement</option>
+                <option value="generic_document">Other document</option>
+              </select>
+              <label for="simpleManualCategory">EXPENSE CATEGORY</label>
+              <select id="simpleManualCategory" aria-label="Expense category">
+                <option value="unknown">Not sure / no expense</option>
+                <option value="fuel">Fuel</option>
+                <option value="handling">Handling</option>
+                <option value="taxi">Taxi</option>
+                <option value="city_tax">City Tax</option>
+                <option value="catering">Catering</option>
+                <option value="hotel">Hotel</option>
+                <option value="pax_gifts">Pax Gifts</option>
+                <option value="parking">Parking</option>
+                <option value="crew_expenses">Crew Expenses</option>
+                <option value="aircraft_supplies">Aircraft Supplies</option>
+                <option value="other">Other</option>
+              </select>
+              <button id="simpleUseManualProfile" class="simple-main-action" type="button">Process with this profile</button>
             </div>
-            <p class="simple-type-footnote">Billy will not process the document until you select a type.</p>
           </div>
         </section>
 
         <section class="simple-process simple-screen" id="simpleProcess" aria-label="Process document" hidden>
           <div class="simple-flow-card">
-            <h2 class="simple-heading">Ready to process.</h2>
-            <div class="simple-selected-type"><span>DOCUMENT TYPE</span><strong id="simpleSelectedType">Not selected</strong><button id="simpleChangeType" class="simple-change-type" type="button">Change</button></div>
+            <h2 class="simple-heading">Reading document.</h2>
+            <div class="simple-selected-type"><span>DOCUMENT</span><strong id="simpleSelectedType">Auto-detect</strong><button id="simpleChangeType" class="simple-change-type" type="button">Change</button></div>
             <button id="simpleRunProcess" type="button" class="simple-main-action"><svg viewBox="0 0 24 24" aria-hidden="true" class="ui-icon"><path d="M7 3H4v4m13-4h3v4M4 17v4h3m13-4v4h-3"/><path d="M6 12h12"/></svg><span>Process document</span></button>
             <p id="simpleProcessStatus" class="simple-process-status" role="status" aria-live="polite"></p>
             <button id="simpleRetryVision" type="button" class="simple-secondary-action" hidden>Retry AI engine connection</button>
@@ -316,7 +337,7 @@
             <div class="document-type-control">
               <label for="documentType">DOCUMENT TYPE</label>
               <select id="documentType" aria-label="Selected document type" required>
-                <option value="" selected disabled>Choose document type</option>
+                <option value="auto" selected>Auto-detect</option>
                 <option value="invoice">Invoice</option>
                 <option value="fuel_release">Fuel Release · handwritten</option>
               </select>
