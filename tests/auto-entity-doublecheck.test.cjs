@@ -40,7 +40,7 @@ test("Search grounding is a provenance sidecar, never an OCR auto-correction",()
   assert.match(backend,/async function autoVerifyEntities\(fields,regions\)/);
   assert.match(backend,/const externalChecks=await autoVerifyEntities\(fields,regions\)/);
   assert.match(backend,/review_metadata:\{classification,extraction_profile_version:"1\.1",external_checks:externalChecks\}/);
-  assert.match(backend,/tools:\[\{googleSearch:\{\}\}\]/);
+  assert.match(backend,/tools:\[\{google_search:\{\}\}\]/);
   assert.match(backend,/candidate\?\.groundingMetadata/);
   assert.match(backend,/MAX_AUTO_ENTITY_LOOKUPS=2/);
   assert.match(backend,/status==="possible_match"/);
