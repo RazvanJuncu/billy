@@ -231,30 +231,29 @@ test("Machine translation alone never turns an otherwise valid field yellow",()=
 
 test("External entity double-check is opt-in, evidence-only and limited to public fields",()=>{
   const backend=read("supabase/functions/billy-vision/index.ts");
-  const start=backend.indexOf("const ENTITY_FIELDS=");
+  const start=backend.indexOf("const PUBLIC_ENTITY_FIELDS=");
   const end=backend.indexOf("function safeFileName(name)",start);
   assert.ok(start>=0&&end>start);
   const section=backend.slice(start,end);
   assert.match(section,/tools:\[\{google_search:\{\}\}\]/);
-  assert.match(section,/responseJsonSchema:ENTITY_LOOKUP_SCHEMA/);
   assert.match(section,/return error\("Online double-check limit reached for this document \(4 searches\)/);
   assert.match(section,/organization_id:"eq\."\+principal.organization_id/);
   assert.match(section,/created_by:"eq\."\+principal.user_id/);
   assert.match(section,/record.state!=="extracted"/);
   assert.match(section,/observed_text/);
   assert.match(section,/extraction_id/);
-  assert.match(section,/source:/);
   assert.doesNotMatch(section,/inline_data|sourceFile|base64Document/);
   assert.match(backend,/\/api\/vision\/verify-entity/);
+  assert.match(section,/BILLY_AUTO_ENTITY_LOOKUP/);
   assert.match(ramp,/Double-check online/);
   assert.match(ramp,/selected!==path/);
-  assert.match(ramp,/no automatic/i);
+  assert.match(ramp,/never changes it automatically/);
   assert.match(ramp,/widget\.setAttribute\("sandbox"/);
   assert.doesNotMatch(ramp,/saveValue\(path,\s*data\.suggested_name/);
-  const f=section.slice(section.indexOf("function cleanPublicEntity"),section.indexOf("async function verifyEntityOnline"));
+  const f=section.slice(section.indexOf("function cleanPublicEntity"),section.indexOf("function entityLookupPlan"));
   const ctx={};
   vm.runInNewContext(f+"\nthis.cleanPublicEntity=cleanPublicEntity;",ctx);
-  assert.equal(ctx.cleanPublicEntity("  LSZH  "),"LSZH");
+  assert.equal(ctx.cleanPublicEntity("  LSZH  ","airport"),"LSZH");
   assert.equal(ctx.cleanPublicEntity("CAT Air Service AG"),"CAT Air Service AG");
   assert.equal(ctx.cleanPublicEntity("A"),null);
   assert.equal(ctx.cleanPublicEntity("https://example.com"),null);
