@@ -466,8 +466,9 @@ const MAX_AUTO_ENTITY_LOOKUPS=2;
 function cleanPublicEntity(value,kind="company"){
   if(typeof value!=="string")return null;
   const term=value.normalize("NFKC").replace(/[\r\n\t]+/g," ").trim();
-  if(term.length<3||term.length>85||!/[\p{L}]/u.test(term)||
-    /(?:https?:\/\/|www\.|@|\d{7,})/i.test(term)||/[<>\u0000-\u001f]/.test(term))return null;
+  if(term.length<3||term.length>85||!/\p{L}/u.test(term)||
+    /(?:https?:\/\/|www\.|@|\d{7,})/i.test(term)||/[<>\u0000-\u001f]/.test(term)||
+    /^(?:unknown|unreadable|illegible|not provided|n\/a|none)$/i.test(term))return null;
   // Company/airport names can have short numeric labels, not personal contacts.
   if(kind==="airport"&&/^[A-Z]{4}$/i.test(term))return term.toUpperCase();
   return term;
@@ -484,7 +485,7 @@ function entityLookupPlan(fields,regions){
       (Array.isArray(r.alternate_readings)&&r.alternate_readings.length>1));
     const extracted=typeof fields?.[path]==="string"?fields[path].trim():"";
     const incomplete=Boolean(extracted)&&(
-      extracted.length<5||/\.{2,}$|\?{1,}|\b(?:unknown|unreadable|illegible|n\/a)\b/i.test(extracted));
+      /\.{2,}$|\?{1,}|\b(?:unknown|unreadable|illegible|n\/a)\b/i.test(extracted));
     // Missing names cannot be resolved from the web without a usable
     // source fragment; never "identify" a vendor from transaction context.
     if(!weak&&!incomplete)continue;
