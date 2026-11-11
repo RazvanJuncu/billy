@@ -16,8 +16,16 @@
   let scanMode = "editor";
   let editorBusy = false;
   let captureFromCamera = false;
-  let enhanceText = false;
+  let enhanceText = true;
   const TEXT_FILTER = "grayscale(0.32) contrast(1.2) brightness(1.02)";
+
+  function updateEnhanceControl() {
+    const control = $("scanEnhance");
+    control.setAttribute("aria-pressed", String(enhanceText));
+    control.setAttribute("aria-label", enhanceText ? "Image enhancement on. Disable enhancement" : "Image enhancement off. Enable enhancement");
+    control.title = enhanceText ? "Enhancement on" : "Enhancement off";
+    $("scanCanvas").style.filter = enhanceText ? TEXT_FILTER : "";
+  }
 
   function announce(text, error=false) {
     $("scanMessage").textContent = text;
@@ -133,9 +141,8 @@
     $("scanRetake").hidden = !fromCamera;
     originalFile=file;
     // Each photo starts from an unmodified original, never with a destructive filter.
-    enhanceText = false;
-    $("scanEnhance").checked = false;
-    $("scanCanvas").style.filter = "";
+    enhanceText = true;
+    updateEnhanceControl();
     announce("Loading image…");
     root.BillyLoader?.startWork("image","Preparing photo");
     try {
@@ -371,13 +378,14 @@
     $("scanAuto").addEventListener("click",guessCorners);
     $("scanReset").addEventListener("click",()=>{corners=P.defaultCorners();detected=false;announce("Drag the white handles to the document's four corners.");drawEditor();});
     $("scanRotate").addEventListener("click",rotateImage);
-    $("scanEnhance").addEventListener("change",event=>{
-      enhanceText = Boolean(event.target.checked);
-      // Only the preview and the derived export are filtered. Original is preserved.
-      $("scanCanvas").style.filter = enhanceText ? TEXT_FILTER : "";
+    $("scanEnhance").addEventListener("click",()=>{
+      enhanceText = !enhanceText;
+      // The toggle affects the preview and the exported derivative only.
+      // The untouched source remains available for a different scan.
+      updateEnhanceControl();
       announce(enhanceText
-        ? "Mild contrast enhancement enabled. Check faint ink before using this scan."
-        : "Original appearance restored. No pixels were overwritten.");
+        ? "Enhancement on. Check faint handwriting before using the scan."
+        : "Enhancement off. Original appearance restored.");
     });
     $("scanApply").addEventListener("click",applyScan);
     $("scanSave").addEventListener("click",saveScan);
