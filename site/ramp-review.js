@@ -74,8 +74,7 @@
   };
   const highRisk=new Set(["grand_total","invoice_number","delivered_quantity","meter_start","meter_finish","aircraft_registration"]);
   const severity={green:0,yellow:1,red:2};
-  const entityCheckFields=new Set(["supplier_name","operator_name","property_name",
-    "airport","airport_icao","parking_location","delivery_location"]);
+  // External checks run autonomously on the backend during extraction.
   const labelFor=(path,type,doc,profile="generic_invoice")=>{
     if(path.includes("[")){
       const match=path.match(/^(lines|handwritten_entries)\[(\d+)\]\.(\w+)$/);
@@ -200,6 +199,7 @@
     const doc=structuredClone(source);
     const regions=Array.isArray(result.regions)?result.regions:[];
     const warnings=Array.isArray(result.validation_warnings)?result.validation_warnings:[];
+    const externalChecks=Array.isArray(result.external_checks?.checks)?result.external_checks.checks:[];
     const paths=fieldsFor(doc,type,profile);
     const translation=result.translation||null;
     const englishPairs=Array.isArray(translation?.translations)?translation.translations:[];
@@ -218,7 +218,6 @@
     }]));
     const humanReviewed=new Set(),manualAcknowledged=new Set(),notOnDocument=new Set();
     let revision=0,checkedRevision=-1,busy=false,recheckCount=0;
-    let lookupBusy=false;
     let selected=null,editMode=false;
     const cropper=window.BillyQuickVerifyCrop?.create(sourceFile)||null;
     disposeActiveCrop=()=>cropper?.dispose();
@@ -238,6 +237,8 @@
       create("p","ramp-intro","Yellow/red = needs attention. Blue ✓ = operator-checked. Green = no flagged issue, not proof of accuracy.")
     );
     compact.append(intro);
+    if(externalChecks.length)compact.append(create("p","ramp-external-summary",
+      "Billy checked "+externalChecks.length+" unclear public reference(s) online. Review original and sources where needed."));
     if(result.classification){
       const title=profile.replaceAll("_"," ").replace(/\b\w/g,letter=>letter.toUpperCase());
       const category=String(result.classification.expense_category||"unknown").replaceAll("_"," ");
@@ -273,14 +274,12 @@
     fieldNotPresent.type="button";
     const fieldCancel=create("button","ramp-close","Close");
     fieldCancel.type="button";
-    const doubleCheck=create("button","ramp-double-check","Double-check online");
-    doubleCheck.type="button";
     const onlinePanel=create("section","ramp-online-panel");
     onlinePanel.hidden=true;
     const minorActions=create("div","ramp-minor-actions");
     const inspectOriginal=create("button","ramp-inspect-original","View full document");
     inspectOriginal.type="button";
-    minorActions.append(doubleCheck,fieldNotPresent,inspectOriginal,fieldCancel);
+    minorActions.append(fieldNotPresent,inspectOriginal,fieldCancel);
     fieldButtons.append(fieldConfirm,fieldEdit);
     detail.append(fieldTitle,sourceTitle,sourceCrop,currentCaption,
       currentValue,fieldInput,reason,onlinePanel,fieldButtons,minorActions);
@@ -465,8 +464,38 @@
       detail.className=missing?"ramp-field-detail ramp-missing":"ramp-field-detail";
       onlinePanel.replaceChildren();
       onlinePanel.hidden=true;
-      doubleCheck.hidden=!entityCheckFields.has(path);
-      doubleCheck.disabled=lookupBusy;
+      const publicCheck=externalChecks.find(item=>item.field_path===path);
+      if(publicCheck){
+        onlinePanel.hidden=false;
+        const message=publicCheck.status==="possible_match"&&publicCheck.suggested_name?
+          "Possible public match: "+publicCheck.suggested_name:
+          publicCheck.status==="conflicting"?"Multiple plausible public identities.":
+          publicCheck.status==="unavailable"?"Online lookup unavailable.":
+          "Identity not confirmed from public sources.";
+        onlinePanel.append(create("p","ramp-online-status","Billy · External Double-Check"));
+        onlinePanel.append(create("p","ramp-online-description",message));
+        if(publicCheck.airport_icao)onlinePanel.append(create("p","ramp-online-description","Airport code: "+publicCheck.airport_icao));
+        if(publicCheck.explanation)onlinePanel.append(create("p","ramp-online-description",String(publicCheck.explanation).slice(0,230)));
+        const sources=create("div","ramp-online-sources");
+        for(const source of (Array.isArray(publicCheck.sources)?publicCheck.sources:[]).slice(0,4)){
+          try{
+            const u=new URL(source.url);
+            if(u.protocol!=="https:")continue;
+            const a=create("a","ramp-online-link",String(source.title||"Public source").slice(0,95));
+            a.href=u.href;a.target="_blank";a.rel="noopener noreferrer";sources.append(a);
+          }catch{}
+        }
+        onlinePanel.append(sources);
+        if(typeof publicCheck.search_suggestions==="string"&&publicCheck.search_suggestions){
+          const widget=create("iframe","ramp-search-suggestions");
+          widget.title="Google Search suggestions";
+          widget.setAttribute("sandbox","allow-popups allow-popups-to-escape-sandbox");
+          widget.setAttribute("referrerpolicy","no-referrer");
+          widget.srcdoc=publicCheck.search_suggestions;onlinePanel.append(widget);
+        }
+        onlinePanel.append(create("p","ramp-online-disclaimer",
+          "Public sources are suggestions, not proof of wording printed on this document. Billy never fills this field automatically."));
+      }
       fieldTitle.textContent=labelFor(path,type,doc,profile)+(missing?" · Missing":"");
       fieldInput.value=valueAt(doc,path)??"";
       currentValue.textContent=missing?"":String(valueAt(doc,path));
@@ -499,75 +528,6 @@
       paint();
       detail.scrollIntoView?.({block:"nearest",behavior:"smooth"});
     }
-    // This is a user-initiated, billable lookup of only a short PUBLIC label.
-    // The original OCR reading and field validation are never modified by it.
-    doubleCheck.addEventListener("click",async()=>{
-      if(!selected||lookupBusy||busy||!entityCheckFields.has(selected))return;
-      const path=selected;
-      const term=String(editMode?fieldInput.value:valueAt(doc,path)||"").trim();
-      onlinePanel.replaceChildren();
-      onlinePanel.hidden=false;
-      const status=create("p","ramp-online-status");
-      onlinePanel.append(status);
-      if(term.length<3){
-        status.textContent="Enter at least three characters of the visible company or airport name using Edit, then try again.";
-        return;
-      }
-      status.textContent="Checking public sources…";
-      lookupBusy=true;doubleCheck.disabled=true;
-      try{
-        const response=await fetch(endpoint+"/api/vision/verify-entity",{
-          method:"POST",
-          headers:{"Content-Type":"application/json",...await getHeaders()},
-          body:JSON.stringify({
-            extraction_id:result.extraction_id,field_path:path,observed_text:term
-          })
-        });
-        const data=await response.json();
-        if(!response.ok)throw Error(data.detail||"Online lookup failed");
-        if(selected!==path)return; // Ignore responses for a different field.
-        onlinePanel.replaceChildren();
-        const message=data.status==="possible_match"?
-          "Possible public match: "+String(data.suggested_name||""):
-          data.status==="conflicting"?"Multiple plausible identities; check the original name.":
-          "Identity not confirmed from available public sources.";
-        onlinePanel.append(create("p","ramp-online-status",message));
-        if(data.status==="possible_match"&&data.airport_icao)
-          onlinePanel.append(create("p","ramp-online-description","Airport code: "+data.airport_icao));
-        if(data.explanation)
-          onlinePanel.append(create("p","ramp-online-description",String(data.explanation).slice(0,300)));
-        if(Array.isArray(data.sources)&&data.sources.length){
-          const links=create("div","ramp-online-sources");
-          for(const source of data.sources.slice(0,5)){
-            if(typeof source.url!=="string"||!/^https:\/\//.test(source.url))continue;
-            const a=create("a","ramp-online-link",String(source.title||"Public source").slice(0,110));
-            a.href=source.url;a.target="_blank";a.rel="noopener noreferrer";
-            links.append(a);
-          }
-          onlinePanel.append(links);
-        }
-        if(typeof data.search_suggestions==="string"&&data.search_suggestions.length){
-          // Search Suggestions are provided by Google. Isolate markup; never
-          // insert external HTML into the Billy app's document.
-          const widget=create("iframe","ramp-search-suggestions");
-          widget.title="Google Search suggestions";
-          widget.setAttribute("sandbox","allow-popups allow-popups-to-escape-sandbox");
-          widget.srcdoc=data.search_suggestions;
-          onlinePanel.append(widget);
-        }
-        onlinePanel.append(create("p","ramp-online-disclaimer",
-          "Public lookup is a suggestion, not evidence that this name was printed. Use Edit if it matches the document; Billy never changes it automatically."));
-      }catch(error){
-        if(selected===path){
-          onlinePanel.replaceChildren(create("p","ramp-online-status",
-            error.message||"Online lookup unavailable. Check the source manually."));
-          onlinePanel.hidden=false;
-        }
-      }finally{
-        lookupBusy=false;
-        doubleCheck.disabled=false;
-      }
-    });
     fieldCancel.addEventListener("click",closeEditor);
     inspectOriginal.addEventListener("click",()=>{
       evidence.hidden=false;
