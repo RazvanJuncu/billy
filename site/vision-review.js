@@ -77,11 +77,14 @@ function getApprovedSpreadsheetData(){
   // These fallbacks also keep independent CSV preview helpers self-contained.
   const reportProfile=typeof classification!=="undefined"?classification:null;
   const reportEntryTitle=typeof entryTitle!=="undefined"?entryTitle:"Invoice line items";
+  const canonical=typeof approvalResult!=="undefined"?approvalResult?.normalized_data||null:null;
+  const canonicalValues=canonical?.values||{};
   // Document-level metadata describes ONE document. Never repeat it once for
   // every handwritten field / invoice line: the preview is a report, not a JOIN.
   const details=fieldKeys
     .filter(([key])=>draft[key]!==null&&draft[key]!==undefined&&String(draft[key]).trim()!=="")
-    .map(([key,label])=>({key,label,value:draft[key]}));
+    .map(([key,label])=>({key,label,value:
+      Object.prototype.hasOwnProperty.call(canonicalValues,key)?canonicalValues[key]:draft[key]}));
   // Free-text notes are part of the approved extraction, not disposable extras.
   if(Array.isArray(draft.notes))draft.notes.forEach((value,index)=>{
     if(value!==null&&value!==undefined&&String(value).trim()!=="")
@@ -89,8 +92,12 @@ function getApprovedSpreadsheetData(){
   });
   const sourceRows=documentType==="fuel_release"?draft.handwritten_entries:draft.lines;
   const columns=lineKeys.map(([key,label])=>({key,label}));
-  const rows=(Array.isArray(sourceRows)?sourceRows:[]).map(item=>
-    columns.map(column=>item?.[column.key]??""));
+  const rows=(Array.isArray(sourceRows)?sourceRows:[]).map((item,index)=>
+    columns.map(column=>{
+      const normalized=canonical?.line_items?.[index]?.values?.[column.key];
+      return normalized===undefined?(item?.[column.key]??""):
+        typeof normalized==="object"&&normalized!==null?normalized.value:normalized;
+    }));
   const entries={
     title:documentType==="fuel_release"?"Handwritten entries":reportEntryTitle,
     columns,rows
@@ -114,6 +121,9 @@ function exportCSV(){
     sheet.entries.columns.map(column=>column.label),
     ...sheet.entries.rows
   ];
+  const issues=(typeof approvalResult!=="undefined"?approvalResult?.normalized_data?.issues:null)||[];
+  if(issues.length)table.push([],["Normalization exceptions"],["Field","Reason"],
+    ...issues.map(issue=>[issue.field_path,issue.message]));
   download("\ufeff"+table.map(row=>row.map(escapeCell).join(",")).join("\r\n")+"\r\n",
     "billy-approved.csv","text/csv;charset=utf-8");
 }
@@ -127,6 +137,7 @@ function exportRawJSON(){
     schema_version:"0.7",approved:false,review_status:"unverified_gemini_output",
     document_type:documentType,source_sha256:sha,extraction_id:extractId,
     model:auditMeta?.model||null,classification:auditMeta?.classification||null,document:original,
+    normalized_data:auditMeta?.normalized_data||null,
     original_validation_warnings:auditMeta?.warnings||[],
     translation:auditMeta?.translation||null,
     evidence_regions:auditMeta?.regions||[]
@@ -137,6 +148,7 @@ function exportJSON(){
   download(JSON.stringify({
     schema_version:"0.7",approved:true,document_type:documentType,
     classification:auditMeta?.classification||null,document:draft,original_extraction:original,
+    normalized_data:approvalResult?.normalized_data||null,
     changes_from_original:auditChanges(),
     original_validation_warnings:auditMeta?.warnings||[],
     review_validation_warnings:approvalResult?.validation_warnings||[],
@@ -182,7 +194,7 @@ function render(result,endpoint,authHeaders,sourceFile=null){
    :invoiceLineKeys;
  original=structuredClone(source);draft=structuredClone(source);sha=result.source_sha256;
  extractId=result.extraction_id;api=endpoint;getHeaders=authHeaders;approved=false;approvalResult=null;
- auditMeta={model:result.model||null,classification:structuredClone(classification),warnings:structuredClone(result.validation_warnings||[]),regions:structuredClone(result.regions||[]),translation:structuredClone(result.translation||null)};
+ auditMeta={model:result.model||null,classification:structuredClone(classification),warnings:structuredClone(result.validation_warnings||[]),regions:structuredClone(result.regions||[]),translation:structuredClone(result.translation||null),normalized_data:structuredClone(result.normalized_data||null)};
  const root=$("formattedOutput");root.replaceChildren();root.hidden=false;root.classList.add("vision-review");
  const title=node("div","review-intro");
  title.append(node("span","review-eyebrow","BILLYDPI / VERIFIED DOCUMENT WORKFLOW"),node("h3","review-title","Review "+profileTitle),node("p","review-note",classification?"Category: "+String(classification.expense_category||"unknown").replaceAll("_"," ")+

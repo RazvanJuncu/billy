@@ -240,7 +240,7 @@ test("External entity double-check is autonomous, evidence-only, and confined to
   assert.match(section,/observed_text/);
   assert.doesNotMatch(section,/inline_data|base64Document/);
   assert.doesNotMatch(backend,/api\/vision\/verify-entity/);
-  assert.match(backend,/review_metadata:\{classification,extraction_profile_version:"1\.1",external_checks:externalChecks\}/);
+  assert.match(backend,/review_metadata:\{classification,extraction_profile_version:"1\.1",external_checks:externalChecks,\s*normalization:/);
   assert.match(backend,/const externalChecks=await autoVerifyEntities\(fields,regions,identityHints\)/);
   assert.match(ramp,/result\.external_checks\?\.checks/);
   assert.match(ramp,/external_identity_needs_confirmation/);

@@ -182,3 +182,7 @@
 
 /* Autonomous lookup feedback is only a small context cue, not a new step. */
 .ramp-external-summary{font-size:11px;color:#afb8c0;line-height:1.5;margin:0 0 12px}
+
+/* Normalized values are derived inventory data; source text remains unchanged. */
+.ramp-normalized-hint{font-size:12px;line-height:1.5;color:#b7c6bb;margin:8px 0 10px;font-weight:600}
+.ramp-normalized-hint[hidden]{display:none!important}

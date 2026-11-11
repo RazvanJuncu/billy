@@ -200,7 +200,13 @@
     const regions=Array.isArray(result.regions)?result.regions:[];
     const warnings=Array.isArray(result.validation_warnings)?result.validation_warnings:[];
     const externalChecks=Array.isArray(result.external_checks?.checks)?result.external_checks.checks:[];
+    const normalizedData=result.normalized_data||null;
+    const normalizationIssues=Array.isArray(normalizedData?.issues)?normalizedData.issues:[];
     const paths=fieldsFor(doc,type,profile);
+    // Currency is critical for financial inventory even when a receipt did not
+    // print it. Surface missing currency for correction rather than burying it.
+    if(normalizationIssues.some(issue=>issue.field_path==="currency")&&!paths.includes("currency"))
+      paths.push("currency");
     const translation=result.translation||null;
     const englishPairs=Array.isArray(translation?.translations)?translation.translations:[];
     const translatedPaths=new Map(englishPairs.map(pair=>[pair.field_path,pair]));
@@ -210,6 +216,12 @@
         typeof translated?.source_text==="string"?translated.source_text:null);
       // A public identity that prompted a lookup remains an operator task.
       // Search can offer a suggestion, never certify the OCR transcription.
+      const normalizationIssue=normalizationIssues.find(issue=>issue.field_path===path);
+      if(normalizationIssue&&entry.level==="green"){
+        entry.level="yellow";
+        entry.signal="normalization_needs_review";
+        entry.reason=normalizationIssue.message||"Standardized value is ambiguous; verify the original.";
+      }
       const check=externalChecks.find(item=>item.field_path===path);
       if(check&&entry.level==="green"){
         entry.level="yellow";
@@ -270,6 +282,8 @@
     const currentCaption=create("p","ramp-value-caption","BILLY EXTRACTED");
     const currentValue=create("div","ramp-current-value");
     const reason=create("p","ramp-reason");
+    const normalizedHint=create("p","ramp-normalized-hint");
+    normalizedHint.hidden=true;
     const fieldInput=create("input","ramp-field-input");
     fieldInput.type="text";fieldInput.autocomplete="off";fieldInput.hidden=true;
     const fieldButtons=create("div","ramp-detail-actions");
@@ -288,7 +302,7 @@
     minorActions.append(fieldNotPresent,inspectOriginal,fieldCancel);
     fieldButtons.append(fieldConfirm,fieldEdit);
     detail.append(fieldTitle,sourceTitle,sourceCrop,currentCaption,
-      currentValue,fieldInput,reason,onlinePanel,fieldButtons,minorActions);
+      currentValue,fieldInput,reason,normalizedHint,onlinePanel,fieldButtons,minorActions);
     compact.append(detail);
     const feedback=create("p","ramp-feedback");
     feedback.setAttribute("role","status");feedback.setAttribute("aria-live","polite");
@@ -515,6 +529,13 @@
       reason.textContent=entry.reason+(pair?
         " Original ("+String(translation.source_language||"source").toUpperCase()+
         "): "+pair.source_text+". English result: "+pair.english_text+".":"");
+      const canonical=normalizedData?.fields?.[path];
+      const canShow=canonical&&canonical.value!==null&&canonical.value!==undefined&&
+        String(valueAt(doc,path)??"").trim()===canonical.raw&&
+        String(canonical.value)!==canonical.raw;
+      normalizedHint.hidden=!canShow;
+      normalizedHint.textContent=canShow?"Inventory format: "+String(canonical.value)+
+        (canonical.unit?" "+canonical.unit:""):"";
       const region=regions.find(item=>item.field_path===path&&
         window.BillyQuickVerifyCrop?.validRegion(item));
       sourceTitle.textContent=region?
