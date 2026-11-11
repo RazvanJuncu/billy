@@ -68,7 +68,8 @@ test("Multilingual extraction keeps source-language audit and exports English-re
   assert.match(review,/translation:auditMeta\?\.translation\|\|null/);
   assert.match(review,/translation/i);
   assert.match(ramp,/translatedPaths/);
-  assert.match(ramp,/entry\.level="yellow"/);
+  assert.match(ramp,/originalSourceText\?\?value/);
+  assert.doesNotMatch(ramp,/translation_needs_review/);
   assert.match(ramp,/Original \("/);
   assert.match(rampCss,/\.ramp-translation-note/);
   assert.match(read("site/review.css"),/\.review-translation-note/);
