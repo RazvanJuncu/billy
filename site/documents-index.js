@@ -17,6 +17,7 @@
     'Aircraft Supplies':['path:M3 7l9-4 9 4v10l-9 4-9-4z','path:M3 7l9 4 9-4M12 11v10'],
     'Pax Gifts':['path:M3 10h18v11H3z','path:M2 7h20v3H2z','path:M12 7v14','path:M12 7c-8 0-8-6-4-6 2 0 4 3 4 6z','path:M12 7c8 0 8-6 4-6-2 0-4 3-4 6z'],
     Other:['circle:5 12 1','circle:12 12 1','circle:19 12 1'],
+    Receipt:['path:M5 3h14v18l-3-2-4 2-4-2-3 2z','path:M8 8h8','path:M8 12h6','path:M8 16h4'],
     Unassigned:['circle:12 12 9','path:M9.5 9a2.5 2.5 0 1 1 4.2 1.8c-.8.7-1.7 1.2-1.7 2.7','path:M12 17h.01']
   };
   function serviceIcon(category){
@@ -64,7 +65,9 @@
   function tag(node,record){
     node.dataset.docEntry="1";node.__billyDocument=info(record);
     const button=node.matches("button")?node:node.querySelector(".simple-document-item");
-    if(button)button.prepend(serviceIcon(node.__billyDocument.service));
+    node.__billyRecordId=record.id||null;
+    node.__billyParentId=record.parent_document_id||null;
+    if(button)button.prepend(serviceIcon(node.__billyParentId?"Receipt":node.__billyDocument.service));
   }
   function session(node,item){node.dataset.docEntry="1";node.__billyDocument={aircraft:"Unassigned",service:"Unassigned",airport:"Unassigned",vendor:"Unassigned",title:item.file.name,date:Date.now(),status:"Session",amount:""};}
   function label(record){return info(record).title;}
@@ -94,29 +97,82 @@
     tools.append(search,sort);host.append(tabs,tools);list.before(host);state.host=host;
     window.BillyDocumentsHub?.mount(list,host);
   }
+  // Build family units before applying any category filter or search: a child
+  // must never be reclassified as a standalone airport/vendor/expense record.
+  function groupFamilies(entries){
+    const byId=new Map(entries.filter(node=>node.__billyRecordId)
+      .map(node=>[node.__billyRecordId,node]));
+    const families=new Map();
+    for(const node of entries){
+      const parentId=node.__billyParentId;
+      const parent=parentId?byId.get(parentId):null;
+      const root=parent||node;
+      const id=root.__billyRecordId||root;
+      if(!families.has(id))families.set(id,{root,children:[],missingParent:false});
+      if(parent)families.get(id).children.push(node);
+      else if(parentId)families.get(id).missingParent=true;
+    }
+    return [...families.values()];
+  }
+  function familyCard(family){
+    const {root,children,missingParent}=family;
+    if(!children.length&&!missingParent)return root;
+    const shell=el("section","billy-doc-family");
+    if(children.length){
+      const parentRow=el("div","billy-doc-family-parent");
+      parentRow.append(root);shell.append(parentRow);
+    }else{
+      // Avoid asserting a child is independent if its referenced parent is
+      // unavailable (e.g. permissions or an old incomplete archive record).
+      const note=el("div","billy-doc-family-missing","Parent document unavailable");
+      shell.append(note);
+    }
+    const nested=el("div","billy-doc-family-children");
+    for(const child of children.length?children:[root]){
+      const line=el("div","billy-doc-family-child");
+      const connector=el("span","billy-doc-nested-connector");
+      connector.setAttribute("aria-hidden","true");
+      const marker=serviceIcon("Receipt");marker.classList.add("billy-doc-receipt-mark");
+      line.append(connector,marker,child);
+      nested.append(line);
+    }
+    shell.append(nested);
+    return shell;
+  }
   function refresh(){
     const list=state.list;if(!list||!list.isConnected)return;
     const tabs=state.host.querySelectorAll("[data-mode]");
     tabs.forEach(t=>t.setAttribute("aria-pressed",String(t.dataset.mode===state.mode)));
     const sort=state.host.querySelector(".billy-doc-sort");sort.textContent=state.descending?"↓":"↑";sort.title=state.descending?"Newest first":"Oldest first";
-    const entries=state.records;
+    const families=groupFamilies(state.records);
     const needle=state.query.toLocaleLowerCase();
-    const filtered=entries.filter(node=>{
-      const d=node.__billyDocument;if(!d)return false;
-      return [d.title,d.aircraft,d.service,d.airport,d.vendor,d.amount,d.status,d.search].join(" ").toLocaleLowerCase().includes(needle);
-    }).sort((a,b)=>state.descending?b.__billyDocument.date-a.__billyDocument.date:a.__billyDocument.date-b.__billyDocument.date);
+    const filtered=families.filter(family=>{
+      const nodes=[family.root,...family.children];
+      if(!needle)return true;
+      return nodes.some(node=>{
+        const d=node.__billyDocument;if(!d)return false;
+        return [d.title,d.aircraft,d.service,d.airport,d.vendor,d.amount,d.status,d.search].join(" ").toLocaleLowerCase().includes(needle);
+      });
+    }).sort((a,b)=>state.descending?
+      b.root.__billyDocument.date-a.root.__billyDocument.date:
+      a.root.__billyDocument.date-b.root.__billyDocument.date);
     const knownAircraft=new Set(window.BillyDocumentsHub?.fleet?.map(a=>a.registration)||[]);
     const matching=state.mode==="Aircraft"&&state.aircraft
-      ?filtered.filter(node=>state.aircraft==="Unassigned"
-        ? !knownAircraft.has(node.__billyDocument.aircraft)
-        :node.__billyDocument.aircraft===state.aircraft)
-      :filtered;
+      ?filtered.filter(family=>{
+        const aircraft=family.root.__billyDocument.aircraft;
+        return state.aircraft==="Unassigned"?!knownAircraft.has(aircraft):aircraft===state.aircraft;
+      }):filtered;
     const groupKey=state.mode==="Aircraft"&&state.aircraft?"service":
       {Services:"service",Airports:"airport",Vendors:"vendor"}[state.mode];
     const fragment=document.createDocumentFragment();
     if(groupKey){
       const groups=new Map();
-      matching.forEach(node=>{const key=node.__billyDocument[groupKey]||"Unassigned";if(!groups.has(key))groups.set(key,[]);groups.get(key).push(node);});
+      matching.forEach(family=>{
+        // Category is defined by the parent, never by its payment evidence.
+        const key=family.root.__billyDocument[groupKey]||"Unassigned";
+        if(!groups.has(key))groups.set(key,[]);
+        groups.get(key).push(family);
+      });
       [...groups.keys()].sort((a,b)=>a==="Unassigned"?1:b==="Unassigned"?-1:a.localeCompare(b)).forEach(key=>{
         const section=el("section","billy-doc-group");
         const groupId=groupKey+":"+key,expanded=state.opened.has(groupId);
@@ -124,7 +180,8 @@
         const name=el("span","",key),count=el("span","billy-doc-count",String(groups.get(key).length)),chevron=el("span","billy-doc-chevron","›");
         if(state.mode==="Services"||state.mode==="Aircraft")header.append(serviceIcon(key));
         header.append(name,count,chevron);
-        const content=el("div","billy-doc-group-content");content.hidden=!expanded;groups.get(key).forEach(node=>content.append(node));
+        const content=el("div","billy-doc-group-content");content.hidden=!expanded;
+        groups.get(key).forEach(family=>content.append(familyCard(family)));
         header.addEventListener("click",()=>{
           const open=content.hidden;content.hidden=!open;
           if(open)state.opened.add(groupId);else state.opened.delete(groupId);
@@ -132,8 +189,9 @@
         });
         section.append(header,content);fragment.append(section);
       });
-    }else matching.forEach(node=>fragment.append(node));
-    const empty=el("p","billy-doc-no-results",state.query?"No matches.":"No documents in this view.");empty.hidden=matching.length>0;fragment.append(empty);
+    }else matching.forEach(family=>fragment.append(familyCard(family)));
+    const empty=el("p","billy-doc-no-results",state.query?"No matches.":"No documents in this view.");
+    empty.hidden=matching.length>0;fragment.append(empty);
     list.replaceChildren(fragment);
     if(state.navigation)list.append(state.navigation);
     window.BillyDocumentsHub?.render(state,navigate);
@@ -168,5 +226,5 @@
     install(list);
     navigate("Home");
   }
-  window.BillyDocumentsIndex={tag,session,label,end,info,registration,navigate,back,start};
+  window.BillyDocumentsIndex={tag,session,label,end,info,registration,navigate,back,start,groupFamilies};
 })();
