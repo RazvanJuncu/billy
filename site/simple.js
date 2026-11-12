@@ -218,6 +218,7 @@
 
   function recordFile(file) {
     window.BillyNested?.fileLoaded(file);
+    window.BillyPdfSeparator?.fileLoaded?.(file);
     activeFile = file;
     approved = false;
     window.BillyOriginals?.reset?.();

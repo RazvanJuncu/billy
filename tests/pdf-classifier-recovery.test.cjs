@@ -59,10 +59,10 @@ test("PDF requires operator decision: multipage is not automatically two documen
   assert.match(pdf,/Process full PDF as one document/);
   assert.match(pdf,/copyPages\(current\.pdf,\[index\]\)/);
   assert.match(pdf,/window\.BillyApp\.openFile\(new File/);
-  assert.match(pdf,/window\.BillyPdfSeparator=\{preflight,toImage:renderPage,showPages\}/);
+  assert.match(pdf,/window\.BillyPdfSeparator=\{preflight,toImage:renderPage,showPages,prepare,fileLoaded\}/);
   assert.match(pdf,/pdfjs-dist@3\.11\.174/);
   assert.match(app,/await window\.BillyPdfSeparator\.preflight\(pendingFile\)/);
   assert.match(app,/await window\.BillyNested\.start\(currentFile,responseBody\.classification\)/);
   assert.match(read("site/simple.js"),/\$\("simpleRunProcess"\)\.disabled=false/);
-  assert.match(read("site/index.html"),/pdf-separation\.js\?v=1\.0\.0/);
+  assert.match(read("site/index.html"),/pdf-separation\.js\?v=1\.1\.0/);
 });

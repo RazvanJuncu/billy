@@ -83,6 +83,7 @@
     snapshot.currentApprovedId=null;
     if(snapshot.index>=snapshot.children.length){
       reset();
+      window.dispatchEvent(new CustomEvent("billy:nested-complete"));
       return;
     }
     const next=snapshot.children[snapshot.index++];
