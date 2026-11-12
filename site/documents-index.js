@@ -7,7 +7,7 @@
   // All definitions use the same 24x24 outline and inherit their parent's text color.
   const servicePaths={
     Fuel:['path:M4 21V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v15','path:M4 21h14','path:M7 8h6v5H7z','path:M16 9h2l2 3v7a2 2 0 0 0 4 0v-5','path:M20 12l-2-3','path:M6 17h8'],
-    Handling:['path:M17 21v-8l-5-3V2a1 1 0 0 0-2 0v8l-5 3v8l6-2 6 2z','path:M3 13l7-3m4 0 7 3'],
+    Handling:['path:M6 3h9l4 4v14H6z','path:M15 3v5h4','path:M9 12h7','path:M9 16h7'],
     Taxi:['path:M5 17H3v-6l2-5h14l2 5v6h-2','path:M5 17h14','path:M3 11h18','circle:7 15 1','circle:17 15 1','path:M6 6l1-3h10l1 3'],
     Catering:['path:M3 19h18','path:M5 17a7 7 0 0 1 14 0','path:M12 10V8','circle:12 7 1'],
     Hotel:['path:M3 21V4h18v17','path:M7 8h3v3H7z','path:M14 8h3v3h-3z','path:M10 21v-6h4v6','path:M1 21h22'],
@@ -118,6 +118,7 @@
     const {root,children,missingParent}=family;
     if(!children.length&&!missingParent)return root;
     const shell=el("section","billy-doc-family");
+    shell.setAttribute("aria-label","Document with attached records");
     if(children.length){
       const parentRow=el("div","billy-doc-family-parent");
       parentRow.append(root);shell.append(parentRow);
