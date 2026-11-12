@@ -3,7 +3,7 @@
   "use strict";
   const categories={fuel:"Fuel",handling:"Handling",taxi:"Taxi",city_tax:"City Tax",catering:"Catering",hotel:"Hotel",pax_gifts:"Pax Gifts",parking:"Parking",crew_expenses:"Crew Expenses",aircraft_supplies:"Aircraft Supplies",other:"Other"};
   const modes=["All","Aircraft","Services","Airports","Vendors"];
-  const state={mode:"All",query:"",descending:true,records:[],host:null,list:null,navigation:null};
+  const state={mode:"All",query:"",descending:true,records:[],host:null,list:null,navigation:null,opened:new Set()};
   const el=(tag,cls,content)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(content!==undefined)n.textContent=content;return n;};
   const text=value=>typeof value==="string"?value.trim():"";
   const value=(data,...paths)=>{for(const p of paths){const v=data?.[p];if(text(v))return text(v);}return "";};
@@ -33,10 +33,19 @@
     state.list=list;
     if(state.host?.isConnected)return;
     const host=el("div","billy-doc-toolbar");
+    const intro=document.getElementById("simpleDocumentsIntro");
+    const heading=list.parentElement?.querySelector(".simple-heading");
+    if(intro&&heading){
+      const help=el("button","billy-doc-info","i");
+      help.type="button";help.title="About this archive";help.setAttribute("aria-label","About this archive");
+      help.setAttribute("aria-expanded","false");
+      help.addEventListener("click",()=>{intro.hidden=!intro.hidden;help.setAttribute("aria-expanded",String(!intro.hidden));});
+      heading.append(help);intro.hidden=true;intro.classList.add("billy-doc-help");
+    }
     const tabs=el("div","billy-doc-tabs");tabs.setAttribute("role","group");tabs.setAttribute("aria-label","Group documents");
     modes.forEach(mode=>{
       const b=el("button","billy-doc-tab",mode);b.type="button";b.dataset.mode=mode;b.setAttribute("aria-pressed",String(mode===state.mode));
-      b.addEventListener("click",()=>{state.mode=mode;refresh();});tabs.append(b);
+      b.addEventListener("click",()=>{state.mode=mode;state.opened.clear();refresh();});tabs.append(b);
     });
     const tools=el("div","billy-doc-tools");
     const search=el("input","billy-doc-search");search.type="search";search.placeholder="Search documents…";search.setAttribute("aria-label","Search documents");search.value=state.query;
@@ -63,11 +72,16 @@
       filtered.forEach(node=>{const key=node.__billyDocument[groupKey]||"Unassigned";if(!groups.has(key))groups.set(key,[]);groups.get(key).push(node);});
       [...groups.keys()].sort((a,b)=>a==="Unassigned"?1:b==="Unassigned"?-1:a.localeCompare(b)).forEach(key=>{
         const section=el("section","billy-doc-group");
-        const header=el("button","billy-doc-group-title");header.type="button";header.setAttribute("aria-expanded","true");
-        const name=el("span","",key),count=el("span","billy-doc-count",String(groups.get(key).length)),chevron=el("span","billy-doc-chevron","⌄");
+        const groupId=groupKey+":"+key,expanded=state.opened.has(groupId);
+        const header=el("button","billy-doc-group-title");header.type="button";header.setAttribute("aria-expanded",String(expanded));
+        const name=el("span","",key),count=el("span","billy-doc-count",String(groups.get(key).length)),chevron=el("span","billy-doc-chevron","›");
         header.append(name,count,chevron);
-        const content=el("div","billy-doc-group-content");groups.get(key).forEach(node=>content.append(node));
-        header.addEventListener("click",()=>{content.hidden=!content.hidden;header.setAttribute("aria-expanded",String(!content.hidden));chevron.textContent=content.hidden?"›":"⌄";});
+        const content=el("div","billy-doc-group-content");content.hidden=!expanded;groups.get(key).forEach(node=>content.append(node));
+        header.addEventListener("click",()=>{
+          const open=content.hidden;content.hidden=!open;
+          if(open)state.opened.add(groupId);else state.opened.delete(groupId);
+          header.setAttribute("aria-expanded",String(open));
+        });
         section.append(header,content);fragment.append(section);
       });
     }else filtered.forEach(node=>fragment.append(node));
