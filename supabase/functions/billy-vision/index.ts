@@ -1236,10 +1236,11 @@ async function listRecords(principal,req) {
   });
   const page=rows.slice(0,50);
   const hasMore=rows.length>50;
-  return json({records:page.map(record=>({
-    ...record,
-    original_validation_warnings:validate(record.extracted_data||{},record.document_type,record.regions_data||[],record.review_metadata?.classification?.profile)
-  })),has_more:hasMore,next_offset:hasMore?offset+page.length:null});
+  return json({records:page.map(record=>{
+    const {original_storage_key,...visible}=record;
+    return {...visible,has_original:Boolean(original_storage_key),
+      original_validation_warnings:validate(record.extracted_data||{},record.document_type,record.regions_data||[],record.review_metadata?.classification?.profile)};
+  }),has_more:hasMore,next_offset:hasMore?offset+page.length:null});
 }
 
 // Private Original Archive v1: only approved, owner-uploaded bytes identical to AI source.
