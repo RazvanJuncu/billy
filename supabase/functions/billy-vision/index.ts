@@ -2262,7 +2262,8 @@ function assistantMoney(record){
 }
 function assistantAggregate(rows,filter,partial){
   const groups=new Map(),docs=[];
-  let matched=0,priced=0,unpriced=0,missingDates=0,invoiceDates=0;
+  let matched=0,priced=0,unpriced=0,missingDates=0,invoiceDates=0,duplicates=0;
+  const seenDocuments=new Set();
   const airports=new Set(),vendors=new Set(),flights=new Set(),categories=new Set();
   const byGroup=(map,key)=>{if(!map.has(key))map.set(key,{total:0,count:0});return map.get(key);};
   for(const rec of rows){
@@ -2287,13 +2288,25 @@ function assistantAggregate(rows,filter,partial){
       if(dateInfo.basis==="document")invoiceDates++;
       continue;
     }
+    // Prevent duplicate uploads of the same source invoice from inflating spend.
+    // If a scan contains multiple distinct invoices, their references/providers
+    // distinguish them, even if they shared one original photo.
+    const approved=rec.reviewed_data||{};
+    const sha=typeof rec.source_sha256==="string"&&/^[0-9a-f]{64}$/i.test(rec.source_sha256)?
+      rec.source_sha256.toLowerCase():null;
+    const profile=rec.review_metadata?.classification?.profile||rec.document_type||"";
+    const fingerprint=sha?[sha,profile,
+      String(approved.invoice_number||approved.release_number||""),
+      vendor.toLocaleUpperCase("ro-RO"),
+      String(approved.grand_total||"")].join("|"):null;
+    if(fingerprint&&seenDocuments.has(fingerprint)){duplicates++;continue;}
+    if(fingerprint)seenDocuments.add(fingerprint);
     matched++;
     const airport=assistantValue(rec,"airport");
     if(airport)airports.add(airport);
     if(vendor)vendors.add(vendor);
     if(flight)flights.add(flight);
     if(category)categories.add(category);
-    const profile=rec.review_metadata?.classification?.profile||"";
     const isExpense=!["fuel_release","payment_slip","supplier_statement","generic_document"].includes(profile);
     const money=isExpense?assistantMoney(rec):null;
     if(!money){unpriced++;continue;}
@@ -2327,13 +2340,13 @@ function assistantAggregate(rows,filter,partial){
       categories:[...categories].sort().slice(0,20)},
     coverage:{matched_records:matched,priced_records:priced,without_valid_amount:unpriced,
       skipped_missing_date:missingDates,skipped_invoice_date_only:invoiceDates,
-      partial_archive:partial,source:"Billy approved document ledger",skylegs_connected:false,
+      duplicate_records_excluded:duplicates,partial_archive:partial,source:"Billy approved document ledger",skylegs_connected:false,
       mission_verified:false}
   };
 }
 async function assistantRows(principal){
   const rows=[];let offset=0,partial=false;
-  const select="id,state,document_type,reviewed_data,review_metadata,parent_document_id";
+  const select="id,state,document_type,source_sha256,reviewed_data,review_metadata,parent_document_id";
   while(offset<2500){
     const batch=await database(principal,"GET","document_records",{
       select,organization_id:"eq."+principal.organization_id,
@@ -2378,13 +2391,15 @@ async function assistantAsk(req,principal){
     "Skylegs nu este încă integrat; nu pot confirma misiunea sau costul complet al zborului.",
     ...(scoped?["Documentele fără asociere verificabilă cu aeronava/zborul nu intră în total."]:[]),
     ...(partial?["Arhiva depășește limita acestei interogări. Rezultatele sunt parțiale."]:[]),
-    ...(result.coverage.skipped_invoice_date_only?["Facturile cu doar data emiterii nu au fost atribuite automat unei zile de zbor."]:[])
+    ...(result.coverage.skipped_invoice_date_only?["Facturile cu doar data emiterii nu au fost atribuite automat unei zile de zbor."]:[]),
+    ...(result.coverage.duplicate_records_excluded?["Am exclus copiile identice ale aceluiași document pentru a evita dublarea costurilor."]:[])
   ]:[
     "Amounts are calculated only from approved Billy documents, separately by currency.",
     "Skylegs is not connected yet; the mission and complete flight cost cannot be verified.",
     ...(scoped?["Documents not verifiably associated with the aircraft/flight are excluded."]:[]),
     ...(partial?["The archive exceeds the query limit. Results are partial."]:[]),
-    ...(result.coverage.skipped_invoice_date_only?["Invoice issue dates alone were not treated as flight-service dates."]:[])
+    ...(result.coverage.skipped_invoice_date_only?["Invoice issue dates alone were not treated as flight-service dates."]:[]),
+    ...(result.coverage.duplicate_records_excluded?["Repeated copies of the same document were excluded to prevent double counting."]:[])
   ];
   return json({understood:true,language:parsed.language,filter:parsed,
     ...result,notes,scope:"approved_documents_only",as_of:assistantDay()});
