@@ -132,8 +132,7 @@
       const line=el("div","billy-doc-family-child");
       const connector=el("span","billy-doc-nested-connector");
       connector.setAttribute("aria-hidden","true");
-      const marker=serviceIcon("Receipt");marker.classList.add("billy-doc-receipt-mark");
-      line.append(connector,marker,child);
+      line.append(connector,child);
       nested.append(line);
     }
     shell.append(nested);
