@@ -107,8 +107,8 @@ test("Home-only animated bubble displays verified breakdown and allows opening s
   assert.match(html,/id="billyAssistantLaunch"/);
   assert.match(html,/id="billyAssistantPanel"/);
   assert.match(html,/id="billyAssistantForm"/);
-  assert.match(html,/intelligence-assistant\.js\?v=0\.1\.0/);
-  assert.match(html,/intelligence-assistant\.css\?v=0\.1\.0/);
+  assert.match(html,/intelligence-assistant\.js\?v=0\.2\.0/);
+  assert.match(html,/intelligence-assistant\.css\?v=0\.2\.0/);
   assert.match(css,/body\[data-billy-screen="home"\] \.billy-ai-dock/);
   assert.match(css,/prefers-reduced-motion:reduce/);
   assert.match(ui,/window\.BillyAccounts\.sessionHeaders\(\)/);
@@ -117,4 +117,23 @@ test("Home-only animated bubble displays verified breakdown and allows opening s
   assert.match(ui,/result\.groups/);
   assert.match(ui,/result\.notes/);
   assert.doesNotMatch(ui,/\.innerHTML\s*=|localStorage|sessionStorage/);
+});
+
+test("Billy assistant follows flat product UI, not a large stand-alone chat widget",()=>{
+  assert.match(html,/class="billy-ai-head-mark" src="\.\/billydpi-logo\.svg"/);
+  assert.match(html,/Operations, expenses, documents\./);
+  assert.doesNotMatch(html,/Answers use your team's approved documents\. Flight-level totals will need Skylegs/);
+  assert.doesNotMatch(html,/Approved records · Operational insights/);
+  assert.match(css,/height:min\(242px,calc\(100dvh - 108px\)\)/);
+  assert.match(css,/\.billy-ai-panel\.has-thread\{height:min\(575px/);
+  assert.match(css,/body\.auth-locked \.billy-ai-dock\{display:none!important\}/);
+  assert.match(css,/\.billy-ai-welcome\[hidden\]\{display:none!important\}/);
+  assert.match(css,/\.billy-ai-disclosure/);
+  assert.match(css,/@media\(max-width:640px\)/);
+  assert.match(css,/width:100vw;height:100dvh/);
+  assert.match(css,/\.billy-ai-orbit/);
+  assert.doesNotMatch(css,/linear-gradient|radial-gradient|conic-gradient/);
+  assert.match(ui,/panel\.classList\.add\("has-thread"\)/);
+  assert.match(ui,/make\("details","billy-ai-disclosure"\)/);
+  assert.match(ui,/welcome\.hidden=true/);
 });
