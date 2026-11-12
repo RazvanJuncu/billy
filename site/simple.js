@@ -217,6 +217,7 @@
   }
 
   function recordFile(file) {
+    window.BillyNested?.fileLoaded(file);
     activeFile = file;
     approved = false;
     window.BillyOriginals?.reset?.();
