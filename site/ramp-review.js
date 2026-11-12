@@ -230,12 +230,12 @@
       }
       return [path,entry];
     }));
-    // Snapshot the initial decisions; later operator/recheck state is separate.
+    // Snapshot the initial AI decisions; operator verification is the final review step.
     const initialState=new Map([...state].map(([path,entry])=>[path,{
       level:entry.level,signal:entry.signal||"unclassified"
     }]));
-    const humanReviewed=new Set(),manualAcknowledged=new Set(),notOnDocument=new Set();
-    let revision=0,checkedRevision=-1,busy=false,recheckCount=0;
+    const humanReviewed=new Set(),notOnDocument=new Set();
+    let busy=false;
     let selected=null,editMode=false;
     const cropper=window.BillyQuickVerifyCrop?.create(sourceFile)||null;
     disposeActiveCrop=()=>cropper?.dispose();
@@ -308,10 +308,9 @@
     feedback.setAttribute("role","status");feedback.setAttribute("aria-live","polite");
     compact.append(feedback);
     const controls=create("div","ramp-actions");
-    const recheck=create("button","ramp-primary","Recheck with AI");
     const finish=create("button","ramp-primary","Approve & continue");
-    recheck.type=finish.type="button";
-    controls.append(recheck,finish);
+    finish.type="button";
+    controls.append(finish);
     compact.append(controls);
     const extra=create("div","ramp-extras");
     const toggleEvidence=create("button","ramp-link","Show original document and colored regions");
@@ -324,15 +323,12 @@
     const markChanged=(path,value)=>{
       if(!paths.includes(path)) {
         paths.push(path);
-        state.set(path,{level:"yellow",reason:"New field value. Recheck is required."});
+        state.set(path,{level:"yellow",reason:"New field requires operator confirmation."});
       }
       setAt(doc,path,value);
-      revision++;
-      checkedRevision=-1;
-      manualAcknowledged.delete(path);
       humanReviewed.delete(path);
       notOnDocument.delete(path);
-      state.set(path,{level:"yellow",reason:"Updated by operator. Recheck is required."});
+      state.set(path,{level:"yellow",reason:"Updated by operator; confirm to verify."});
     };
     const saveValue=(path,value)=>{
       const el=localInput(path);
@@ -359,15 +355,14 @@
       for(const entry of state.values())count[entry.level]++;
       return count;
     };
-    // Blue means the operator acted; it is resolved only after any required recheck.
+    // Blue means explicitly verified by the operator; no AI recheck is required.
     const allResolved=()=>state.size>0&&[...state.values()]
       .every(entry=>entry.level==="green"||entry.level==="blue");
     // Preserve all client confirmations only as metadata. They are not OCR confidence.
-    const readyToApprove=()=>!busy&&allResolved()&&
-      (revision===0||checkedRevision===revision);
+    const readyToApprove=()=>!busy&&allResolved();
     window.BillyReview.canApprove=readyToApprove;
     window.BillyReview.rampAudit=()=>({
-      ai_recheck_count:recheckCount,
+      ai_recheck_count:0,
       confidence_engine:{
         version:"1.0",
         field_reviews:paths.slice(0,180).map(field_path=>{
@@ -385,7 +380,7 @@
         })
       },
       manual_confirmations:[...humanReviewed],
-      ambiguity_acknowledgements:[...manualAcknowledged],
+      ambiguity_acknowledgements:[],
       not_on_document:[...notOnDocument],
       final_field_states:paths.map(field_path=>({
         field_path,
@@ -419,24 +414,13 @@
       const pending=totals.red+totals.yellow;
       const needsReview=[...state].filter(([path,value])=>
         (value.level==="red"||value.level==="yellow")&&!humanReviewed.has(path));
-      // A field explicitly marked absent changes the review, so still recheck the remaining values.
-      recheck.hidden=needsReview.length>0||
-        (pending===0&&(revision===0||checkedRevision===revision))||
-        (pending>0&&checkedRevision===revision);
+      // Each flagged field is explicitly resolved by the operator; no second model call.
       finish.hidden=!readyToApprove();
-      recheck.disabled=busy;
       finish.disabled=busy;
-      if(busy)feedback.textContent="The AI engine is checking your values against the original image…";
-      else if(pending===0){
-        feedback.textContent=revision>0&&checkedRevision===revision
-          ?"Review completed. Blue fields were checked by the operator."
-          :revision>0?"Operator-checked fields are blue. Run AI recheck before approval."
-          :"No flagged fields. Confirm the document before continuing.";
-      }else if(needsReview.length){
-        feedback.textContent="Verify "+needsReview.length+" highlighted field(s), then run AI recheck.";
-      }else if(checkedRevision===revision){
-        feedback.textContent="Review the remaining highlighted fields. Unclear scans require an explicit operator confirmation.";
-      }else feedback.textContent="Fields confirmed. Run Recheck with AI.";
+      if(busy)feedback.textContent="Saving approved document…";
+      else if(needsReview.length)
+        feedback.textContent="Verify "+needsReview.length+" highlighted field(s), then approve.";
+      else feedback.textContent="Review complete. Operator-verified fields are blue. Ready to approve.";
     }
     function setEditMode(enabled){
       editMode=enabled;
@@ -468,10 +452,7 @@
       });
       if(next){openEditor(next);return;}
       closeEditor();
-      if(!recheck.hidden){
-        feedback.textContent="Ready for Recheck";
-        recheck.focus();
-      }else if(!finish.hidden){
+      if(!finish.hidden){
         feedback.textContent="Ready for approval";
         finish.focus();
       }
@@ -601,91 +582,12 @@
       const before=valueAt(doc,path);
       const current=state.get(path);
       const changed=value!==String(before??"");
-      const resolvingUnclear=current.level==="yellow"&&checkedRevision===revision&&
-        humanReviewed.has(path)&&!changed;
       if(changed)saveValue(path,value);
-      else if((current.level==="yellow"||current.level==="red")&&!resolvingUnclear){
-        // A confirmation without a text edit still needs its own AI recheck.
-        revision++;
-        checkedRevision=-1;
-      }
       humanReviewed.add(path);
-      if(resolvingUnclear){
-        manualAcknowledged.add(path);
-        state.set(path,{level:"blue",reason:"Operator accepted unclear source evidence after AI recheck."});
-      }else{
-        state.set(path,{level:"blue",reason:checkedRevision===revision?
-          "Verified by operator; AI recheck completed.":"Checked by operator; AI recheck is pending."});
-      }
+      state.set(path,{level:"blue",reason:changed?
+        "Corrected and verified by operator.":"Confirmed by operator; visual AI agreement is not claimed."});
       nextAttention(path);
     });
-    async function recheckWithAI(){
-      if(busy||!sourceFile)return;
-      const pending=[...state].filter(([path,entry])=>
-        (entry.level==="red"||entry.level==="yellow")&&!humanReviewed.has(path));
-      if(pending.length){feedback.textContent="Confirm each highlighted field before rechecking.";return;}
-      busy=true;paint();recheck.disabled=true;
-      const currentRevision=revision;
-      let statusText="";
-      try{
-        const form=new FormData();
-        form.append("file",sourceFile,sourceFile.name);
-        form.append("extraction_id",result.extraction_id);
-        form.append("document_type",type);
-        form.append("reviewed_document",JSON.stringify(doc));
-        form.append("not_on_document",JSON.stringify([...notOnDocument]));
-        const response=await fetch(endpoint+"/api/vision/recheck",{
-          method:"POST",headers:await getHeaders(),body:form
-        });
-        const payload=await response.json();
-        if(!response.ok)throw Error(payload.detail||"Recheck request failed");
-        if(revision!==currentRevision)throw Error("Document changed during recheck. Please run it again.");
-        const map=new Map((payload.checks||[]).map(check=>[check.field_path,check]));
-        const meterMismatch=(payload.deterministic_warnings||[]).some(w=>/Meter mismatch|Meter finish is less than start/i.test(String(w)));
-        const totalsMismatch=(payload.deterministic_warnings||[]).some(w=>/Subtotal \+ VAT does not match|Sum of line net amounts differs|quantity × unit price differs/i.test(String(w)));
-        for(const path of paths){
-          if(notOnDocument.has(path)){
-            state.set(path,{level:"blue",reason:"Operator confirmed absent; excluded from AI search."});
-            continue;
-          }
-          const item=map.get(path);
-          if(meterMismatch&&["delivered_quantity","meter_start","meter_finish"].includes(path)){
-            state.set(path,{level:"red",reason:"Meter readings or fuel totals are mathematically inconsistent."});
-            humanReviewed.delete(path);manualAcknowledged.delete(path);
-            continue;
-          }
-          if(totalsMismatch&&["subtotal","vat_total","grand_total"].includes(path)){
-            state.set(path,{level:"red",reason:"Document totals are mathematically inconsistent."});
-            humanReviewed.delete(path);manualAcknowledged.delete(path);
-            continue;
-          }
-          if(!item||item.status==="unclear"){
-            state.set(path,{level:"yellow",reason:item?.reason||"AI could not verify this field from the image."});
-          }else if(item.status==="mismatch"){
-            state.set(path,{level:"red",reason:item.reason||"AI finds a mismatch with the original."});
-            humanReviewed.delete(path);
-            manualAcknowledged.delete(path);
-          }else if(item.status==="match"){
-            state.set(path,{level:humanReviewed.has(path)?"blue":"green",reason:
-              humanReviewed.has(path)?"Checked by operator and supported by AI recheck.":
-                "AI visually supports this value; review remains operator responsibility."});
-          }
-        }
-        checkedRevision=revision;
-        recheckCount++;
-        for(const [path,entry] of state){
-          if(entry.level==="yellow"&&manualAcknowledged.has(path)&&humanReviewed.has(path)){
-            state.set(path,{level:"blue",reason:"Accepted by operator despite unclear AI evidence."});
-          }
-        }
-        statusText=allResolved()
-          ?"Recheck completed. Ready for operator approval."
-          :"AI found remaining doubtful fields. Open the highlighted segments.";
-      }catch(error){
-        statusText="Recheck failed: "+(error.message||"Unexpected error")+". Nothing was approved.";
-      }finally{busy=false;paint();if(statusText)feedback.textContent=statusText;}
-    }
-    recheck.addEventListener("click",recheckWithAI);
     finish.addEventListener("click",()=>{
       if(!readyToApprove())return;
       const oldButton=advanced.querySelector(".review-approve");

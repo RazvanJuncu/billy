@@ -18,7 +18,7 @@ test("User-facing Billy copy uses AI engine rather than mentioning the vendor",(
   assert.match(simple,/AI engine connection failed:/);
   assert.match(app,/AI engine connection timed out/);
   assert.match(app,/AI engine connected/);
-  assert.match(ramp,/The AI engine is checking your values/);
+  assert.doesNotMatch(ramp,/The AI engine is checking your values|Recheck with AI/);
   assert.match(review,/Download original AI engine JSON \(unverified\)/);
   assert.match(regions,/Document evidence/);
   assert.doesNotMatch(regions,/TrOCR|trocr|AI engine \\+ local /);

@@ -1634,6 +1634,29 @@ function cleanConfidenceAudit(value,type){
   }
   return {version:"1.0",source:"client_observed",field_reviews:fields};
 }
+// Provenance is an audit of which actor supplied/confirmed a field, never
+// a claim that the AI can see obscured text or that public data was checked.
+function approvedFieldProvenance(confidenceAudit,confirmationClaims,absentPaths){
+  const manual=new Set(confirmationClaims||[]);
+  const absent=new Set(absentPaths||[]);
+  const byPath=new Map();
+  for(const row of confidenceAudit?.field_reviews||[]){
+    const userActed=["confirmed","corrected","absent"].includes(row.action)||
+      manual.has(row.field_path)||absent.has(row.field_path);
+    byPath.set(row.field_path,{field_path:row.field_path,
+      source:userActed?"operator_verified":"ai_extracted",
+      action:absent.has(row.field_path)?"absent":row.action});
+  }
+  for(const path of manual){
+    if(!byPath.has(path)&&byPath.size<180)
+      byPath.set(path,{field_path:path,source:"operator_verified",action:"confirmed"});
+  }
+  for(const path of absent){
+    if(!byPath.has(path)&&byPath.size<180)
+      byPath.set(path,{field_path:path,source:"operator_verified",action:"absent"});
+  }
+  return [...byPath.values()].slice(0,180);
+}
 async function approve(req,principal){
   let data;
   try{data=await req.json();}catch{return error("Invalid approval JSON.",400);}
@@ -1664,14 +1687,24 @@ async function approve(req,principal){
       throw Error("Invalid human confirmation list.");
   }catch{return error("Invalid human confirmation list.",400);}
   const corrections=Object.keys(checked).filter(k=>JSON.stringify(checked[k])!==JSON.stringify(source.extracted_data?.[k])).length;
-  const warnings=validate(checked,data.document_type,source.regions_data||[],source.review_metadata?.classification?.profile);
   const confidenceAudit=cleanConfidenceAudit(data.confidence_engine,data.document_type);
+  const provenance=approvedFieldProvenance(confidenceAudit,confirmationClaims,absentPaths);
+  const operatorVerified=new Set(provenance.filter(row=>row.source==="operator_verified")
+    .map(row=>row.field_path));
+  // Keep original source evidence in regions_data, but do not carry forward
+  // stale AI legibility warnings after an operator has explicitly resolved them.
+  // Arithmetic and other deterministic checks still evaluate the approved values.
+  const approvalRegions=(source.regions_data||[]).filter(row=>!operatorVerified.has(row.field_path));
+  const warnings=validate(checked,data.document_type,approvalRegions,
+    source.review_metadata?.classification?.profile);
   const approvedNormalized=normalizeDocument(checked,data.document_type,
     source.review_metadata?.classification?.profile);
   const reviewMetadata={
     ...(source.review_metadata||{}),
     not_on_document:absentPaths,manual_confirmations:confirmationClaims,
     origin:"operator_confirmation",
+    verification_policy:"operator_final_no_ai_recheck",
+    field_provenance:provenance,
     normalization:{...(source.review_metadata?.normalization||{}),version:NORMALIZATION_VERSION,
       approved:approvedNormalized},
     ...(confidenceAudit?{confidence_engine:confidenceAudit}:{})

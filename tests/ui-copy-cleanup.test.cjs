@@ -60,7 +60,7 @@ test("Ramp review hides redundant counts and helper copy but keeps review and co
   assert.doesNotMatch(ramp,/Opt in only for documents your team is allowed to retain/);
   assert.doesNotMatch(ramp,/Learn from my corrections and confirmations/);
   assert.doesNotMatch(ramp,/intelCheckbox/);
-  assert.match(ramp,/Recheck with AI/);
+  assert.doesNotMatch(ramp,/Recheck with AI/);
   assert.match(ramp,/Approve & continue/);
 });
 
