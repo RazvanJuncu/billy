@@ -1223,3 +1223,79 @@ body[data-billy-screen="uploaded"] #simpleUploaded .billy-hub-symbol{
   content:none!important;
   display:none!important;
 }
+
+/* Smart Organization Inbox - only mounted when approved roots need association. */
+#simpleUploaded[data-billy-doc-view="Attention"] .billy-doc-toolbar,
+#simpleUploaded[data-billy-doc-view="Attention"] #simpleDocumentsList,
+#simpleUploaded[data-billy-doc-view="Attention"] #simpleDocumentsEmpty{
+  display:none!important
+}
+.billy-hub-attention{
+  width:min(720px,100%);
+  display:flex;align-items:center;gap:14px;
+  margin:5px auto 50px;padding:16px 19px;
+  border:1px solid #414548!important;border-radius:12px!important;
+  color:#f5f5f5!important;background:#242629!important;
+  text-align:left;cursor:pointer;
+}
+.billy-hub-attention:hover{background:#303337!important}
+.billy-hub-attention-icon{
+  width:29px;height:29px;display:grid;place-items:center;
+  flex:none;border:1px solid #787d82;border-radius:50%;
+  font-size:15px;font-weight:720;color:#eaeaea
+}
+.billy-hub-attention-copy{display:flex;flex-direction:column;gap:3px;flex:1;min-width:0}
+.billy-hub-attention-copy strong{font-size:13px;font-weight:680}
+.billy-hub-attention-copy>span{font-size:12px;color:#b8bdc1}
+.billy-hub-attention-count{border-radius:6px;padding:5px 9px;background:#35393c;font-size:12px}
+.billy-org-layout{
+  display:grid;grid-template-columns:minmax(0,1.15fr) minmax(260px,.85fr);
+  gap:22px;width:100%;align-items:start;margin:14px 0 45px
+}
+.billy-org-left,.billy-org-right{min-width:0;border-radius:14px;background:#202225;padding:17px}
+.billy-org-queue{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
+.billy-org-queue-row{
+  display:flex;flex-direction:column;align-items:flex-start;gap:4px;
+  padding:11px 13px!important;background:#292c2f!important;
+  border:0!important;border-radius:9px!important;
+  color:#f4f4f4!important;cursor:pointer;font-size:12px!important
+}
+.billy-org-queue-row[aria-pressed="true"]{background:#42464a!important}
+.billy-org-queue-sub{font-size:10px;color:#bfc3c7}
+.billy-org-original{height:min(68dvh,780px);min-height:280px;border-radius:10px;
+  background:#303337;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.billy-org-image{display:block;max-width:100%;max-height:100%;object-fit:contain}
+.billy-org-pdf{border:0;width:100%;height:100%;background:#fff}
+.billy-org-preview-loading,.billy-org-no-preview,.billy-org-loading{
+  color:#b8bdc1;font-size:13px;text-align:center;padding:25px 12px
+}
+.billy-org-details-head{display:flex;align-items:baseline;flex-wrap:wrap;
+  justify-content:space-between;gap:10px;margin:1px 0 20px}
+.billy-org-details-head strong{font-size:17px;color:#fff}
+.billy-org-details-head span{font-size:12px;color:#b9bfc3}
+.billy-org-form{display:flex;flex-direction:column;gap:15px}
+.billy-org-field{display:flex;flex-direction:column;gap:6px}
+.billy-org-field label{color:#b8bdc1;font-size:11px;font-weight:680}
+.billy-org-input,.billy-org-known{
+  box-sizing:border-box;width:100%;min-height:43px;padding:10px 12px;
+  border:1px solid #454a4e!important;border-radius:9px!important;
+  background:#2a2d30!important;color:#f3f3f3!important;font:inherit;font-size:13px!important
+}
+.billy-org-input:focus-visible{outline:2px solid #c5c8ca;outline-offset:1px}
+.billy-org-known{border:0!important;background:transparent!important;padding:9px 2px;min-height:33px}
+.billy-org-known-title{font-size:11px;color:#aeb4b8;margin:6px 0 -5px}
+.billy-org-save{
+  border:0!important;border-radius:10px!important;min-height:45px;
+  background:#ededed!important;color:#181a1c!important;
+  font-size:13px!important;font-weight:690!important;cursor:pointer;margin-top:8px
+}
+.billy-org-save:disabled{opacity:.48;cursor:default}
+.billy-org-status{font-size:12px;color:#d4c1a6;margin:0;min-height:15px}
+.billy-org-retry{padding:13px;background:#2c3033!important;color:#f5f5f5!important;
+  border:0!important;border-radius:9px!important}
+@media(max-width:780px){
+  .billy-org-layout{grid-template-columns:minmax(0,1fr);gap:12px}
+  .billy-org-left,.billy-org-right{padding:12px}
+  .billy-org-original{height:min(48dvh,450px);min-height:220px}
+  .billy-hub-attention{margin:0 auto 32px}
+}
