@@ -46,12 +46,14 @@ test("One full photo produces sequential reviews, waiting for original archive",
   const context={
     window:{
       addEventListener:(name,fn)=>handlers.set(name,[...(handlers.get(name)||[]),fn]),
+      dispatchEvent:event=>dispatch(event.type,event.detail),
       BillyApp:{openFile:f=>opened.push(f)}
     },
     URL:{createObjectURL:()=>"blob:1",revokeObjectURL:()=>{}},
     Image:class{constructor(){return image;}},
     File:MockFile,document:{createElement:()=>fakeCanvas},
     setTimeout:fn=>fn(),Math,JSON,Number,
+    CustomEvent:class{constructor(type,options){this.type=type;this.detail=options?.detail;}},
   };
   vm.runInNewContext(client,context);
   const nested=context.window.BillyNested;
