@@ -38,7 +38,7 @@
     return svg;
   }
   const modes=["All","Aircraft","Services","Airports","Vendors"];
-  const state={mode:"All",query:"",descending:true,records:[],host:null,list:null,navigation:null,opened:new Set()};
+  const state={mode:"Home",aircraft:null,query:"",descending:true,records:[],host:null,list:null,navigation:null,opened:new Set()};
   const el=(tag,cls,content)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(content!==undefined)n.textContent=content;return n;};
   const text=value=>typeof value==="string"?value.trim():"";
   const value=(data,...paths)=>{for(const p of paths){const v=data?.[p];if(text(v))return text(v);}return "";};
@@ -84,7 +84,7 @@
     const tabs=el("div","billy-doc-tabs");tabs.setAttribute("role","group");tabs.setAttribute("aria-label","Group documents");
     modes.forEach(mode=>{
       const b=el("button","billy-doc-tab",mode);b.type="button";b.dataset.mode=mode;b.setAttribute("aria-pressed",String(mode===state.mode));
-      b.addEventListener("click",()=>{state.mode=mode;state.opened.clear();refresh();});tabs.append(b);
+      b.addEventListener("click",()=>navigate(mode));tabs.append(b);
     });
     const tools=el("div","billy-doc-tools");
     const search=el("input","billy-doc-search");search.type="search";search.placeholder="Search documents…";search.setAttribute("aria-label","Search documents");search.value=state.query;
@@ -92,6 +92,7 @@
     const sort=el("button","billy-doc-sort","↓");sort.type="button";sort.title="Newest first";sort.setAttribute("aria-label","Toggle date sorting");
     sort.addEventListener("click",()=>{state.descending=!state.descending;refresh();});
     tools.append(search,sort);host.append(tabs,tools);list.before(host);state.host=host;
+    window.BillyDocumentsHub?.mount(list,host);
   }
   function refresh(){
     const list=state.list;if(!list||!list.isConnected)return;
@@ -104,17 +105,24 @@
       const d=node.__billyDocument;if(!d)return false;
       return [d.title,d.aircraft,d.service,d.airport,d.vendor,d.amount,d.status,d.search].join(" ").toLocaleLowerCase().includes(needle);
     }).sort((a,b)=>state.descending?b.__billyDocument.date-a.__billyDocument.date:a.__billyDocument.date-b.__billyDocument.date);
-    const groupKey={Aircraft:"aircraft",Services:"service",Airports:"airport",Vendors:"vendor"}[state.mode];
+    const knownAircraft=new Set(window.BillyDocumentsHub?.fleet?.map(a=>a.registration)||[]);
+    const matching=state.mode==="Aircraft"&&state.aircraft
+      ?filtered.filter(node=>state.aircraft==="Unassigned"
+        ? !knownAircraft.has(node.__billyDocument.aircraft)
+        :node.__billyDocument.aircraft===state.aircraft)
+      :filtered;
+    const groupKey=state.mode==="Aircraft"&&state.aircraft?"service":
+      {Services:"service",Airports:"airport",Vendors:"vendor"}[state.mode];
     const fragment=document.createDocumentFragment();
     if(groupKey){
       const groups=new Map();
-      filtered.forEach(node=>{const key=node.__billyDocument[groupKey]||"Unassigned";if(!groups.has(key))groups.set(key,[]);groups.get(key).push(node);});
+      matching.forEach(node=>{const key=node.__billyDocument[groupKey]||"Unassigned";if(!groups.has(key))groups.set(key,[]);groups.get(key).push(node);});
       [...groups.keys()].sort((a,b)=>a==="Unassigned"?1:b==="Unassigned"?-1:a.localeCompare(b)).forEach(key=>{
         const section=el("section","billy-doc-group");
         const groupId=groupKey+":"+key,expanded=state.opened.has(groupId);
         const header=el("button","billy-doc-group-title");header.type="button";header.setAttribute("aria-expanded",String(expanded));
         const name=el("span","",key),count=el("span","billy-doc-count",String(groups.get(key).length)),chevron=el("span","billy-doc-chevron","›");
-        if(state.mode==="Services")header.append(serviceIcon(key));
+        if(state.mode==="Services"||state.mode==="Aircraft")header.append(serviceIcon(key));
         header.append(name,count,chevron);
         const content=el("div","billy-doc-group-content");content.hidden=!expanded;groups.get(key).forEach(node=>content.append(node));
         header.addEventListener("click",()=>{
@@ -124,10 +132,11 @@
         });
         section.append(header,content);fragment.append(section);
       });
-    }else filtered.forEach(node=>fragment.append(node));
-    const empty=el("p","billy-doc-no-results",state.query?"No matches.":"No documents in this view.");empty.hidden=filtered.length>0;fragment.append(empty);
+    }else matching.forEach(node=>fragment.append(node));
+    const empty=el("p","billy-doc-no-results",state.query?"No matches.":"No documents in this view.");empty.hidden=matching.length>0;fragment.append(empty);
     list.replaceChildren(fragment);
     if(state.navigation)list.append(state.navigation);
+    window.BillyDocumentsHub?.render(state,navigate);
   }
   function end(list){
     install(list);
@@ -137,5 +146,27 @@
     // The archive is paged by the cloud API; search and grouping operate on this page.
     refresh();
   }
-  window.BillyDocumentsIndex={tag,session,label,end,info,registration};
+  function navigate(mode,aircraft=null){
+    state.mode=["Home",...modes].includes(mode)?mode:"Home";
+    state.aircraft=state.mode==="Aircraft"?aircraft:null;
+    state.query="";
+    state.opened.clear();
+    const search=state.host?.querySelector(".billy-doc-search");
+    if(search)search.value="";
+    refresh();
+    const stage=document.getElementById("workspaceStage");
+    if(stage)stage.scrollTop=0;
+  }
+  function back(){
+    if(state.mode==="Home")return false;
+    if(state.mode==="Aircraft"&&state.aircraft)navigate("Aircraft");
+    else navigate("Home");
+    return true;
+  }
+  function start(list){
+    // Opening the archive always starts at the hub, not the last drill-down.
+    install(list);
+    navigate("Home");
+  }
+  window.BillyDocumentsIndex={tag,session,label,end,info,registration,navigate,back,start};
 })();
