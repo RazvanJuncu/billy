@@ -419,6 +419,17 @@ function canonicalDate(raw){
       return {value:null,status:"ambiguous",reason:"Slash date could be DD/MM or MM/DD; confirm the source."};
     day=+m[1];month=+m[2];year=+m[3];
     if(month>12)return {value:null,status:"ambiguous",reason:"Likely US-style date; review rather than guessing order."};
+  }else if((m=text.match(/^(\d{1,2})([/.])(\d{1,2})\2(\d{2})$/))){
+    // Short years on contemporary operational receipts: 00..49 => 2000..2049.
+    // Older short years remain ambiguous instead of silently assuming a century.
+    const first=+m[1],second=+m[3],shortYear=+m[4];
+    if(shortYear>49)
+      return {value:null,status:"ambiguous",reason:"Two-digit year does not establish the century; confirm the source."};
+    if(m[2]==="/"&&first<=12&&second<=12)
+      return {value:null,status:"ambiguous",reason:"Slash date could be DD/MM or MM/DD; confirm the source."};
+    if(second>12)
+      return {value:null,status:"ambiguous",reason:"Likely US-style date; review rather than guessing order."};
+    day=first;month=second;year=2000+shortYear;
   }else if((m=text.match(/^(\d{1,2})[ -]([a-z]{3,9})[ -](\d{4})$/i))){
     const months=["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
     day=+m[1];month=months.indexOf(m[2].toLowerCase().slice(0,3))+1;year=+m[3];
