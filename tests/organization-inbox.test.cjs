@@ -53,7 +53,7 @@ test("Organization endpoint is authenticated, owner-scoped for writes, and never
   assert.match(edge,/only the owner can organize an approved parent document/i);
   assert.match(edge,/review_metadata:metadata/);
   assert.match(edge,/source:"operator_verified"/);
-  assert.match(edge,/if\(suffix==="/api\/vision\/organization"\)/);
+  assert.ok(edge.includes('if(suffix==="/api/vision/organization")'));
   const logic=edge.slice(edge.indexOf("async function organizeDocument("),edge.indexOf("async function listRecords("));
   assert.doesNotMatch(logic,/classifyDocument|generateContent|\/api\/vision\/extract/);
   assert.doesNotMatch(logic,/reviewed_data:checked|extracted_data:checked/);
