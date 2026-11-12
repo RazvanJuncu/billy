@@ -173,14 +173,14 @@ test("Correct confirms original reading and opens the next unresolved field auto
   assert.equal(segment("invoice_number").className.includes("ramp-blue"),true);
   assert.deepEqual([...window.BillyReview.rampAudit().manual_confirmations],["invoice_number"]);
   assert.equal(window.BillyReview.canApprove(),false);
-  // The last confirmation focuses Recheck; it does not approve anything.
+  // The last confirmation enables approval without an AI recheck.
   find("ramp-confirm").click();
   assert.equal(find("ramp-field-detail").hidden,true);
-  assert.equal(find("ramp-feedback").textContent,"Ready for Recheck");
+  assert.equal(find("ramp-feedback").textContent,"Ready for approval");
   assert.equal(find("ramp-primary").hidden,false);
-  assert.equal(dom.focus().textContent,"Recheck with AI");
+  assert.equal(dom.focus().textContent,"Approve & continue");
   assert.equal(segment("grand_total").className.includes("ramp-blue"),true);
-  assert.equal(window.BillyReview.canApprove(),false);
+  assert.equal(window.BillyReview.canApprove(),true);
 });
 
 test("Edit opens only on demand, saves the corrected field, then goes to next item",()=>{
