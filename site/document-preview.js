@@ -114,26 +114,30 @@
       })();
     }
     body.append(note);
+    const documentLabel=item=>{
+      const profile=item.review_metadata?.classification?.profile||item.document_type||"Document";
+      const names={handling_invoice:"Handling Invoice",fuel_release:"Fuel Release",
+        fuel_invoice:"Fuel Invoice",payment_slip:"Payment Slip",taxi_receipt:"Taxi Receipt",
+        generic_invoice:"Invoice",pos_receipt:"Payment Slip"};
+      return names[profile]||String(profile).replaceAll("_"," ").replace(/\b\w/g,char=>char.toUpperCase());
+    };
     if(record.parent_document_id){
       const parent=record.nested_parent;
       const relation=node("section","billy-preview-nested");
-      const caption=node("h3","","Nested document");
-      relation.append(caption);
+      relation.append(node("h3","","Parent document"));
       if(parent){
-        const parentName=(parent.review_metadata?.classification?.profile||parent.document_type||"Parent document").replaceAll("_"," ");
-        const openParent=node("button","billy-preview-nested-open","↳ Attached to "+parentName);
+        const openParent=node("button","billy-preview-nested-open",documentLabel(parent));
         openParent.type="button";
         openParent.addEventListener("click",()=>open(parent));
         relation.append(openParent);
-      }else relation.append(node("p","billy-preview-source-note","Parent document not available in this archive view."));
+      }else relation.append(node("p","billy-preview-source-note","Parent document unavailable"));
       body.append(relation);
     }
     if(Array.isArray(record.nested_children)&&record.nested_children.length){
       const children=node("section","billy-preview-nested");
       children.append(node("h3","","Attached documents"));
       for(const child of record.nested_children){
-        const label=(child.review_metadata?.classification?.profile||child.document_type||"Document").replaceAll("_"," ");
-        const openChild=node("button","billy-preview-nested-open",label+" · "+(child.state==="approved"?"Approved":"Needs review"));
+        const openChild=node("button","billy-preview-nested-open",documentLabel(child)+" · "+(child.state==="approved"?"Approved":"Needs review"));
         openChild.type="button";
         openChild.addEventListener("click",()=>open(child));
         children.append(openChild);
