@@ -67,7 +67,7 @@ test("Absent-field button clears the value, skips AI lookup and retains human au
   assert.match(ramp,/saveValue\(path,null\)/);
   assert.match(ramp,/notOnDocument\.add\(path\)/);
   assert.match(ramp,/notOnDocument\.delete\(path\)/);
-  assert.match(ramp,/if\(notOnDocument\.has\(path\)\)/);
+  assert.match(ramp,/notOnDocument\.has\(field_path\)/);
   assert.match(ramp,/not_on_document:\[\.\.\.notOnDocument\]/);
   assert.match(ramp,/finish\.hidden=!readyToApprove\(\)/);
   assert.match(css,/\.ramp-not-present\{/);
