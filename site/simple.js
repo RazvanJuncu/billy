@@ -260,7 +260,7 @@
     const list = $("simpleDocumentsList");
     list.replaceChildren();
     $("simpleDocumentsEmpty").hidden = sessionFiles.length > 0;
-    $("simpleDocumentsIntro").textContent = "Cloud records contain structured data, not source PDFs or photographs. Grouping and search apply to this page.";
+    $("simpleDocumentsIntro").textContent = "Cloud records contain extracted/approved fields, not source PDFs or photographs. Search and grouping apply to this page.";
     for (const item of sessionFiles) {
       const button = document.createElement("button");
       button.type = "button";
