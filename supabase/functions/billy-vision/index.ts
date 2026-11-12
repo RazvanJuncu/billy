@@ -1007,6 +1007,17 @@ async function extract(req,principal){
   // Nested extraction never authorizes approval or arbitrary document linking.
   const nestedPrimary=form.get("nested_primary")==="true";
   if(form.has("nested_primary")&&!nestedPrimary)return error("Invalid nested extraction mode.",400);
+  let excludedNested=[];
+  if(nestedPrimary){
+    try{
+      const raw=form.get("nested_exclude");
+      if(typeof raw!=="string"||raw.length>1500)throw Error("Invalid attached regions.");
+      const parsed=JSON.parse(raw);
+      if(!Array.isArray(parsed)||!parsed.length||parsed.length>3)throw Error("Invalid attached regions.");
+      excludedNested=parsed.map(item=>validDocumentBox(item));
+      if(excludedNested.some(item=>!item))throw Error("Invalid attached region.");
+    }catch{return error("Invalid attached region coordinates.",400);}
+  }
   const parentId=form.get("parent_document_id");
   if(parentId!==null&&(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(parentId)||nestedPrimary))
     return error("Invalid parent record.",400);
@@ -1056,7 +1067,9 @@ async function extract(req,principal){
         " The classification name does not justify inferring text not present on the paper."+
         (nestedPrimary?" IMPORTANT: A separate document is physically attached/overlaid on this PRIMARY page. "+
           "Extract only the large underlying PRIMARY document. Ignore all data printed on the smaller overlaid paper. "+
-          "Do not copy totals, dates, references or vendors from the overlay. Mark obscured fields uncertain rather than inventing.":"")},
+          "Do not copy totals, dates, references or vendors from the overlay. Mark obscured fields uncertain rather than inventing. "+
+          "Ignore content inside these normalized 0-1000 x1,y1,x2,y2 rectangles: "+
+          JSON.stringify(excludedNested.map(({x1,y1,x2,y2})=>({x1,y1,x2,y2})))+".":"")},
       {inline_data:{mime_type:mime,data:b64(bytes)}}
     ]}],
     generationConfig:{responseMimeType:"application/json",
