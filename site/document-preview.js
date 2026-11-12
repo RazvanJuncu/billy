@@ -75,7 +75,15 @@
     const header=node("header","billy-preview-header");
     const heading=node("div","billy-preview-heading");
     heading.append(node("h2","",title),node("span","billy-preview-state",record.state==="approved"?"✓ Approved":"Not approved"));
-    const exit=node("button","billy-preview-close","×");exit.type="button";
+    const exit=node("button","billy-preview-close");exit.type="button";
+    // SVG geometry keeps the X optically centered independent of the text font.
+    const closeIcon=document.createElementNS("http://www.w3.org/2000/svg","svg");
+    closeIcon.setAttribute("viewBox","0 0 24 24");closeIcon.setAttribute("width","18");
+    closeIcon.setAttribute("height","18");closeIcon.setAttribute("fill","none");
+    closeIcon.setAttribute("stroke","currentColor");closeIcon.setAttribute("stroke-width","2.25");
+    closeIcon.setAttribute("stroke-linecap","round");closeIcon.setAttribute("aria-hidden","true");
+    const cross=document.createElementNS("http://www.w3.org/2000/svg","path");
+    cross.setAttribute("d","M6 6l12 12M18 6L6 18");closeIcon.append(cross);exit.append(closeIcon);
     exit.title="Close preview";exit.setAttribute("aria-label","Close preview");
     exit.addEventListener("click",close);header.append(heading,exit);
     const body=node("div","billy-preview-body");
