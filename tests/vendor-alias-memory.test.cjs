@@ -62,7 +62,7 @@ test("Vendor memory is tenant-scoped, enforced by unique aliases and one atomic 
   assert.match(edge,/organization_id:"eq\."\+principal\.organization_id/);
 });
 test("Cached PWA can still submit its original plain vendor field",()=>{
-  assert.match(edge,/const legacyVendor=Object\\.hasOwn\\(data\\.fields,"vendor"\\)/);
+  assert.match(edge,/const legacyVendor=Object\.hasOwn\(data\.fields,"vendor"\)/);
   assert.match(edge,/new_name:legacyVendor/);
 });
 test("Needs attention offers existing and new canonical vendor without re-running extraction",()=>{
