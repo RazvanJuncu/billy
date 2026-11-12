@@ -14,7 +14,7 @@ test("classifier detects paper boundaries without adding a second AI request",()
   assert.match(edge,/coordinates are INTEGERS|Coordinates are INTEGERS/);
   assert.match(edge,/documentBoxes\(data\.documents,data\.multiple_documents_visible\)/);
   assert.match(edge,/Multiple physical documents detected\. Review their boundaries/);
-  assert.match(app,/await window\.BillyMultiDocs\.open\(currentFile,responseBody\.classification\.documents\|\|\[\]\)/);
+  assert.match(app,/await window\.BillyMultiDocs\.open\(editable,responseBody\.classification\.documents\|\|\[\]\)/);
   assert.doesNotMatch(app,/multi.*\/api\/vision\/separate/i);
 });
 
@@ -53,7 +53,7 @@ test("separation stays on-device with explicit human crop confirmation",()=>{
 
 test("a composite image cannot silently enter one-document approval",()=>{
   assert.match(app,/classification\?\.multiple_documents_visible/);
-  assert.match(app,/Multiple documents detected\. Separate them into individual images before extraction/);
+  assert.match(app,/await window\.BillyPdfSeparator\.toImage\(currentFile\)/);
   assert.match(app,/if\s*\(responseBody\.classification_required\)/);
   const block=app.slice(app.indexOf("if (responseBody.classification_required)"),app.indexOf("if (!(responseBody.invoice"));
   assert.match(block,/return;/);

@@ -906,24 +906,18 @@ function documentBoxes(input,multiple){
   return accepted.length>=2?accepted:[];
 }
 // Classifier sees only the current document; no historical user data or feedback.
-async function classifyDocument(bytes,mime){
-  const payload={
-    contents:[{role:"user",parts:[{text:CLASSIFIER_PROMPT},
-      {inline_data:{mime_type:mime,data:b64(bytes)}}]}],
-    generationConfig:{responseMimeType:"application/json",responseJsonSchema:CLASSIFIER_SCHEMA,maxOutputTokens:500},
-    store:false
-  };
-  const response=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+MODEL+":generateContent",{
-    method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":providerKey()},
-    body:JSON.stringify(payload),signal:AbortSignal.timeout(65000)
-  });
-  if(!response.ok)throw Error("Classifier returned HTTP "+response.status);
-  const raw=await response.json();
-  const message=(raw.candidates?.[0]?.content?.parts||[]).filter(p=>!p.thought).map(p=>p.text||"").join("");
-  let data;try{data=JSON.parse(message);}catch{throw Error("Invalid classification response.");}
+// A truncated model answer is an AI formatting failure, not a bad document.
+function parseClassificationResponse(raw){
+  const candidate=raw?.candidates?.[0];
+  const message=(candidate?.content?.parts||[]).filter(p=>!p.thought).map(p=>p.text||"").join("").trim();
+  if(!message)throw Error("Classifier produced no structured response.");
+  let data;
+  try{data=JSON.parse(message);}
+  catch{throw Error("Classifier returned incomplete or invalid JSON.");}
   if(!data||!["confident","ambiguous","unknown"].includes(data.status)||
     !PROFILE_NAMES.includes(data.profile)||!CATEGORIES.includes(data.expense_category)||
-    typeof data.multiple_documents_visible!=="boolean")throw Error("Unsupported classification label.");
+    typeof data.multiple_documents_visible!=="boolean")
+    throw Error("Classifier returned unsupported fields.");
   return {
     status:data.status,profile:data.profile,
     expense_category:FORCED_CATEGORY[data.profile]||data.expense_category,
@@ -932,6 +926,31 @@ async function classifyDocument(bytes,mime){
     reason:typeof data.reason==="string"?data.reason.slice(0,200):"",
     source:"gemini",classifier_model:MODEL
   };
+}
+async function classifyDocument(bytes,mime){
+  const payload={
+    contents:[{role:"user",parts:[{text:CLASSIFIER_PROMPT},
+      {inline_data:{mime_type:mime,data:b64(bytes)}}]}],
+    generationConfig:{responseMimeType:"application/json",responseJsonSchema:CLASSIFIER_SCHEMA,maxOutputTokens:2048},
+    store:false
+  };
+  for(let attempt=0;attempt<2;attempt++){
+    // Retry only malformed/unsupported responses, not HTTP errors.
+    if(attempt)payload.generationConfig.maxOutputTokens=4096;
+    const response=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+MODEL+":generateContent",{
+      method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":providerKey()},
+      body:JSON.stringify(payload),signal:AbortSignal.timeout(65000)
+    });
+    if(!response.ok)throw Error("Classifier returned HTTP "+response.status);
+    const raw=await response.json();
+    try{return parseClassificationResponse(raw);}
+    catch(e){
+      // No user document content or model output is logged.
+      console.warn("Billy classifier structure",attempt+1,raw?.candidates?.[0]?.finishReason||"unknown",String(e.message).slice(0,90));
+      if(attempt===1)throw Error("AI classification returned invalid JSON after retry. Try again or select a document profile.");
+    }
+  }
+  throw Error("AI classification unavailable.");
 }
 function manualClassification(profile,category){
   if(!PROFILE_NAMES.includes(profile)||profile==="unknown"||!CATEGORIES.includes(category))

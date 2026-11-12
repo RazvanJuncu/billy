@@ -234,6 +234,8 @@
       record.status = "Not processed";
       record.documentType = null;
     }
+    // A previous PDF page prompt may have left the process action disabled.
+    $("simpleRunProcess").disabled=false;
     // No mandatory classification screen: process after scan/crop confirmation.
     startAutomaticProcessing();
   }
