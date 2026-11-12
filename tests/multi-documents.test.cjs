@@ -10,11 +10,11 @@ const app=read("site/app.js");
 
 test("classifier detects paper boundaries without adding a second AI request",()=>{
   assert.match(edge,/documents:\{type:"array",maxItems:4/);
-  assert.match(edge,/required:\["status","profile","expense_category","multiple_documents_visible","documents","reason"\]/);
+  assert.match(edge,/required:\["status","profile","expense_category","multiple_documents_visible","nested_documents","documents","reason"\]/);
   assert.match(edge,/coordinates are INTEGERS|Coordinates are INTEGERS/);
   assert.match(edge,/documentBoxes\(data\.documents,data\.multiple_documents_visible\)/);
   assert.match(edge,/Multiple physical documents detected\. Review their boundaries/);
-  assert.match(app,/await window\.BillyMultiDocs\.open\(editable,responseBody\.classification\.documents\|\|\[\]\)/);
+  assert.match(app,/await window\.BillyNested\.start\(currentFile,responseBody\.classification\)/);
   assert.doesNotMatch(app,/multi.*\/api\/vision\/separate/i);
 });
 
@@ -53,7 +53,7 @@ test("separation stays on-device with explicit human crop confirmation",()=>{
 
 test("a composite image cannot silently enter one-document approval",()=>{
   assert.match(app,/classification\?\.multiple_documents_visible/);
-  assert.match(app,/await window\.BillyPdfSeparator\.toImage\(currentFile\)/);
+  assert.match(app,/window\.BillyNested\?\.start/);
   assert.match(app,/if\s*\(responseBody\.classification_required\)/);
   const block=app.slice(app.indexOf("if (responseBody.classification_required)"),app.indexOf("if (!(responseBody.invoice"));
   assert.match(block,/return;/);
