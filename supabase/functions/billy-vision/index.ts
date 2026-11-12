@@ -1747,11 +1747,24 @@ async function listRecords(principal,req) {
   });
   const page=rows.slice(0,50);
   const hasMore=rows.length>50;
-  return json({records:page.map(record=>{
-    const {original_storage_key,...visible}=record;
-    return {...visible,has_original:Boolean(original_storage_key),
-      original_validation_warnings:validate(record.extracted_data||{},record.document_type,record.regions_data||[],record.review_metadata?.classification?.profile)};
-  }),has_more:hasMore,next_offset:hasMore?offset+page.length:null});
+  // Parents can predate their nested children by many pages. Include referenced
+  // parent records as non-paginated companions, never as unrelated duplicates.
+  const known=new Set(page.map(record=>record.id));
+  const missing=[...new Set(page.map(record=>record.parent_document_id)
+    .filter(id=>id&&UUID_FORMAT.test(id)&&!known.has(id)))].slice(0,50);
+  const parents=missing.length?await database(principal,"GET","document_records",{
+    select:"id,created_by,document_type,state,created_at,approved_at,model_name,source_sha256,extracted_data,reviewed_data,review_metadata,regions_data,validation_warnings,translation_metadata,original_storage_key,original_mime,original_bytes,original_saved_at,parent_document_id,relationship_type",
+    organization_id:"eq."+principal.organization_id,id:"in.("+missing.join(",")+")",limit:"50"
+  }):[];
+  const visible=record=>{
+    const {original_storage_key,...rest}=record;
+    return {...rest,has_original:Boolean(original_storage_key),
+      original_validation_warnings:validate(record.extracted_data||{},record.document_type,
+        record.regions_data||[],record.review_metadata?.classification?.profile)};
+  };
+  return json({records:page.map(visible),
+    parent_records:parents.map(visible),
+    has_more:hasMore,next_offset:hasMore?offset+page.length:null});
 }
 
 // Private Original Archive v1: only approved, owner-uploaded bytes identical to AI source.
