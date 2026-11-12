@@ -64,6 +64,37 @@ test("Unsupported dimensions are not stripped; incompatible units flag a mismatc
   assert.equal(c.convert({currency:"EUR",lines:[{quantity:"8t",unit_price:"3,00USD/t"}]},
     "invoice","handling_invoice").issues.some(i=>i.code==="currency_mismatch"),true);
 });
+test("Romanian POS receipt month labels normalize unambiguously",()=>{
+  const c=normalizer();
+  const cases={
+    "09 NOI 26":"2026-11-09",
+    "09 noi 2026":"2026-11-09",
+    "09.NOV.26":"2026-11-09",
+    "09 NOI. 26":"2026-11-09",
+    "01 IAN 26":"2026-01-01",
+    "12 FEB 26":"2026-02-12",
+    "03 MAR 26":"2026-03-03",
+    "04 APR 26":"2026-04-04",
+    "05 MAI 26":"2026-05-05",
+    "06 IUN 26":"2026-06-06",
+    "07 IUL 26":"2026-07-07",
+    "08 AUG 26":"2026-08-08",
+    "09 SEP 26":"2026-09-09",
+    "10 OCT 26":"2026-10-10",
+    "11 DEC 26":"2026-12-11",
+    "09 NOV 2026":"2026-11-09"
+  };
+  for(const [input,expected] of Object.entries(cases)){
+    assert.equal(c.date(input).value,expected,input);
+    const normalized=c.convert({issue_date:input},"receipt","generic_invoice");
+    assert.equal(normalized.values.issue_date,expected,input);
+    assert.equal(normalized.issues.some(item=>item.field_path==="issue_date"),false,input);
+  }
+  assert.equal(c.date("31 NOI 26").status,"invalid");
+  assert.equal(c.date("09 XYZ 26").status,"ambiguous");
+  assert.equal(c.date("09 NOI 99").status,"ambiguous");
+  assert.equal(c.date("09 NOI 26 12:30").status,"ambiguous");
+});
 test("Romanian registrations use YR-XXX; foreign registrations are not transformed into Romanian",()=>{
   const c=normalizer();
   for(const text of ["YRWNT","YR WNT","yr-wnt","YR—WNT"])
