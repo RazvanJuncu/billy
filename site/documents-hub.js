@@ -13,11 +13,11 @@
   ];
   const views=["All","Aircraft","Services","Airports","Vendors"];
   const glyphs={
-    All:["M4 4h13v15H4z","M8 8h13v13H8","M7 10h7M7 14h5"],
+    All:["M8 3h11a2 2 0 0 1 2 2v12","M5 7h11a2 2 0 0 1 2 2v11H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z","M7 12h7","M7 16h7"],
     Aircraft:["M12 2l3 8 7 4v3l-9-3v5l3 2v2l-4-1-4 1v-2l3-2v-5l-9 3v-3l7-4z"],
     Services:["M3 7l9-4 9 4-9 4z","M3 12l9 4 9-4","M3 17l9 4 9-4"],
-    Airports:["M12 21s7-7.1 7-12a7 7 0 0 0-14 0c0 4.9 7 12 7 12z","M9 9h6M12 6v6"],
-    Vendors:["M3 21V7l9-4 9 4v14","M7 10h2m6 0h2M7 14h2m6 0h2M10 21v-4h4v4"]
+    Airports:["M4 21h16","M7 21l3-13h4l3 13","M9 8V5h6v3","M12 5V2","M8 12h8","M9 16h6","M10 21v-3h4v3","M4 7h5","M15 7h5"],
+    Vendors:["M4 10v11h16V10","M3 5h18l1 5H2l1-5z","M6 5V3h12v2","M8 10v4a2 2 0 0 1-4 0v-4","M12 10v4a2 2 0 0 1-4 0","M16 10v4a2 2 0 0 1-4 0","M20 10v4a2 2 0 0 1-4 0","M9 21v-5h6v5"]
   };
   const make=(tag,cls,content)=>{
     const node=document.createElement(tag);
@@ -53,7 +53,7 @@
     if(state.mode!=="Home"){
       const back=make("button","billy-hub-back");
       back.type="button";back.setAttribute("aria-label","Back");
-      back.append(icon("All","billy-hub-back-icon"));
+      back.textContent="‹";
       back.addEventListener("click",()=>window.BillyDocumentsIndex?.back());
       heading.append(back);
       const iconSurface=make("span","billy-hub-heading-icon");
@@ -62,13 +62,7 @@
     }
     heading.append(label);
     if(state.mode==="Home"&&help)heading.append(help);
-    if(state.mode!=="Home"){
-      const home=make("button","billy-hub-home");
-      home.type="button";home.title="Uploaded Documents";home.setAttribute("aria-label","Uploaded Documents home");
-      home.append(icon("All","billy-hub-home-icon"));
-      home.addEventListener("click",()=>navigate("Home"));
-      heading.append(home);
-    }
+
   }
   function photoBlock(aircraft,hero=false){
     const photo=make("div",hero?"billy-fleet-hero-image":"billy-fleet-photo");

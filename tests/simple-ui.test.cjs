@@ -179,7 +179,7 @@ test("Workspace label and all diagonal card arrows are removed",()=>{
   assert.doesNotMatch(html,/class="simple-choice-arrow"/);
   assert.doesNotMatch(html,/Your workspace is ready\./);
   assert.doesNotMatch(html,/>Workspace<\/span><\/button>/);
-  assert.match(html,/>Home<\/span><\/button>/);
+  assert.doesNotMatch(html,/id="simpleUploadedBackToHome"/);
 });
 
 
@@ -230,7 +230,7 @@ test("Uploaded Documents defaults to a visual hub with no recent documents",()=>
   assert.match(css,/#simpleUploaded\[data-billy-doc-view="Home"\] #simpleDocumentsList/);
   assert.match(hub,/if\(state.mode==="Home"\)/);
   assert.match(hub,/if\(state.mode!=="Aircraft"\)return/);
-  assert.match(read("site/index.html"),/documents-hub\.js\?v=1\.0\.0/);
+  assert.match(read("site/index.html"),/documents-hub\.js\?v=1\.1\.0/);
 });
 test("Fleet is explicitly registered; no OCR-constructed aircraft cards",()=>{
   const hub=read("site/documents-hub.js");
@@ -245,4 +245,20 @@ test("Fleet is explicitly registered; no OCR-constructed aircraft cards",()=>{
   assert.match(hub,/billy-fleet-card/);
   assert.match(hub,/billy-fleet-hero/);
   assert.match(read("site/simple.css"),/prefers-reduced-motion:reduce/);
+});
+
+test("Uploaded Documents has neutral headings and only one proper back chevron",()=>{
+  const hub=read("site/documents-hub.js");
+  const css=read("site/simple.css");
+  const flow=read("site/simple.js");
+  assert.doesNotMatch(hub,/billy-hub-home/);
+  assert.doesNotMatch(hub,/icon\("All","billy-hub-back-icon"\)/);
+  assert.match(hub,/back.textContent="‹"/);
+  assert.doesNotMatch(flow,/bind\("simpleUploadedBackToHome"/);
+  assert.match(css,/#simpleUploaded \.billy-hub-title/);
+  assert.match(css,/-webkit-text-fill-color:#f1f1f1!important/);
+  assert.match(hub,/Airports:\["M4 21h20"|"M4 21h16"/);
+  assert.match(hub,/Vendors:\["M4 10v11h16V10"/);
+  assert.match(hub,/All:\["M8 3h11/);
+  assert.match(read("site/index.html"),/documents-hub\.js\?v=1\.1\.0/);
 });

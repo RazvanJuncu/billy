@@ -1082,3 +1082,20 @@ body[data-billy-screen="uploaded"] .simple-document-delete::after{
 /* Circle hub fully replaces legacy horizontal navigation, not duplicates it. */
 #simpleUploaded .billy-doc-tabs{display:none!important}
 #simpleUploaded[data-billy-doc-view] #simpleDocumentsEmpty{display:none!important}
+
+/* Uploaded Documents 3.1: neutral headings and single-chevron navigation. */
+body[data-billy-screen="uploaded"] #simpleUploaded .simple-heading,
+body[data-billy-screen="uploaded"] #simpleUploaded .billy-hub-title{
+  color:#f1f1f1!important;
+  -webkit-text-fill-color:#f1f1f1!important;
+}
+body[data-billy-screen="uploaded"] #simpleUploaded .billy-hub-title-symbol,
+body[data-billy-screen="uploaded"] #simpleUploaded .billy-hub-symbol{
+  color:#ededed!important;
+}
+#simpleUploaded .billy-hub-back{
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  width:37px!important;height:37px!important;min-width:37px!important;min-height:37px!important;
+  padding:0!important;line-height:1!important;font-family:Arial,sans-serif!important;
+  font-size:28px!important;font-weight:400!important;color:#eceeef!important;
+}
