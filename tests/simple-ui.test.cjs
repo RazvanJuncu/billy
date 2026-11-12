@@ -211,7 +211,7 @@ test("Uploaded archive opens a saved-document preview instead of downloading JSO
   assert.match(preview,/addField\(brief,"Airport"/);
   assert.match(preview,/document\.createElement\(tag\)/);
   assert.match(index,/Fuel:\['path:M4 21V6/);
-  assert.match(html,/document-preview\.js\?v=1\.0\.1/);
+  assert.match(html,/document-preview\.js\?v=1\.1\.0/);
   assert.match(read("site/sw.js"),/document-preview\.js/);
 });
 
