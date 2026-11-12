@@ -1174,7 +1174,7 @@ body[data-billy-screen="uploaded"] #simpleUploaded .billy-hub-symbol{
 #simpleUploaded .billy-doc-nested-connector::after{content:"";position:absolute;right:-1px;bottom:-3px;width:5px;height:5px;border-top:1px solid #81878b;border-right:1px solid #81878b;transform:rotate(45deg)}
 @media(max-width:720px){#simpleUploaded .billy-doc-family{padding:4px 5px!important}#simpleUploaded .billy-doc-family-children{padding-left:22px!important}#simpleUploaded .billy-doc-family .simple-document-status{font-size:10px!important}}
 
-/* Nested archive/preview polish — one surface, one branch, no inner field borders. */
+/* Nested archive/preview polish - one surface, one branch, no inner field borders. */
 #simpleUploaded .billy-doc-family,
 #simpleUploaded .billy-doc-family-parent,
 #simpleUploaded .billy-doc-family-child,
