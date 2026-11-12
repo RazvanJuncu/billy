@@ -195,5 +195,22 @@ test("Uploaded Documents has distinct monochrome icons for all service categorie
   assert.match(index,/header\.append\(serviceIcon\(key\)\)/);
   assert.match(index,/button\.prepend\(serviceIcon\(node\.__billyDocument\.service\)\)/);
   assert.match(css,/\.billy-service-icon/);
-  assert.match(read("site/index.html"),/documents-index\.js\?v=1\.2\.0/);
+  assert.match(read("site/index.html"),/documents-index\.js\?v=1\.3\.0/);
+});
+
+test("Uploaded archive opens a saved-document preview instead of downloading JSON",()=>{
+  const flow=read("site/simple.js"),preview=read("site/document-preview.js");
+  const index=read("site/documents-index.js"),html=read("site/index.html");
+  assert.match(flow,/BillyDocumentPreview\?\.open\(record\)/);
+  assert.doesNotMatch(flow,/link\.download="billy-"\+record\.id/);
+  assert.match(preview,/function open\(record\)/);
+  assert.match(preview,/aria-modal/);
+  assert.match(preview,/Original PDF\/photo is not archived/);
+  assert.match(preview,/function exportJSON\(record\)/);
+  assert.match(preview,/addField\(brief,"Aircraft"/);
+  assert.match(preview,/addField\(brief,"Airport"/);
+  assert.match(preview,/document\.createElement\(tag\)/);
+  assert.match(index,/Fuel:\['path:M4 21V6/);
+  assert.match(html,/document-preview\.js\?v=1\.0\.0/);
+  assert.match(read("site/sw.js"),/document-preview\.js/);
 });
