@@ -319,31 +319,12 @@
         status.className="simple-document-status";
         status.textContent=(record.state==="approved"?"✓":"○")+" · "+when;
         button.append(name,status);
-        if(record.state==="approved" && record.reviewed_data){
-          button.addEventListener("click",()=>{
-            const initial=record.extracted_data||null;
-            const reviewed=record.reviewed_data;
-            const changes=initial?Object.keys(reviewed).filter(key=>JSON.stringify(initial[key])!==JSON.stringify(reviewed[key]))
-              .map(field_path=>({field_path,original:initial[field_path]??null,reviewed:reviewed[field_path]??null})):[];
-            const content=JSON.stringify({
-              schema_version:"0.7",approved:true,document_type:record.document_type,
-              document:reviewed,original_extraction:initial,changes_from_original:changes,
-              original_validation_warnings:record.original_validation_warnings||[],
-              review_metadata:record.review_metadata||{},
-              review_validation_warnings:record.validation_warnings||[],
-              evidence_regions:record.regions_data||[],
-              model:record.model_name||null,record_id:record.id,
-              source_sha256:record.source_sha256||null
-            },null,2);
-            const url=URL.createObjectURL(new Blob([content],{type:"application/json"}));
-            const link=document.createElement("a");
-            link.href=url;link.download="billy-"+record.id+".json";
-            document.body.appendChild(link);link.click();link.remove();
-            setTimeout(()=>URL.revokeObjectURL(url),1000);
-          });
+        if((record.state==="approved" && record.reviewed_data)||record.extracted_data){
+          button.addEventListener("click",()=>window.BillyDocumentPreview?.open(record));
+          button.title="Preview saved document data";
         }else{
           button.disabled=true;
-          button.title="Original source file is not archived. Reopen the original document to review.";
+          button.title="No saved document data is available.";
         }
         // Team members can view the shared ledger; only the creator can delete a record.
         const ownsRecord=record.created_by===window.BillyAccounts?.userId?.();
