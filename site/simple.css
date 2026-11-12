@@ -1024,3 +1024,57 @@ body[data-billy-screen="uploaded"] .simple-document-delete{
 body[data-billy-screen="uploaded"] .simple-document-delete::after{
   display:block;line-height:1!important;position:relative;top:-1px;
 }
+
+/* Uploaded Documents 3.0 - app-like hub with visually distinct destinations. */
+#simpleUploaded[data-billy-doc-view="Home"] .billy-doc-toolbar,
+#simpleUploaded[data-billy-doc-view="Home"] #simpleDocumentsList,
+#simpleUploaded[data-billy-doc-view="Home"] #simpleDocumentsEmpty,
+#simpleUploaded[data-billy-doc-view="Aircraft"] .billy-doc-toolbar,
+#simpleUploaded[data-billy-doc-view="Aircraft"] #simpleDocumentsList,
+#simpleUploaded[data-billy-doc-view="Aircraft"] #simpleDocumentsEmpty{
+  display:none!important;
+}
+#simpleUploaded[data-billy-doc-view="Home"] .billy-doc-help,
+#simpleUploaded[data-billy-doc-view="Aircraft"] .billy-doc-help{max-width:600px}
+#simpleUploaded[data-billy-doc-view]:not([data-billy-doc-view="Home"]) #simpleUploadedBackToHome{display:none!important}
+#simpleUploaded .simple-heading{min-height:49px;gap:12px!important;flex-wrap:wrap}
+.billy-hub-title{font-weight:680}
+.billy-hub-content{width:100%;min-width:0}
+.billy-hub-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:40px 22px;max-width:720px;margin:40px auto 55px;justify-items:center;animation:billy-hub-appear .28s ease both}
+.billy-hub-app{display:flex;flex-direction:column;align-items:center;gap:13px;min-width:0;width:100%;max-width:174px;padding:8px;border:0!important;background:transparent!important;color:#ededed;cursor:pointer;border-radius:18px}
+.billy-hub-circle{display:grid;place-items:center;width:106px;height:106px;max-width:100%;aspect-ratio:1;border-radius:50%;background:#27292c;transition:background .18s ease,transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .25s ease}
+.billy-hub-symbol{display:block;width:42px;height:42px}
+.billy-hub-label{font-size:14px;font-weight:600;white-space:nowrap}
+.billy-hub-app:hover .billy-hub-circle,.billy-hub-app:focus-visible .billy-hub-circle{background:#34373b;transform:translateY(-3px) scale(1.045);box-shadow:0 9px 28px #0004}
+.billy-hub-app:active .billy-hub-circle{transform:scale(.96)}
+.billy-hub-app:focus-visible,.billy-fleet-card:focus-visible,.billy-hub-back:focus-visible,.billy-hub-home:focus-visible{outline:2px solid #c1c4c7;outline-offset:2px}
+.billy-hub-heading-icon{display:grid;place-items:center;width:52px;height:52px;flex:none;border-radius:50%;background:#282a2d}
+.billy-hub-title-symbol{width:25px;height:25px}
+.billy-hub-back,.billy-hub-home{display:grid;place-items:center;flex:none;width:37px;height:37px;border:0!important;border-radius:10px!important;background:#242629!important;color:#eceeef!important;cursor:pointer}
+.billy-hub-back:hover,.billy-hub-home:hover{background:#34373a!important}
+.billy-hub-back-icon,.billy-hub-home-icon{width:19px;height:19px}
+.billy-hub-back-icon{transform:rotate(180deg)}
+.billy-hub-home{margin-left:auto}
+.billy-fleet-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:17px;margin:30px 0 26px;animation:billy-hub-appear .25s ease both}
+.billy-fleet-card{display:flex;flex-direction:column;overflow:hidden;align-items:stretch;text-align:left;min-width:0;cursor:pointer;padding:0!important;border:0!important;border-radius:15px!important;background:#202225!important;color:#f2f2f2!important;box-shadow:0 2px 13px #0002;transition:transform .24s ease,background .18s ease,box-shadow .24s ease}
+.billy-fleet-card:hover{transform:translateY(-4px);background:#2a2c30!important;box-shadow:0 12px 30px #0005}
+.billy-fleet-card:active{transform:scale(.985)}
+.billy-fleet-photo{height:145px;width:100%;background:#303338;display:grid;place-items:center;overflow:hidden}
+.billy-fleet-photo img,.billy-fleet-hero-image img{width:100%;height:100%;object-fit:cover}
+.billy-fleet-placeholder{width:59px;height:59px;color:#a3a9b1;opacity:.73}
+.billy-fleet-card-info{display:flex;flex-direction:column;gap:5px;padding:14px 16px 17px}
+.billy-fleet-registration{font-size:15px;font-weight:690;letter-spacing:.01em}
+.billy-fleet-model{font-size:12px;color:#a6abb1;line-height:1.45;min-height:17px}
+.billy-fleet-unassigned{border:0!important;background:#242629!important;color:#b5bac0!important;border-radius:10px!important;min-height:45px;padding:10px 15px!important;cursor:pointer;font-size:12px}
+.billy-fleet-unassigned:hover{background:#343639!important;color:white!important}
+.billy-fleet-hero{display:flex;gap:18px;align-items:center;background:#212326;border-radius:15px;overflow:hidden;margin:20px 0 15px;animation:billy-hub-appear .24s ease both}
+.billy-fleet-hero-image{height:140px;width:min(40%,260px);flex:none;background:#303338;display:grid;place-items:center;overflow:hidden}
+.billy-fleet-hero-image .billy-fleet-placeholder{width:76px;height:76px}
+.billy-fleet-hero-copy{display:flex;flex-direction:column;gap:7px;padding:18px 16px 18px 0}
+.billy-fleet-hero-copy strong{font-size:22px;letter-spacing:.02em}
+.billy-fleet-hero-copy span{font-size:13px;color:#afb4b9}
+@keyframes billy-hub-appear{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+@media(min-width:1300px){.billy-fleet-photo{height:170px}}
+@media(max-width:750px){.billy-hub-grid{gap:31px 7px;margin:32px auto 50px}.billy-hub-circle{width:83px;height:83px}.billy-hub-symbol{width:35px;height:35px}.billy-hub-label{font-size:12px}.billy-fleet-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin-top:17px}.billy-fleet-photo{height:115px}.billy-fleet-card-info{padding:11px 12px 14px}.billy-fleet-model{font-size:11px}.billy-fleet-hero-image{height:120px}.billy-fleet-hero-copy strong{font-size:19px}}
+@media(max-width:380px){.billy-hub-circle{width:73px;height:73px}.billy-hub-grid{gap:20px 4px}.billy-fleet-photo{height:96px}.billy-fleet-hero-image{width:35%}}
+@media(prefers-reduced-motion:reduce){.billy-hub-grid,.billy-fleet-grid,.billy-fleet-hero{animation:none!important}.billy-hub-circle,.billy-fleet-card{transition:none!important}}
