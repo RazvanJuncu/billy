@@ -71,12 +71,16 @@
     }
   }
   function advance(event){
-    if(!session||!event.detail?.approvalId)return;
-    if(session.stage==="primary"){
-      session.parentId=event.detail.approvalId;
-    }else if(session.stage!=="child")return;
-    const snapshot=session;
-    const token=job;
+    if(!session||!event.detail?.approvalId||session.currentApprovedId)return;
+    if(session.stage==="primary")session.parentId=event.detail.approvalId;
+    else if(session.stage!=="child")return;
+    session.currentApprovedId=event.detail.approvalId;
+  }
+  function archived(event){
+    if(!session||!session.currentApprovedId||
+       event.detail?.recordId!==session.currentApprovedId)return;
+    const snapshot=session,token=job;
+    snapshot.currentApprovedId=null;
     if(snapshot.index>=snapshot.children.length){
       reset();
       return;
@@ -84,13 +88,13 @@
     const next=snapshot.children[snapshot.index++];
     snapshot.stage="child";
     snapshot.current=next;
-    // Allow the existing approval handler to show Approved and launch original
-    // archival before moving to the next review.
+    // The next extraction starts only after storage has confirmed this source.
     setTimeout(()=>{
       if(job!==token||session!==snapshot)return;
       window.BillyApp.openFile(next);
-    },350);
+    },150);
   }
   window.addEventListener("billy:document-approved",advance);
+  window.addEventListener("billy:original-archived",archived);
   window.BillyNested={start,prepare,fileLoaded,active,reset,decorateTitle};
 })();
