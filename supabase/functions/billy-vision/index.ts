@@ -1463,6 +1463,11 @@ async function deleteRecord(req,principal){
     return error("Invalid document ID.",400);
   const record=await archiveRecord(principal,id,true);
   if(!record)return error("Document not found or you are not its creator.",404);
+  const attached=await database(principal,"GET","document_records",{
+    select:"id",parent_document_id:"eq."+id,
+    organization_id:"eq."+principal.organization_id,limit:"1"
+  });
+  if(attached.length)return error("Delete attached documents before deleting their parent.",409);
   if(record.original_storage_key){
     const path=storedPath(principal,record);
     if(!await removeOriginalObject(principal,path))
