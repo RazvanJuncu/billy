@@ -302,7 +302,7 @@ function render(result,endpoint,authHeaders,sourceFile=null){
      if(!response.ok)throw Error(resultBody.detail||"Approval was not saved");
      approved=true;approvalResult=resultBody;
      approveButton.textContent="Submitted · record "+resultBody.approval_id;
-     notice.textContent="Approved values saved. The original is archived by Billy; company Excel is not updated.";
+     notice.textContent="Approved values saved. Original archival follows separately; company Excel is not updated.";
      exports.hidden=false;
      root.querySelectorAll(".review-grid input, .review-items input, .review-items select, .review-add-line, .line-remove").forEach(el=>{el.disabled=true;});
      window.dispatchEvent(new CustomEvent("billy:document-approved",{
