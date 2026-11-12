@@ -21,6 +21,7 @@
   <link rel="stylesheet" href="./accounts.css?v=0.7.0">
   <link rel="stylesheet" href="./document-type.css?v=0.6.0">
   <link rel="stylesheet" href="./simple.css?v=2.4.2">
+  <link rel="stylesheet" href="./intelligence-assistant.css?v=0.1.0">
   <link rel="stylesheet" href="./multi-documents.css?v=1.0.0">
   <link rel="stylesheet" href="./quickscan.css?v=1">
   <link rel="stylesheet" href="./preloader.css?v=1.2.0">
@@ -48,6 +49,7 @@
   <script src="./original-archive.js?v=1.1.0" defer></script>
   <script src="./document-preview.js?v=1.4.0" defer></script>
   <script src="./simple.js?v=2.2.0" defer></script>
+  <script src="./intelligence-assistant.js?v=0.1.0" defer></script>
   <script src="./preloader.js?v=1.2.0" defer></script>
   <script>
     // All phones and tablets open the same Billy in one-button mode.
@@ -567,5 +569,33 @@
     <p id="scanMessage" class="scan-message" role="status" aria-live="polite"></p>
   </div>
 </div>
+  <aside class="billy-ai-dock" id="billyAssistantDock" aria-label="Billy Intelligence">
+    <button id="billyAssistantLaunch" class="billy-ai-launch" type="button"
+      aria-label="Ask Billy Intelligence" aria-expanded="false" aria-controls="billyAssistantPanel">
+      <span class="billy-ai-orbit" aria-hidden="true"><span class="billy-ai-orbit-main"></span><span class="billy-ai-orbit-satellite"></span></span>
+      <span class="billy-ai-launch-caption">Ask Billy</span>
+    </button>
+    <section id="billyAssistantPanel" class="billy-ai-panel" role="dialog" aria-label="Billy Intelligence Assistant" hidden>
+      <header class="billy-ai-head">
+        <span class="billy-ai-head-orb" aria-hidden="true"></span>
+        <span class="billy-ai-head-copy"><strong>Billy Intelligence</strong><small>Approved records · Operational insights</small></span>
+        <button id="billyAssistantClose" class="billy-ai-close" type="button" aria-label="Close assistant">×</button>
+      </header>
+      <div class="billy-ai-feed" id="billyAssistantFeed" role="log" aria-live="polite" aria-relevant="additions">
+        <div class="billy-ai-welcome">
+          <strong>Ask Billy anything about your documents.</strong>
+          „Cât ne-a costat Gulfstream-ul ieri?” or “Show fuel expenses this month.”
+          <p>Answers use your team's approved documents. Flight-level totals will need Skylegs.</p>
+        </div>
+      </div>
+      <form class="billy-ai-form" id="billyAssistantForm">
+        <input id="billyAssistantInput" class="billy-ai-input" type="text" autocomplete="off"
+          maxlength="400" aria-label="Ask a question in Romanian or English"
+          placeholder="Ask in Romanian or English…" />
+        <button id="billyAssistantSend" class="billy-ai-send" type="submit" aria-label="Send question">↑</button>
+      </form>
+      <div id="billyAssistantStatus" class="billy-ai-status" role="status" aria-live="polite"></div>
+    </section>
+  </aside>
 </body>
 </html>
