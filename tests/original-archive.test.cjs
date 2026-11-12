@@ -17,7 +17,7 @@ function harness(options={}){
   const calls=[];
   const record={id,organization_id:org,created_by:owner,state:"approved",source_sha256:"expected-sha",original_storage_key:null,original_mime:null,original_bytes:null};
   const sandbox={
-    URL,Response,Uint8Array,AbortSignal,MAX_BYTES:10485760,
+    URL,Response,Uint8Array,AbortSignal,ORIGIN:"https://razvanjuncu.github.io",MAX_BYTES:10485760,
     sha256:async bytes=>options.mismatch?"wrong-sha":"expected-sha",
     mimeOf:(name,bytes)=>{if(bytes[0]!==37)throw Error("Bad signature");return "application/pdf";},
     json:(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{"Content-Type":"application/json"}}),
