@@ -2,6 +2,41 @@
 (() => {
   "use strict";
   const categories={fuel:"Fuel",handling:"Handling",taxi:"Taxi",city_tax:"City Tax",catering:"Catering",hotel:"Hotel",pax_gifts:"Pax Gifts",parking:"Parking",crew_expenses:"Crew Expenses",aircraft_supplies:"Aircraft Supplies",other:"Other"};
+
+  // Small inline stroke icons; no emoji, images, third-party dependencies or user HTML.
+  // All definitions use the same 24x24 outline and inherit their parent's text color.
+  const servicePaths={
+    Fuel:['path:M12 22a8 8 0 0 0 8-8c0-5-8-12-8-12S4 9 4 14a8 8 0 0 0 8 8z'],
+    Handling:['path:M17 21v-8l-5-3V2a1 1 0 0 0-2 0v8l-5 3v8l6-2 6 2z','path:M3 13l7-3m4 0 7 3'],
+    Taxi:['path:M5 17H3v-6l2-5h14l2 5v6h-2','path:M5 17h14','path:M3 11h18','circle:7 15 1','circle:17 15 1','path:M6 6l1-3h10l1 3'],
+    Catering:['path:M3 19h18','path:M5 17a7 7 0 0 1 14 0','path:M12 10V8','circle:12 7 1'],
+    Hotel:['path:M3 21V4h18v17','path:M7 8h3v3H7z','path:M14 8h3v3h-3z','path:M10 21v-6h4v6','path:M1 21h22'],
+    'City Tax':['path:M3 21h18','path:M5 21V7l7-4 7 4v14','path:M9 10h1m4 0h1M9 14h1m4 0h1','path:M10 21v-4h4v4'],
+    Parking:['path:M5 3h14v18H5z','path:M10 17V7h3a3 3 0 0 1 0 6h-3'],
+    'Crew Expenses':['circle:12 8 3','path:M5 21v-2a7 7 0 0 1 14 0v2','path:M4 3h16'],
+    'Aircraft Supplies':['path:M3 7l9-4 9 4v10l-9 4-9-4z','path:M3 7l9 4 9-4M12 11v10'],
+    'Pax Gifts':['path:M3 10h18v11H3z','path:M2 7h20v3H2z','path:M12 7v14','path:M12 7c-8 0-8-6-4-6 2 0 4 3 4 6z','path:M12 7c8 0 8-6 4-6-2 0-4 3-4 6z'],
+    Other:['circle:5 12 1','circle:12 12 1','circle:19 12 1'],
+    Unassigned:['circle:12 12 9','path:M9.5 9a2.5 2.5 0 1 1 4.2 1.8c-.8.7-1.7 1.2-1.7 2.7','path:M12 17h.01']
+  };
+  function serviceIcon(category){
+    const svg=document.createElementNS("http://www.w3.org/2000/svg","svg");
+    svg.setAttribute("viewBox","0 0 24 24");
+    svg.setAttribute("width","17");svg.setAttribute("height","17");
+    svg.setAttribute("fill","none");svg.setAttribute("stroke","currentColor");
+    svg.setAttribute("stroke-width","1.75");svg.setAttribute("stroke-linecap","round");
+    svg.setAttribute("stroke-linejoin","round");svg.setAttribute("aria-hidden","true");
+    svg.classList.add("billy-service-icon");
+    for(const entry of servicePaths[category]||servicePaths.Unassigned){
+      const [kind,definition]=entry.split(":",2);
+      const shape=document.createElementNS("http://www.w3.org/2000/svg",kind==="circle"?"circle":"path");
+      if(kind==="circle"){
+        const [cx,cy,rad]=definition.split(" ");shape.setAttribute("cx",cx);shape.setAttribute("cy",cy);shape.setAttribute("r",rad);
+      }else shape.setAttribute("d",definition);
+      svg.append(shape);
+    }
+    return svg;
+  }
   const modes=["All","Aircraft","Services","Airports","Vendors"];
   const state={mode:"All",query:"",descending:true,records:[],host:null,list:null,navigation:null,opened:new Set()};
   const el=(tag,cls,content)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(content!==undefined)n.textContent=content;return n;};
@@ -26,7 +61,11 @@
     const search=[value(d,"invoice_number","release_number","flight_number"),value(d,"supplier_tax_id","booking_reference"),value(d,"service_date","issue_date","delivery_date")].join(" ");
     return {aircraft:aircraft||"Unassigned",service,airport:airport.toUpperCase()||"Unassigned",vendor:vendor||"Unassigned",title,date:Number.isFinite(date)?date:0,amount:amount?(amount+" "+currency).trim():"",status:record.state==="approved"?"Approved":"Incomplete",search};
   };
-  function tag(node,record){node.dataset.docEntry="1";node.__billyDocument=info(record);}
+  function tag(node,record){
+    node.dataset.docEntry="1";node.__billyDocument=info(record);
+    const button=node.matches("button")?node:node.querySelector(".simple-document-item");
+    if(button)button.prepend(serviceIcon(node.__billyDocument.service));
+  }
   function session(node,item){node.dataset.docEntry="1";node.__billyDocument={aircraft:"Unassigned",service:"Unassigned",airport:"Unassigned",vendor:"Unassigned",title:item.file.name,date:Date.now(),status:"Session",amount:""};}
   function label(record){return info(record).title;}
   function install(list){
@@ -75,6 +114,7 @@
         const groupId=groupKey+":"+key,expanded=state.opened.has(groupId);
         const header=el("button","billy-doc-group-title");header.type="button";header.setAttribute("aria-expanded",String(expanded));
         const name=el("span","",key),count=el("span","billy-doc-count",String(groups.get(key).length)),chevron=el("span","billy-doc-chevron","›");
+        if(state.mode==="Services")header.append(serviceIcon(key));
         header.append(name,count,chevron);
         const content=el("div","billy-doc-group-content");content.hidden=!expanded;groups.get(key).forEach(node=>content.append(node));
         header.addEventListener("click",()=>{
