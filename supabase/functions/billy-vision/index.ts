@@ -1012,7 +1012,8 @@ function parseClassificationResponse(raw){
     expense_category:FORCED_CATEGORY[data.profile]||data.expense_category,
     multiple_documents_visible:data.multiple_documents_visible,
     documents:documentBoxes(data.documents,data.multiple_documents_visible),
-    nested_documents:nestedBoxes(data.nested_documents,data.multiple_documents_visible),
+    nested_documents:(()=>{const direct=nestedBoxes(data.nested_documents,data.multiple_documents_visible);
+      return direct.length?direct:data.multiple_documents_visible?nestedFromPhysicalBoxes(data.documents):[];})(),
     reason:typeof data.reason==="string"?data.reason.slice(0,200):"",
     source:"gemini",classifier_model:MODEL
   };
@@ -1036,15 +1037,6 @@ async function classifyDocument(bytes,mime){
     try{
       const classification=parseClassificationResponse(raw);
       if(classification.multiple_documents_visible){
-        if(!classification.nested_documents.length){
-          classification.nested_documents=nestedBoxes(
-            nestedFromPhysicalBoxes(raw?.candidates?.[0]?.content?.parts?
-              (()=>{try{
-                const output=(raw.candidates[0].content.parts||[])
-                  .filter(p=>!p.thought).map(p=>p.text||"").join("");
-                return JSON.parse(output).documents;
-              }catch{return []}})():[]),true);
-        }
         if(!classification.nested_documents.length&&mime.startsWith("image/")){
           try{
             classification.nested_documents=await clarifyNestedLayout(bytes,mime);
