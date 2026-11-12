@@ -193,9 +193,9 @@ test("Uploaded Documents has distinct monochrome icons for all service categorie
   }
   assert.match(index,/createElementNS\("http:\/\/www\.w3\.org\/2000\/svg","svg"\)/);
   assert.match(index,/header\.append\(serviceIcon\(key\)\)/);
-  assert.match(index,/button\.prepend\(serviceIcon\(node\.__billyDocument\.service\)\)/);
+  assert.match(index,/button\.prepend\(serviceIcon\(node\.__billyParentId\?"Receipt":node\.__billyDocument\.service\)\)/);
   assert.match(css,/\.billy-service-icon/);
-  assert.match(read("site/index.html"),/documents-index\.js\?v=1\.4\.0/);
+  assert.match(read("site/index.html"),/documents-index\.js\?v=1\.5\.0/);
 });
 
 test("Uploaded archive opens a saved-document preview instead of downloading JSON",()=>{
@@ -211,7 +211,7 @@ test("Uploaded archive opens a saved-document preview instead of downloading JSO
   assert.match(preview,/addField\(brief,"Airport"/);
   assert.match(preview,/document\.createElement\(tag\)/);
   assert.match(index,/Fuel:\['path:M4 21V6/);
-  assert.match(html,/document-preview\.js\?v=1\.2\.0/);
+  assert.match(html,/document-preview\.js\?v=1\.3\.0/);
   assert.match(read("site/sw.js"),/document-preview\.js/);
 });
 
@@ -241,7 +241,7 @@ test("Fleet is explicitly registered; no OCR-constructed aircraft cards",()=>{
   assert.equal((hub.match(/registration:"YR-[A-Z]{3}"/g)||[]).length,7);
   assert.match(hub,/photo:null/);
   assert.match(hub,/const unmatched=state\.records\.filter/);
-  assert.match(index,/knownAircraft\.has\(node\.__billyDocument\.aircraft\)/);
+  assert.match(index,/knownAircraft\.has\(aircraft\)/);
   assert.match(hub,/billy-fleet-card/);
   assert.match(hub,/billy-fleet-hero/);
   assert.match(read("site/simple.css"),/prefers-reduced-motion:reduce/);

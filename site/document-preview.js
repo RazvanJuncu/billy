@@ -115,8 +115,17 @@
     }
     body.append(note);
     if(record.parent_document_id){
-      const relation=node("p","billy-preview-source-note",
-        "Nested document · attached to "+(record.nested_parent?.review_metadata?.classification?.profile||"parent document").replaceAll("_"," "));
+      const parent=record.nested_parent;
+      const relation=node("section","billy-preview-nested");
+      const caption=node("h3","","Nested document");
+      relation.append(caption);
+      if(parent){
+        const parentName=(parent.review_metadata?.classification?.profile||parent.document_type||"Parent document").replaceAll("_"," ");
+        const openParent=node("button","billy-preview-nested-open","↳ Attached to "+parentName);
+        openParent.type="button";
+        openParent.addEventListener("click",()=>open(parent));
+        relation.append(openParent);
+      }else relation.append(node("p","billy-preview-source-note","Parent document not available in this archive view."));
       body.append(relation);
     }
     if(Array.isArray(record.nested_children)&&record.nested_children.length){

@@ -94,7 +94,7 @@ test("Original browser code stores only approved file and supports authentic pre
   assert.match(preview,/window\.BillyOriginals\.retrieve\(record\.id\)/);
   assert.match(preview,/URL\.revokeObjectURL\(originalUrl\)/);
   assert.match(preview,/Original PDF\/photo is not archived/);
-  assert.match(edge,/const \{original_storage_key,\.\.\.visible\}=record/);
+  assert.match(edge,/const \{original_storage_key,\.\.\.rest\}=record/);
   assert.match(edge,/has_original:Boolean\(original_storage_key\)/);
   assert.match(sql,/false,10485760/);
   assert.doesNotMatch(sql,/create policy/i);

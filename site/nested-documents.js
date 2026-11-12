@@ -86,14 +86,19 @@
       window.dispatchEvent(new CustomEvent("billy:nested-complete"));
       return;
     }
-    const next=snapshot.children[snapshot.index++];
+    const childIndex=snapshot.index++;
+    const next=snapshot.children[childIndex];
     snapshot.stage="child";
     snapshot.current=next;
-    // The next extraction starts only after storage has confirmed this source.
+    // Keep the archive/storage guarantee. Only show the handoff once the
+    // parent was approved and the exact original has been safely archived.
+    const label=snapshot.boxes?.[childIndex]?.label||"Attached document";
+    const transition=window.BillyNestedTransition?.play?.(label)===true;
     setTimeout(()=>{
+      window.BillyNestedTransition?.stop?.();
       if(job!==token||session!==snapshot)return;
       window.BillyApp.openFile(next);
-    },150);
+    },transition?1450:150);
   }
   window.addEventListener("billy:document-approved",advance);
   window.addEventListener("billy:original-archived",archived);

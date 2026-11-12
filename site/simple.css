@@ -1115,3 +1115,42 @@ body[data-billy-screen="uploaded"] #simpleUploaded .billy-hub-symbol{
 .billy-preview-nested{display:flex;flex-direction:column;gap:7px;margin:6px 0 16px}
 .billy-preview-nested h3{margin:0 0 5px;font-size:13px}
 .billy-preview-nested-open{width:100%;text-align:left;border:1px solid #393d40!important;background:#272a2d!important;color:#eee!important;border-radius:9px!important;padding:11px 13px!important;cursor:pointer;font-size:13px!important}
+
+/* One shared surface for parent and physically attached evidence. */
+.billy-doc-family{display:flex;flex-direction:column;gap:0;padding:8px 10px 10px;border-radius:13px;background:#292c2f;border:1px solid #383c40;min-width:0}
+.billy-doc-family-parent{display:flex;min-width:0}
+.billy-doc-family-parent>.simple-document-row,.billy-doc-family-parent>.simple-document-item{width:100%;min-width:0}
+.billy-doc-family .simple-document-item{background:#222528!important}
+.billy-doc-family-children{display:flex;flex-direction:column;gap:5px;margin-left:20px;padding-left:13px;border-left:1px solid #70757a}
+.billy-doc-family-child{display:flex;align-items:center;gap:8px;min-width:0;position:relative}
+.billy-doc-nested-connector{position:absolute;width:16px;height:16px;left:-14px;top:16px;border-left:0;border-bottom:1.5px solid #a1a8ae;border-bottom-left-radius:7px;pointer-events:none}
+.billy-doc-nested-connector::after{content:"";position:absolute;right:-1px;bottom:-3.3px;width:5px;height:5px;border-top:1.5px solid #a1a8ae;border-right:1.5px solid #a1a8ae;transform:rotate(45deg)}
+.billy-doc-family-child>.simple-document-row,.billy-doc-family-child>.simple-document-item{width:100%;min-width:0}
+.billy-doc-family-child .simple-document-item{font-size:12px!important;background:#242629!important}
+.billy-doc-family-child .billy-service-icon{color:#e6e6e6!important}
+.billy-doc-family-missing{font-size:12px;color:#bfc3c7;padding:10px 8px}
+.billy-doc-family .billy-nested-child{padding-left:12px!important;border-left:0!important}
+.billy-doc-family .simple-document-name{overflow:hidden;text-overflow:ellipsis}
+.billy-preview-nested{padding:12px;border-radius:12px;background:#292c2f;border:1px solid #414549}
+.billy-preview-nested-open{display:flex!important;align-items:center!important;gap:9px!important}
+.billy-preview-nested-open::before{content:"";display:inline-block;width:11px;height:11px;flex-shrink:0;border-left:1px solid #a5aaae;border-bottom:1px solid #a5aaae;border-bottom-left-radius:4px}
+@media(max-width:720px){.billy-doc-family{padding:7px}.billy-doc-family-children{margin-left:12px;padding-left:10px}.billy-doc-family-child{gap:4px}}
+
+/* Nested handoff: one parent bubble branches into a child, then child takes focus. */
+.billy-nested-transition-open{overflow:hidden}
+.billy-nested-transition{position:fixed;inset:0;z-index:1450;display:grid;place-items:center;padding:22px;background:rgba(6,7,9,.94);color:#f5f5f5}
+.billy-nested-transition-card{width:min(420px,100%);padding:34px 24px;text-align:center;background:#202225;border-radius:20px;border:1px solid #35383b}
+.billy-nested-transition-visual{height:170px;position:relative;margin:0 auto 16px;max-width:300px;display:flex;align-items:center;justify-content:center}
+.billy-nested-transition-parent,.billy-nested-transition-child{display:grid;place-items:center;border:1px solid #777e83;border-radius:50%;background:#34383c;position:absolute}
+.billy-nested-transition-parent{width:112px;height:112px;left:22px;animation:billy-parent-exit 1.4s ease-in-out forwards}
+.billy-nested-transition-parent svg{width:45px;height:45px}
+.billy-nested-transition-child{width:53px;height:53px;left:192px;animation:billy-child-emerge 1.4s cubic-bezier(.22,1,.36,1) forwards}
+.billy-nested-transition-child svg{width:24px;height:24px}
+.billy-nested-transition-path{position:absolute;top:82px;left:131px;width:68px;height:1.5px;background:#c2c6c9;transform-origin:left center;animation:billy-nested-path 1.4s ease-in-out forwards}
+.billy-nested-transition-path::after{content:"";position:absolute;right:0;top:-3px;width:7px;height:7px;border-top:1.5px solid #c2c6c9;border-right:1.5px solid #c2c6c9;transform:rotate(45deg)}
+.billy-nested-transition-card strong{display:block;font-size:18px;font-weight:680}
+.billy-nested-transition-card p{font-size:12px;color:#b7bdc1;margin:8px 0 0}
+@keyframes billy-parent-exit{0%,42%{opacity:1;transform:scale(1)}72%,100%{opacity:0;transform:scale(.68)}}
+@keyframes billy-child-emerge{0%{opacity:0;transform:translate(-58px,0) scale(.45)}28%{opacity:1;transform:translate(0,0) scale(1)}65%{transform:translate(0,0) scale(1)}100%{opacity:1;transform:translate(-97px,0) scale(2.2)}}
+@keyframes billy-nested-path{0%{opacity:0;transform:scaleX(0)}18%,48%{opacity:1;transform:scaleX(1)}70%,100%{opacity:0;transform:scaleX(1)}}
+@media(prefers-reduced-motion:reduce){.billy-nested-transition-parent,.billy-nested-transition-child,.billy-nested-transition-path{animation:none!important}.billy-nested-transition-parent,.billy-nested-transition-path{opacity:0}.billy-nested-transition-child{left:50%;transform:translateX(-50%) scale(1.55)}}
