@@ -53,7 +53,7 @@
     }
     if(!session){launch.hidden=true;return;}
     const remaining=session.boxes.filter((_,i)=>!session.completed.has(i)).length;
-    launch.hidden=remaining===0;
+    launch.hidden=remaining===0&&session.boxes.length>0;
     launch.textContent=remaining===1?"Next separated document":"Separated documents · "+remaining+" remaining";
   }
   function cancelSession(){
