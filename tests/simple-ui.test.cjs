@@ -73,7 +73,7 @@ test("UI only shows actionable steps, with persistent Gemini data but no company
   assert.match(flow,/action.disabled = !ready/);
   assert.match(html,/Upload to company Excel/);
   assert.match(html,/Not connected/);
-  assert.match(flow,/Cloud records contain extracted\/approved fields/);
+  assert.match(flow,/Some older records contain only extracted fields/);
   assert.match(flow,/api\/vision\/records/);
   assert.match(flow,/sessionFiles/);
   assert.match(app,/window.BillyApp/);
