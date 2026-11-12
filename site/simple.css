@@ -1078,3 +1078,7 @@ body[data-billy-screen="uploaded"] .simple-document-delete::after{
 @media(max-width:750px){.billy-hub-grid{gap:31px 7px;margin:32px auto 50px}.billy-hub-circle{width:83px;height:83px}.billy-hub-symbol{width:35px;height:35px}.billy-hub-label{font-size:12px}.billy-fleet-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin-top:17px}.billy-fleet-photo{height:115px}.billy-fleet-card-info{padding:11px 12px 14px}.billy-fleet-model{font-size:11px}.billy-fleet-hero-image{height:120px}.billy-fleet-hero-copy strong{font-size:19px}}
 @media(max-width:380px){.billy-hub-circle{width:73px;height:73px}.billy-hub-grid{gap:20px 4px}.billy-fleet-photo{height:96px}.billy-fleet-hero-image{width:35%}}
 @media(prefers-reduced-motion:reduce){.billy-hub-grid,.billy-fleet-grid,.billy-fleet-hero{animation:none!important}.billy-hub-circle,.billy-fleet-card{transition:none!important}}
+
+/* Circle hub fully replaces legacy horizontal navigation, not duplicates it. */
+#simpleUploaded .billy-doc-tabs{display:none!important}
+#simpleUploaded[data-billy-doc-view] #simpleDocumentsEmpty{display:none!important}
