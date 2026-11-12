@@ -1109,3 +1109,9 @@ body[data-billy-screen="uploaded"] #simpleUploaded .billy-hub-symbol{
 .billy-preview-image{display:block;width:100%;max-height:53vh;object-fit:contain}
 .billy-preview-pdf{display:block;width:100%;height:min(55vh,580px);border:0;background:white}
 @media(max-width:720px){.billy-preview-pdf{height:46dvh}.billy-preview-image{max-height:48dvh}}
+
+/* Nested document relationships in the operational archive. */
+.simple-document-item.billy-nested-child{padding-left:24px!important;border-left:2px solid #656b70!important}
+.billy-preview-nested{display:flex;flex-direction:column;gap:7px;margin:6px 0 16px}
+.billy-preview-nested h3{margin:0 0 5px;font-size:13px}
+.billy-preview-nested-open{width:100%;text-align:left;border:1px solid #393d40!important;background:#272a2d!important;color:#eee!important;border-radius:9px!important;padding:11px 13px!important;cursor:pointer;font-size:13px!important}
