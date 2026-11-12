@@ -1173,3 +1173,53 @@ body[data-billy-screen="uploaded"] #simpleUploaded .billy-hub-symbol{
 #simpleUploaded .billy-doc-nested-connector{position:absolute;left:-13px;top:-7px;width:16px;height:34px;border:0!important;border-left:1px solid #81878b!important;border-bottom:1px solid #81878b!important;border-bottom-left-radius:7px!important;background:none!important;pointer-events:none}
 #simpleUploaded .billy-doc-nested-connector::after{content:"";position:absolute;right:-1px;bottom:-3px;width:5px;height:5px;border-top:1px solid #81878b;border-right:1px solid #81878b;transform:rotate(45deg)}
 @media(max-width:720px){#simpleUploaded .billy-doc-family{padding:4px 5px!important}#simpleUploaded .billy-doc-family-children{padding-left:22px!important}#simpleUploaded .billy-doc-family .simple-document-status{font-size:10px!important}}
+
+/* Nested archive/preview polish — one surface, one branch, no inner field borders. */
+#simpleUploaded .billy-doc-family,
+#simpleUploaded .billy-doc-family-parent,
+#simpleUploaded .billy-doc-family-child,
+#simpleUploaded .billy-doc-family-children,
+#simpleUploaded .billy-doc-family .simple-document-row,
+#simpleUploaded .billy-doc-family .simple-document-item,
+#simpleUploaded .billy-doc-family .simple-document-item:hover,
+#simpleUploaded .billy-doc-family .simple-document-item:focus-visible {
+  background:#242629!important;
+  box-shadow:none!important;
+}
+#simpleUploaded .billy-doc-family .simple-document-item:focus-visible{
+  outline:1px solid #92999d!important;outline-offset:-2px!important;
+}
+#simpleUploaded .billy-doc-nested-connector{
+  border:0!important;
+  border-left:1px solid #8a9094!important;
+  border-bottom:1px solid #8a9094!important;
+  border-radius:0 0 0 7px!important;
+  background:none!important;
+}
+#simpleUploaded .billy-doc-nested-connector::after{content:none!important;display:none!important}
+.billy-preview-nested{
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  border-radius:0!important;
+  padding:4px 0 12px!important;
+  gap:3px!important;
+}
+.billy-preview-nested h3{margin:0 0 4px!important}
+.billy-preview-nested-open{
+  border:0!important;
+  border-radius:7px!important;
+  background:transparent!important;
+  color:inherit!important;
+  box-shadow:none!important;
+  padding:9px 10px!important;
+  text-align:left!important;
+  min-height:39px;
+}
+.billy-preview-nested-open:hover,.billy-preview-nested-open:focus-visible{
+  background:rgba(255,255,255,.045)!important;
+}
+.billy-preview-nested-open::before{
+  content:none!important;
+  display:none!important;
+}
