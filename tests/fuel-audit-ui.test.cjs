@@ -35,8 +35,9 @@ test("Original Gemini draft can be exported before approval and is never overwri
   assert.match(review,/Download original AI engine JSON \(unverified\)/);
   assert.match(review,/original_extraction:original/);
   assert.match(review,/changes_from_original:auditChanges\(\)/);
-  assert.match(simple,/original_extraction:initial/);
-  assert.match(simple,/changes_from_original:changes/);
+  const archivePreview=read("site/document-preview.js");
+  assert.match(archivePreview,/original_extraction:initial/);
+  assert.match(archivePreview,/changes_from_original:changes/);
   assert.match(edge,/extracted_data:fields/);
   assert.match(edge,/reviewed_data:checked/);
   assert.doesNotMatch(review,/GEMINI_API_KEY/);
