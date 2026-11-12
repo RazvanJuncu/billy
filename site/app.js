@@ -370,6 +370,8 @@ async function scanInvoice() {
     form.append("profile_override", $("documentType").dataset.profileOverride);
     form.append("category_override", $("documentType").dataset.categoryOverride || "unknown");
   }
+  // Stage 3 nested attachments keep the parent's original scan intact.
+  window.BillyNested?.prepare(form,currentFile);
   try {
     const headers = await window.BillyAccounts.sessionHeaders();
     headersReady = Date.now();
@@ -382,22 +384,16 @@ async function scanInvoice() {
       if (state.file !== currentFile) return;
       state.lastClassification = responseBody.classification || null;
       if(responseBody.classification?.multiple_documents_visible){
-        // Never extract the composite as one approved document.
-        if(window.BillyMultiDocs?.open){
+        if(window.BillyNested?.start){
           try{
-            let editable=currentFile;
-            if(currentFile.type==="application/pdf"&&window.BillyPdfSeparator?.toImage)
-              editable=await window.BillyPdfSeparator.toImage(currentFile);
-            if(!/^image\/(jpeg|png|webp)$/.test(editable.type))
-              throw Error("This format needs a single-page image for separation.");
-            if(state.file!==currentFile)return;
-            await window.BillyMultiDocs.open(editable,responseBody.classification.documents||[]);
-            showNotification("");
-          }catch(e){
-            showNotification("Could not prepare document boundaries: "+(e.message||"Try another image."),true);
-          }
-          return;
+            // No manual region selection: review the full primary first, then
+            // independently crop/review the attached physical papers.
+            const started=await window.BillyNested.start(currentFile,responseBody.classification);
+            if(started){showNotification("");return;}
+          }catch{}
         }
+        showNotification("Billy could not identify the attached papers reliably. Retake a clear full photo; no data was approved.",true);
+        return;
       }
       window.dispatchEvent(new CustomEvent("billy:classification-needs-review",{
         detail:{classification:responseBody.classification||null,reason:responseBody.detail||""}
