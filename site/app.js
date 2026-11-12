@@ -372,6 +372,7 @@ async function scanInvoice() {
   }
   // Stage 3 nested attachments keep the parent's original scan intact.
   window.BillyNested?.prepare(form,currentFile);
+  window.BillyPdfSeparator?.prepare?.(form,currentFile);
   try {
     const headers = await window.BillyAccounts.sessionHeaders();
     headersReady = Date.now();
