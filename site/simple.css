@@ -946,7 +946,8 @@ body[data-billy-screen="uploaded"] #simpleFlowTitle{
 .billy-doc-group-content[hidden]{display:none!important}
 .billy-doc-no-results{color:#92969a;font-size:13px;padding:18px 5px}
 .billy-doc-no-results[hidden]{display:none!important}
-body[data-billy-screen="uploaded"] .simple-document-delete{min-width:45px!important;padding:9px!important;font-size:22px!important;font-weight:400!important}
+body[data-billy-screen="uploaded"] .simple-document-delete{min-width:45px!important;padding:9px!important;font-size:0!important;font-weight:400!important}
+body[data-billy-screen="uploaded"] .simple-document-delete::after{content:"×";font-size:22px}
 @media(max-width:720px){
   .billy-doc-tab{padding:10px 11px!important}
   .billy-doc-group-content{padding-left:4px}
