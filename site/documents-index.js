@@ -242,5 +242,25 @@
     }
     refresh();
   }
-  window.BillyDocumentsIndex={tag,session,label,end,info,registration,navigate,back,start,groupFamilies,refresh,refreshOrganization};
+  // Update already-rendered archive rows after an alias has been confirmed;
+  // backend resolves all historical and future records on the next page load.
+  function rememberVendorAlias(source,canonical,vendorId){
+    const key=raw=>text(raw).normalize("NFKC").trim().replace(/\s+/gu," ").toLocaleUpperCase("ro-RO");
+    if(!key(source)||!text(canonical))return;
+    for(const row of state.records){
+      const record=row.__billyRecord;
+      if(!record||record.review_metadata?.organization_overrides?.vendor)continue;
+      const doc=record.reviewed_data||record.extracted_data||{};
+      const read=value(doc,"supplier_name","property_name","operator_name");
+      if(key(read)!==key(source))continue;
+      record.review_metadata={...(record.review_metadata||{}),organization_overrides:{
+        ...(record.review_metadata?.organization_overrides||{}),
+        vendor:canonical,...(vendorId?{vendor_id:vendorId}:{})
+      }};
+      row.__billyDocument=info(record);
+    }
+    refresh();
+  }
+  window.BillyDocumentsIndex={tag,session,label,end,info,registration,navigate,back,start,
+    groupFamilies,refresh,refreshOrganization,rememberVendorAlias};
 })();
