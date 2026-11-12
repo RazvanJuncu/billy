@@ -69,7 +69,7 @@ let fieldKeys=invoiceFieldKeys,lineKeys=invoiceLineKeys,documentType="invoice",e
 let original=null,draft=null,sha="",api="",approved=false,approveButton=null,notice=null,exportPanel=null,auditMeta=null,approvalResult=null;
 const node=(tag,cls="",content)=>{const e=document.createElement(tag);e.className=cls;if(content!==undefined)e.textContent=content;return e;};
 const textbox=(value,onUpdate,cls="review-input",path=null)=>{const e=node("input",cls);e.type="text";e.value=value??"";e.autocomplete="off";if(path)e.dataset.evidencePath=path;e.addEventListener("input",()=>{onUpdate(e.value||null);dirty();});return e;};
-function dirty(){approved=false;if(approveButton){approveButton.disabled=false;approveButton.textContent="Submit corrections";}if(notice)notice.textContent="Changes not submitted. Verify the values against the original.";if(exportPanel)exportPanel.hidden=true;const meter=document.querySelector(".review-meter-check");if(meter&&documentType==="fuel_release")meter.textContent=localMeterCheck(draft);}
+function dirty(){approved=false;if(approveButton){approveButton.disabled=false;approveButton.textContent="Approve document";}if(notice)notice.textContent="Changes not submitted. Verify the values against the original.";if(exportPanel)exportPanel.hidden=true;const meter=document.querySelector(".review-meter-check");if(meter&&documentType==="fuel_release")meter.textContent=localMeterCheck(draft);}
 function download(text,name,mime){const u=URL.createObjectURL(new Blob([text],{type:mime}));const a=node("a");a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1000);}
 function escapeCell(value){const s=String(value??"");const dangerous=/^\s*[=+@]/.test(s) || (/^\s*-/.test(s) && !/^\s*-\d+(?:[.,]\d+)?\s*$/.test(s));const safe=dangerous?"'"+s:s;return '"'+safe.replaceAll('"','""')+'"';}
 // Presentation-only conservative fallback for pre-normalization records.
@@ -279,7 +279,7 @@ function render(result,endpoint,authHeaders,sourceFile=null){
  footer.appendChild(node("p","review-confirm-label","By clicking Submit corrections, I confirm I checked every value and unclear handwritten entry against the original document. " +
    (cloudReview ? "Approved values are stored in your team's private Billy cloud records." : "Corrections are saved to this team's local pilot feedback memory.")));
  // Operator approval stores the document's reviewed values, not training crops.
- approveButton=node("button","review-approve","Submit corrections");
+ approveButton=node("button","review-approve","Approve document");
  approveButton.type="button";approveButton.disabled=false;
  async function submitReview(){
    if(approved)return;
@@ -302,14 +302,14 @@ function render(result,endpoint,authHeaders,sourceFile=null){
      if(!response.ok)throw Error(resultBody.detail||"Approval was not saved");
      approved=true;approvalResult=resultBody;
      approveButton.textContent="Submitted · record "+resultBody.approval_id;
-     notice.textContent="Approved values saved. Original file is not archived; company Excel is not updated. No training samples are created.";
+     notice.textContent="Approved values saved. The original is archived by Billy; company Excel is not updated.";
      exports.hidden=false;
      root.querySelectorAll(".review-grid input, .review-items input, .review-items select, .review-add-line, .line-remove").forEach(el=>{el.disabled=true;});
      window.dispatchEvent(new CustomEvent("billy:document-approved",{
        detail:{approvalId:resultBody.approval_id,documentType}
      }));
    }catch(error){
-     approveButton.textContent="Submit corrections";
+     approveButton.textContent="Approve document";
      approveButton.disabled=false;
      notice.textContent="Submission failed: "+(error.message||"Unknown error");
      window.dispatchEvent(new CustomEvent("billy:approval-failed",{
