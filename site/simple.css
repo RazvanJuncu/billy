@@ -975,3 +975,10 @@ body[data-billy-screen="uploaded"] .simple-document-row{gap:5px!important}
 body[data-billy-screen="uploaded"] .simple-document-delete{min-height:50px!important;border-radius:6px!important}
 @media(max-width:720px){.billy-doc-group-title{min-height:48px!important}.billy-doc-group-content{padding-left:5px!important}}
 @media(prefers-reduced-motion:reduce){.billy-doc-chevron,.billy-doc-group-title{transition:none!important}}
+
+/* Compact category symbols share Billy's monochrome typography. */
+.billy-service-icon{flex:0 0 17px;width:17px;height:17px;color:#aeb3b9;vertical-align:middle}
+.billy-doc-group-title:hover .billy-service-icon,
+.billy-doc-group-title[aria-expanded="true"] .billy-service-icon{color:#f0f0f0}
+body[data-billy-screen="uploaded"] .simple-document-item>.billy-service-icon{margin-right:2px}
+@media(max-width:720px){.billy-service-icon{flex-basis:16px;width:16px;height:16px}}
