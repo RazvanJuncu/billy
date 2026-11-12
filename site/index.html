@@ -21,6 +21,7 @@
   <link rel="stylesheet" href="./accounts.css?v=0.7.0">
   <link rel="stylesheet" href="./document-type.css?v=0.6.0">
   <link rel="stylesheet" href="./simple.css?v=1.9.0">
+  <link rel="stylesheet" href="./multi-documents.css?v=1.0.0">
   <link rel="stylesheet" href="./quickscan.css?v=1">
   <link rel="stylesheet" href="./preloader.css?v=1.2.0">
   <link rel="stylesheet" href="./snap.css?v=0.1.0">
@@ -32,7 +33,8 @@
   <script src="./excel-preview.js?v=0.2.0" defer></script>
   <script src="./quickverify-crop.js?v=1.1.1" defer></script>
   <script src="./ramp-review.js?v=0.6.5" defer></script>
-  <script src="./app.js?v=0.8.0" defer></script>
+  <script src="./multi-documents.js?v=1.0.0" defer></script>
+  <script src="./app.js?v=0.8.1" defer></script>
   <script src="./workspace.js?v=0.4.1" defer></script>
   <script src="./account-config.js?v=0.6.1" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
@@ -553,7 +555,7 @@
 
       </div>
       <div class="scan-actions">
-        <button id="scanUseOriginal" class="outline-button" type="button">Skip crop</button>
+        <button id="scanUseOriginal" class="outline-button" type="button" title="Use the entire image when it contains more than one document">Full photo / multiple docs</button>
         <button id="scanSave" class="outline-button" type="button">Save image</button>
         <button id="scanApply" class="primary-button" type="button">Use this scan</button>
       </div>
