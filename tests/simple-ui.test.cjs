@@ -182,3 +182,18 @@ test("Workspace label and all diagonal card arrows are removed",()=>{
   assert.match(html,/>Home<\/span><\/button>/);
 });
 
+
+test("Uploaded Documents has distinct monochrome icons for all service categories",()=>{
+  const index=read("site/documents-index.js");
+  const css=read("site/simple.css");
+  for(const category of ["Fuel","Handling","Taxi","Catering","Hotel","City Tax","Parking",
+    "Crew Expenses","Aircraft Supplies","Pax Gifts","Other","Unassigned"]){
+    assert.ok(index.includes(category+":" )||index.includes("'"+category+"':"),
+      "No icon for "+category);
+  }
+  assert.match(index,/createElementNS\("http:\/\/www\.w3\.org\/2000\/svg","svg"\)/);
+  assert.match(index,/header\.append\(serviceIcon\(key\)\)/);
+  assert.match(index,/button\.prepend\(serviceIcon\(node\.__billyDocument\.service\)\)/);
+  assert.match(css,/\.billy-service-icon/);
+  assert.match(read("site/index.html"),/documents-index\.js\?v=1\.2\.0/);
+});
