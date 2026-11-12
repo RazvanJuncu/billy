@@ -1029,7 +1029,7 @@ function parseClassificationResponse(raw){
     source:"gemini",classifier_model:MODEL
   };
 }
-async function classifyDocument(bytes,mime){
+async function classifyDocument(bytes,mime,forceNestedCheck=false){
   const payload={
     contents:[{role:"user",parts:[{text:CLASSIFIER_PROMPT},
       {inline_data:{mime_type:mime,data:b64(bytes)}}]}],
@@ -1047,14 +1047,15 @@ async function classifyDocument(bytes,mime){
     const raw=await response.json();
     try{
       const classification=parseClassificationResponse(raw);
-      if(classification.multiple_documents_visible){
+      if(classification.multiple_documents_visible||forceNestedCheck){
         if(mime.startsWith("image/")&&
-           (!classification.nested_documents.length||classification.status!=="confident"||
-             classification.profile==="unknown")){
+           (forceNestedCheck||!classification.nested_documents.length||
+             classification.status!=="confident"||classification.profile==="unknown")){
           try{
             const focused=await clarifyNestedLayout(bytes,mime);
             if(!classification.nested_documents.length)
               classification.nested_documents=focused.boxes;
+            if(focused.boxes.length)classification.multiple_documents_visible=true;
             if(focused.primary_profile&&classification.nested_documents.length){
               classification.profile=focused.primary_profile;
               classification.expense_category=FORCED_CATEGORY[focused.primary_profile]||
@@ -1068,6 +1069,10 @@ async function classifyDocument(bytes,mime){
           }
         }
       }
+      // When a previous visual pass detected an overlay, do not silently
+      // approve one composite document if precise geometry still failed.
+      if(forceNestedCheck&&!classification.nested_documents.length)
+        classification.multiple_documents_visible=true;
       return classification;
     }
     catch(e){
@@ -1227,7 +1232,8 @@ async function extract(req,principal){
     const profile=requestedType==="fuel_release"?"fuel_release":"generic_invoice";
     classification=manualClassification(profile,FORCED_CATEGORY[profile]||"unknown");
   }else{
-    try{classification=await classifyDocument(bytes,mime);}
+    const forceNestedCheck=form.get("layout_overlay_hint")==="true"&&mime.startsWith("image/");
+    try{classification=await classifyDocument(bytes,mime,forceNestedCheck);}
     catch(e){
       console.error("Billy auto-detect",String(e).slice(0,140));
       return error("Automatic classification failed. Retry or select a document profile manually.",502);
