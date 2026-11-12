@@ -1,5 +1,5 @@
 /* Billy Intelligence Assistant: bilingual, document-grounded flight operations chat.
-   In-memory conversation only. No samples, hardcoded financial figures or localStorage. */
+   In-memory conversation only. No samples, hardcoded financial figures or browser persistence. */
 (() => {
   "use strict";
   const $=id=>document.getElementById(id);
