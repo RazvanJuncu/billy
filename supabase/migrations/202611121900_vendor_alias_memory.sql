@@ -132,8 +132,8 @@ begin
       'organization_audit',jsonb_build_object(
         'verified_by',p_actor,'verified_at',now(),
         'source','operator_verified',
-        'fields',(select coalesce(jsonb_agg(k),'[]'::jsonb)
-          from jsonb_object_keys(v_overrides) as k where k <> 'vendor_id')
+        'fields',(select coalesce(jsonb_agg(f.key),'[]'::jsonb)
+          from jsonb_object_keys(v_overrides) as f(key) where f.key <> 'vendor_id')
       )
     );
   update public.document_records
