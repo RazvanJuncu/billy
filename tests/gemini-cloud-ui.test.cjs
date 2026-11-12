@@ -84,6 +84,11 @@ function mockBackend(opts={}) {
         (!type||row.document_type===type)&&(!issue||row.issue_key===issue));
       return new Response(JSON.stringify(rows.reverse()),{status:200});
     }
+    // Empty vendor dictionary in synthetic test team; real alias writes are
+    // exercised separately by vendor-alias-memory tests.
+    if(url.pathname.endsWith("/billy_vendors")||
+       url.pathname.endsWith("/billy_vendor_aliases"))
+      return new Response("[]",{status:200});
     if(url.pathname.endsWith("/document_records")){
       if(init.method==="DELETE"){
         const id=url.searchParams.get("id")?.replace(/^eq\./,"");
