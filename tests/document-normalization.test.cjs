@@ -26,6 +26,44 @@ test("Amounts: European, US, spacing and ambiguous thousand separators",()=>{
   assert.equal(parsed("12,34,56").status,"invalid");
   assert.equal(parsed("12abc34").status,"invalid");
 });
+test("Handling tariffs retain EUR/tonne and EUR/hour without false invalid-number warnings",()=>{
+  const c=normalizer();
+  const source={currency:"EUR",lines:[
+    {description:"Deicing",quantity:"8t",unit_price:"3,00€/t",net_amount:"24,00€"},
+    {description:"Ground power",quantity:"2 h",unit_price:"50,00€/h",net_amount:"100,00€"},
+    {description:"Service",quantity:"3 tonnes",unit_price:"1,60 EUR/t",net_amount:"4,80€"}
+  ]};
+  const data=c.convert(source,"invoice","handling_invoice");
+  assert.equal(data.fields["lines[0].quantity"].value,8);
+  assert.equal(data.fields["lines[0].quantity"].unit,"t");
+  assert.equal(data.fields["lines[0].unit_price"].value,3);
+  assert.equal(data.fields["lines[0].unit_price"].unit,"per t");
+  assert.equal(data.fields["lines[0].unit_price"].currency,"EUR");
+  assert.equal(data.fields["lines[1].quantity"].value,2);
+  assert.equal(data.fields["lines[1].quantity"].unit,"h");
+  assert.equal(data.fields["lines[1].unit_price"].value,50);
+  assert.equal(data.fields["lines[1].unit_price"].unit,"per h");
+  assert.equal(data.fields["lines[2].unit_price"].value,1.6);
+  assert.equal(data.line_items[0].values.quantity_unit,"t");
+  assert.equal(data.line_items[0].values.unit_price.per_unit,"t");
+  assert.equal(data.line_items[1].values.quantity_unit,"h");
+  assert.equal(data.line_items[1].values.unit_price.per_unit,"h");
+  assert.ok(!data.issues.some(item=>item.code==="invalid"||
+    item.message==="Number contains unsupported characters."),JSON.stringify(data.issues));
+  assert.equal(data.fields["lines[0].unit_price"].raw,"3,00€/t");
+});
+test("Unsupported dimensions are not stripped; incompatible units flag a mismatch",()=>{
+  const c=normalizer();
+  const invalid=c.convert({currency:"EUR",lines:[
+    {description:"Unsupported unit",quantity:"8mystery",unit_price:"3,00€/widget"},
+    {description:"Mismatched",quantity:"8t",unit_price:"3,00€/h"}
+  ]},"invoice","handling_invoice");
+  assert.equal(invalid.fields["lines[0].quantity"].status,"invalid");
+  assert.equal(invalid.fields["lines[0].unit_price"].status,"invalid");
+  assert.ok(invalid.issues.some(i=>i.code==="unit_mismatch"&&i.field_path==="lines[1].unit_price"));
+  assert.equal(c.convert({currency:"EUR",lines:[{quantity:"8t",unit_price:"3,00USD/t"}]},
+    "invoice","handling_invoice").issues.some(i=>i.code==="currency_mismatch"),true);
+});
 test("Romanian registrations use YR-XXX; foreign registrations are not transformed into Romanian",()=>{
   const c=normalizer();
   for(const text of ["YRWNT","YR WNT","yr-wnt","YR—WNT"])
