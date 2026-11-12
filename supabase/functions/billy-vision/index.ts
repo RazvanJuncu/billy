@@ -1842,7 +1842,8 @@ async function organizationInbox(principal){
     for(const record of chunk){
       const missing=organizationMissing(record,directory);
       if(missing.length){
-        const {original_storage_key,...visible}=record;
+        const effective=withResolvedVendor(record,directory);
+        const {original_storage_key,...visible}=effective;
         pending.push({...visible,has_original:Boolean(original_storage_key),missing_fields:missing});
       }
     }
