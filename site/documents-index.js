@@ -7,7 +7,7 @@
   const el=(tag,cls,content)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(content!==undefined)n.textContent=content;return n;};
   const text=value=>typeof value==="string"?value.trim():"";
   const value=(data,...paths)=>{for(const p of paths){const v=data?.[p];if(text(v))return text(v);}return "";};
-  const registration=raw=>{const s=text(raw).normalize("NFKC").replace(/[‐‑‒–—―]/g,"-").toUpperCase();const match=s.match(/^YR[-\s]?([A-Z0-9]{3})$/);return match?"YR-"+match[1]:s;};
+  const registration=raw=>{const s=text(raw).normalize("NFKC").replace(/[‐‑‒–-―]/g,"-").toUpperCase();const match=s.match(/^YR[-\s]?([A-Z0-9]{3})$/);return match?"YR-"+match[1]:s;};
   const info=record=>{
     const d=record.reviewed_data||record.extracted_data||{};
     const m=record.review_metadata||{};
