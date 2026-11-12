@@ -1,8 +1,7 @@
-/* Billy archived-record preview. Displays saved structured data only, never pretends
-   to have retained the original uploaded PDF or photograph. */
+/* Billy private document viewer: original when archived, structured fallback for legacy rows. */
 (() => {
   "use strict";
-  let overlay=null,previousFocus=null;
+  let overlay=null,previousFocus=null,originalUrl=null;
   const node=(tag,cls,value)=>{
     const n=document.createElement(tag);
     if(cls)n.className=cls;
@@ -45,6 +44,7 @@
   function close(){
     if(!overlay)return;
     const closing=overlay;overlay=null;closing.remove();
+    if(originalUrl){URL.revokeObjectURL(originalUrl);originalUrl=null;}
     document.removeEventListener("keydown",onKey);
     document.body.classList.remove("billy-preview-open");
     previousFocus?.focus?.();previousFocus=null;
@@ -87,7 +87,32 @@
     exit.title="Close preview";exit.setAttribute("aria-label","Close preview");
     exit.addEventListener("click",close);header.append(heading,exit);
     const body=node("div","billy-preview-body");
-    const note=node("p","billy-preview-source-note","Saved data preview. Original PDF/photo is not archived.");
+    const hasOriginal=record.state==="approved"&&Boolean(record.original_storage_key);
+    const note=node("p","billy-preview-source-note",hasOriginal
+      ?"Original archived securely. Approved fields below."
+      :"Saved data preview. Original PDF/photo is not archived.");
+    if(hasOriginal){
+      const viewer=node("section","billy-preview-original");
+      const loading=node("p","billy-preview-original-loading","Loading original…");
+      viewer.append(loading);body.append(viewer);
+      // Fetch bytes with team authorization. Never create public URLs for private documents.
+      void (async()=>{
+        try{
+          const {blob,mime}=await window.BillyOriginals.retrieve(record.id);
+          if(overlay!==shade)return;
+          const url=URL.createObjectURL(blob);originalUrl=url;
+          const media=mime==="application/pdf"?node("iframe","billy-preview-pdf"):node("img","billy-preview-image");
+          if(mime==="application/pdf"){
+            media.title="Original PDF";
+            media.setAttribute("loading","lazy");
+          }else media.alt="Original uploaded document";
+          media.src=url;
+          viewer.replaceChildren(media);
+        }catch{
+          if(overlay===shade)loading.textContent="Original unavailable. Try reopening this document.";
+        }
+      })();
+    }
     body.append(note);
     const brief=node("dl","billy-preview-primary");
     addField(brief,"Aircraft",norm.aircraft_registration||doc.aircraft_registration);
