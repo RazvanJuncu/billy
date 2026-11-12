@@ -78,7 +78,7 @@ test("UI only shows actionable steps, with persistent Gemini data but no company
   assert.match(flow,/sessionFiles/);
   assert.match(app,/window.BillyApp/);
   assert.match(app,/billy:process-complete/);
-  assert.match(review,/The original is archived by Billy/);
+  assert.match(review,/Original archival follows separately/);
   assert.match(review,/company Excel is not updated/);
 });
 test("The visible interface is monochrome, borderless and has no gradient",()=>{
