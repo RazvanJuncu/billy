@@ -3,7 +3,7 @@
   "use strict";
   const categories={fuel:"Fuel",handling:"Handling",taxi:"Taxi",city_tax:"City Tax",catering:"Catering",hotel:"Hotel",pax_gifts:"Pax Gifts",parking:"Parking",crew_expenses:"Crew Expenses",aircraft_supplies:"Aircraft Supplies",other:"Other"};
   const modes=["All","Aircraft","Services","Airports","Vendors"];
-  const state={mode:"All",query:"",descending:true,records:[],host:null,list:null};
+  const state={mode:"All",query:"",descending:true,records:[],host:null,list:null,navigation:null};
   const el=(tag,cls,content)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(content!==undefined)n.textContent=content;return n;};
   const text=value=>typeof value==="string"?value.trim():"";
   const value=(data,...paths)=>{for(const p of paths){const v=data?.[p];if(text(v))return text(v);}return "";};
@@ -23,7 +23,8 @@
     const date=Date.parse(record.created_at||"");
     const amount=value(norm,"grand_total")||value(d,"grand_total");
     const currency=value(norm,"currency")||value(d,"currency");
-    return {aircraft:aircraft||"Unassigned",service,airport:airport.toUpperCase()||"Unassigned",vendor:vendor||"Unassigned",title,date:Number.isFinite(date)?date:0,amount:amount?(amount+" "+currency).trim():"",status:record.state==="approved"?"Approved":"Incomplete"};
+    const search=[value(d,"invoice_number","release_number","flight_number"),value(d,"supplier_tax_id","booking_reference"),value(d,"service_date","issue_date","delivery_date")].join(" ");
+    return {aircraft:aircraft||"Unassigned",service,airport:airport.toUpperCase()||"Unassigned",vendor:vendor||"Unassigned",title,date:Number.isFinite(date)?date:0,amount:amount?(amount+" "+currency).trim():"",status:record.state==="approved"?"Approved":"Incomplete",search};
   };
   function tag(node,record){node.dataset.docEntry="1";node.__billyDocument=info(record);}
   function session(node,item){node.dataset.docEntry="1";node.__billyDocument={aircraft:"Unassigned",service:"Unassigned",airport:"Unassigned",vendor:"Unassigned",title:item.file.name,date:Date.now(),status:"Session",amount:""};}
@@ -49,11 +50,11 @@
     const tabs=state.host.querySelectorAll("[data-mode]");
     tabs.forEach(t=>t.setAttribute("aria-pressed",String(t.dataset.mode===state.mode)));
     const sort=state.host.querySelector(".billy-doc-sort");sort.textContent=state.descending?"↓":"↑";sort.title=state.descending?"Newest first":"Oldest first";
-    const entries=state.records.filter(node=>node.isConnected||node.dataset.docEntry==="1");
+    const entries=state.records;
     const needle=state.query.toLocaleLowerCase();
     const filtered=entries.filter(node=>{
       const d=node.__billyDocument;if(!d)return false;
-      return [d.title,d.aircraft,d.service,d.airport,d.vendor,d.amount,d.status].join(" ").toLocaleLowerCase().includes(needle);
+      return [d.title,d.aircraft,d.service,d.airport,d.vendor,d.amount,d.status,d.search].join(" ").toLocaleLowerCase().includes(needle);
     }).sort((a,b)=>state.descending?b.__billyDocument.date-a.__billyDocument.date:a.__billyDocument.date-b.__billyDocument.date);
     const groupKey={Aircraft:"aircraft",Services:"service",Airports:"airport",Vendors:"vendor"}[state.mode];
     const fragment=document.createDocumentFragment();
