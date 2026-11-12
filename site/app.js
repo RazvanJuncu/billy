@@ -384,15 +384,29 @@ async function scanInvoice() {
       if (state.file !== currentFile) return;
       state.lastClassification = responseBody.classification || null;
       if(responseBody.classification?.multiple_documents_visible){
-        if(window.BillyNested?.start){
-          try{
-            // No manual region selection: review the full primary first, then
-            // independently crop/review the attached physical papers.
-            const started=await window.BillyNested.start(currentFile,responseBody.classification);
-            if(started){showNotification("");return;}
-          }catch{}
+        try{
+          // A single-page PDF is a perfectly valid nested source. Render the
+          // page locally before geometric analysis; PDF bytes have no image
+          // dimensions and cannot be cropped with an HTML canvas.
+          if(currentFile.type==="application/pdf"){
+            if(!window.BillyPdfSeparator?.toImage)
+              throw Error("PDF page rendering is not available.");
+            const image=await window.BillyPdfSeparator.toImage(currentFile);
+            if(state.file!==currentFile)return;
+            window.BillyApp.openFile(image);
+            showNotification("");
+            return;
+          }
+          if(!window.BillyNested?.start)
+            throw Error("Nested document processor is not available.");
+          const started=await window.BillyNested.start(currentFile,responseBody.classification);
+          if(started){showNotification("");return;}
+          // A layout marked multiple without reliable child regions is a
+          // model/layout mismatch, not evidence that the image was unclear.
+          showNotification("Document structure could not be verified. Billy needs clearer document boundaries before extraction.",true);
+        }catch(error){
+          showNotification("Nested detection could not continue: "+(error.message||"Unknown error"),true);
         }
-        showNotification("Billy could not identify the attached papers reliably. Retake a clear full photo; no data was approved.",true);
         return;
       }
       window.dispatchEvent(new CustomEvent("billy:classification-needs-review",{
