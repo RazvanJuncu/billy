@@ -333,5 +333,5 @@ function render(result,endpoint,authHeaders,sourceFile=null){
  }
 }
 window.BillyReview={render,exportCSV,exportJSON,exportRawJSON,
-  getApprovedSpreadsheetData};
+  getApprovedSpreadsheetData,displayRegistration};
 })();
