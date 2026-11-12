@@ -88,8 +88,15 @@ const CLASSIFIER_SCHEMA = {
     status:{type:"string",enum:["confident","ambiguous","unknown"]},
     profile:{type:"string",enum:PROFILE_NAMES},
     expense_category:{type:"string",enum:CATEGORIES},
-    multiple_documents_visible:{type:"boolean"},reason:{type:"string"}
-  },required:["status","profile","expense_category","multiple_documents_visible","reason"],
+    multiple_documents_visible:{type:"boolean"},
+    documents:{type:"array",maxItems:4,items:{
+      type:"object",properties:{
+        label:{type:"string"},
+        x1:{type:"integer"},y1:{type:"integer"},x2:{type:"integer"},y2:{type:"integer"}
+      },required:["label","x1","y1","x2","y2"],additionalProperties:false
+    }},
+    reason:{type:"string"}
+  },required:["status","profile","expense_category","multiple_documents_visible","documents","reason"],
   additionalProperties:false
 };
 const CLASSIFIER_PROMPT =
@@ -104,6 +111,11 @@ const CLASSIFIER_PROMPT =
   "Distinguish expense category from physical document form: a payment slip supports a charge, it is not another expense. " +
   "Use generic_invoice, generic_receipt, generic_document ONLY when no specific profile fits. If unclear use ambiguous or unknown, category unknown rather than inventing. " +
   "If two or more PHYSICAL documents appear in one picture/page (invoice with attached POS slip), mark multiple_documents_visible true. " +
+  "When multiple distinct physical papers are visible, return up to 4 approximate separate bounding rectangles in documents. " +
+  "Coordinates are INTEGERS from 0 to 1000 normalized to full image width/height, top-left origin, x1,y1 top-left and x2,y2 bottom-right. " +
+  "Boxes should cover each entire physical document, not each invoice line, stamp, slip section or multi-page content. " +
+  "Do not invent boxes: if boundaries cannot be distinguished return documents=[] while keeping multiple_documents_visible true. " +
+  "For one physical document return documents=[]; do not provide boxes just because it contains multiple line items. " +
   "Do not confuse a multi-line invoice with multiple papers. Reason: one short sentence about visible evidence; exclude private data.";
 const FUEL_SCHEMA = {
   type:"object",properties:{...props(FUEL_FIELDS),
@@ -866,6 +878,33 @@ function safeFileName(name) {
 function sanitizeNotes(doc) {return doc;}
 function extractId() {return crypto.randomUUID();}
 
+// Stage 3A: strict geometry contract; classifier guesses are proposals, not truth.
+function validDocumentBox(box){
+  if(!box||typeof box!=="object"||Array.isArray(box))return null;
+  const coords=["x1","y1","x2","y2"].map(key=>box[key]);
+  if(coords.some(v=>!Number.isInteger(v)||v<0||v>1000))return null;
+  const [x1,y1,x2,y2]=coords;
+  if(x2-x1<80||y2-y1<80)return null;
+  return {label:typeof box.label==="string"?box.label.slice(0,50):"Document",
+    x1,y1,x2,y2};
+}
+function documentBoxes(input,multiple){
+  if(!multiple||!Array.isArray(input))return [];
+  const accepted=[];
+  for(const item of input.slice(0,4)){
+    const rect=validDocumentBox(item);
+    if(!rect)continue;
+    // Do not trust large overlaps or nested boxes as distinct documents.
+    if(accepted.some(other=>{
+      const intersection=Math.max(0,Math.min(rect.x2,other.x2)-Math.max(rect.x1,other.x1))*
+        Math.max(0,Math.min(rect.y2,other.y2)-Math.max(rect.y1,other.y1));
+      const a=(rect.x2-rect.x1)*(rect.y2-rect.y1),b=(other.x2-other.x1)*(other.y2-other.y1);
+      return intersection/Math.min(a,b)>0.42;
+    }))continue;
+    accepted.push(rect);
+  }
+  return accepted.length>=2?accepted:[];
+}
 // Classifier sees only the current document; no historical user data or feedback.
 async function classifyDocument(bytes,mime){
   const payload={
@@ -889,6 +928,7 @@ async function classifyDocument(bytes,mime){
     status:data.status,profile:data.profile,
     expense_category:FORCED_CATEGORY[data.profile]||data.expense_category,
     multiple_documents_visible:data.multiple_documents_visible,
+    documents:documentBoxes(data.documents,data.multiple_documents_visible),
     reason:typeof data.reason==="string"?data.reason.slice(0,200):"",
     source:"gemini",classifier_model:MODEL
   };
@@ -933,7 +973,7 @@ async function extract(req,principal){
       classification.multiple_documents_visible){
       return json({classification_required:true,classification,
         detail:classification.multiple_documents_visible?
-          "More than one physical document detected. Multi-document processing is Stage 3; upload each separately for now.":
+          "Multiple physical documents detected. Review their boundaries before continuing.":
           "Classification uncertain. Choose the appropriate document profile to continue."});
     }
   }
