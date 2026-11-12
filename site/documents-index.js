@@ -54,13 +54,15 @@
     const category=(text(overrides.service)||text(classification.expense_category)).toLowerCase();
     const profile=text(classification.profile);
     const airport=text(overrides.airport)||value(norm,"airport_icao")||value(d,"airport_icao","airport");
-    const vendor=text(overrides.vendor)||value(d,"supplier_name","property_name","operator_name");
+    const readVendor=value(d,"supplier_name","property_name","operator_name");
+    const vendor=text(overrides.vendor)||
+      (record.organization_missing_fields?.includes("vendor")?"":readVendor);
     const service=categories[category]||(!category&&profile==="fuel_release"?"Fuel":"Unassigned");
     const title=profile?profile.replaceAll("_"," ").replace(/\b\w/g,x=>x.toUpperCase()):(record.document_type==="fuel_release"?"Fuel Release":"Invoice");
     const date=Date.parse(record.created_at||"");
     const amount=value(norm,"grand_total")||value(d,"grand_total");
     const currency=value(norm,"currency")||value(d,"currency");
-    const search=[value(d,"invoice_number","release_number","flight_number"),value(d,"supplier_tax_id","booking_reference"),value(d,"service_date","issue_date","delivery_date")].join(" ");
+    const search=[value(d,"invoice_number","release_number","flight_number"),value(d,"supplier_tax_id","booking_reference"),value(d,"service_date","issue_date","delivery_date"),readVendor].join(" ");
     return {aircraft:aircraft||"Unassigned",service,airport:airport.toUpperCase()||"Unassigned",vendor:vendor||"Unassigned",title,date:Number.isFinite(date)?date:0,amount:amount?(amount+" "+currency).trim():"",status:record.state==="approved"?"Approved":"Incomplete",search};
   };
   function tag(node,record){
@@ -238,6 +240,8 @@
       if(row.__billyRecordId!==id||!row.__billyRecord)continue;
       const r=row.__billyRecord;
       r.review_metadata={...(r.review_metadata||{}),organization_overrides:overrides};
+      if(overrides.vendor&&Array.isArray(r.organization_missing_fields))
+        r.organization_missing_fields=r.organization_missing_fields.filter(x=>x!=="vendor");
       row.__billyDocument=info(r);
     }
     refresh();
@@ -257,6 +261,8 @@
         ...(record.review_metadata?.organization_overrides||{}),
         vendor:canonical,...(vendorId?{vendor_id:vendorId}:{})
       }};
+      if(Array.isArray(record.organization_missing_fields))
+        record.organization_missing_fields=record.organization_missing_fields.filter(x=>x!=="vendor");
       row.__billyDocument=info(record);
     }
     refresh();
