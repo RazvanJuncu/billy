@@ -1154,3 +1154,22 @@ body[data-billy-screen="uploaded"] #simpleUploaded .billy-hub-symbol{
 @keyframes billy-child-emerge{0%{opacity:0;transform:translate(-58px,0) scale(.45)}28%{opacity:1;transform:translate(0,0) scale(1)}65%{transform:translate(0,0) scale(1)}100%{opacity:1;transform:translate(-97px,0) scale(2.2)}}
 @keyframes billy-nested-path{0%{opacity:0;transform:scaleX(0)}18%,48%{opacity:1;transform:scaleX(1)}70%,100%{opacity:0;transform:scaleX(1)}}
 @media(prefers-reduced-motion:reduce){.billy-nested-transition-parent,.billy-nested-transition-child,.billy-nested-transition-path{animation:none!important}.billy-nested-transition-parent,.billy-nested-transition-path{opacity:0}.billy-nested-transition-child{left:50%;transform:translateX(-50%) scale(1.55)}}
+
+/* Quiet nested archive: one shared grey surface; never nested cards. */
+#simpleUploaded .billy-doc-family{background:#242629!important;border:0!important;border-radius:12px!important;padding:6px 10px!important;box-shadow:none!important;gap:0!important}
+#simpleUploaded .billy-doc-family-parent,#simpleUploaded .billy-doc-family-child{min-width:0;width:100%;display:flex;align-items:center;background:transparent!important}
+#simpleUploaded .billy-doc-family .simple-document-row{width:100%;min-width:0;display:flex;align-items:center;gap:0!important;background:transparent!important}
+#simpleUploaded .billy-doc-family .simple-document-item{flex:1;min-width:0;width:100%;display:flex;align-items:center;gap:12px;padding:13px 12px!important;min-height:57px!important;border:0!important;border-radius:8px!important;background:transparent!important;box-shadow:none!important}
+#simpleUploaded .billy-doc-family .simple-document-item:hover,#simpleUploaded .billy-doc-family .simple-document-item:focus-visible{background:#303337!important}
+#simpleUploaded .billy-doc-family .simple-document-name{flex:1;min-width:0}
+#simpleUploaded .billy-doc-family .simple-document-status{font-size:11px!important;flex:none}
+#simpleUploaded .billy-doc-family .billy-service-icon{width:18px!important;height:18px!important;flex:none}
+#simpleUploaded .billy-doc-family .simple-document-delete{flex:0 0 34px;min-width:34px!important;width:34px;height:34px;min-height:34px!important;margin:0 3px!important;padding:0!important;border:0!important;border-radius:7px!important;background:transparent!important;color:#acb1b5!important}
+#simpleUploaded .billy-doc-family .simple-document-delete:hover,#simpleUploaded .billy-doc-family .simple-document-delete:focus-visible{background:#383c40!important;color:#fff!important}
+#simpleUploaded .billy-doc-family-children{display:flex;flex-direction:column;gap:0;margin:0!important;padding:0 0 0 31px!important;border:0!important}
+#simpleUploaded .billy-doc-family-child{position:relative;gap:0!important}
+#simpleUploaded .billy-doc-family-child .simple-document-item{font-size:12px!important;min-height:52px!important;padding:10px 12px!important}
+#simpleUploaded .billy-doc-family .billy-nested-child{padding-left:12px!important;border-left:0!important}
+#simpleUploaded .billy-doc-nested-connector{position:absolute;left:-13px;top:-7px;width:16px;height:34px;border:0!important;border-left:1px solid #81878b!important;border-bottom:1px solid #81878b!important;border-bottom-left-radius:7px!important;background:none!important;pointer-events:none}
+#simpleUploaded .billy-doc-nested-connector::after{content:"";position:absolute;right:-1px;bottom:-3px;width:5px;height:5px;border-top:1px solid #81878b;border-right:1px solid #81878b;transform:rotate(45deg)}
+@media(max-width:720px){#simpleUploaded .billy-doc-family{padding:4px 5px!important}#simpleUploaded .billy-doc-family-children{padding-left:22px!important}#simpleUploaded .billy-doc-family .simple-document-status{font-size:10px!important}}
