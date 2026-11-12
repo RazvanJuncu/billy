@@ -1009,3 +1009,18 @@ body[data-billy-screen="uploaded"] .simple-document-item>.billy-service-icon{mar
 .billy-preview-export:hover,.billy-preview-close:hover{background:#3b3f43}
 .billy-preview-overlay button:focus-visible{outline:2px solid #fff;outline-offset:2px}
 @media(max-width:720px){.billy-preview-overlay{padding:0;align-items:stretch}.billy-preview-panel{height:100dvh;max-height:100dvh;border:0;border-radius:0}.billy-preview-header{padding:19px 17px 15px}.billy-preview-body{padding:17px}.billy-preview-primary,.billy-preview-fields{gap:12px}.billy-preview-footer{padding:12px 17px}}
+
+/* Shared centered close controls; glyph metrics must not affect alignment. */
+.billy-preview-close{
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  box-sizing:border-box!important;padding:0!important;line-height:1!important;
+  width:34px!important;height:34px!important;min-width:34px!important;min-height:34px!important;
+}
+.billy-preview-close svg{display:block;flex:none;width:18px;height:18px}
+body[data-billy-screen="uploaded"] .simple-document-delete{
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  box-sizing:border-box!important;padding:0!important;line-height:1!important;
+}
+body[data-billy-screen="uploaded"] .simple-document-delete::after{
+  display:block;line-height:1!important;position:relative;top:-1px;
+}
