@@ -294,7 +294,10 @@
       list.appendChild(row);
     }
     const api = window.BILLY_AUTH_CONFIG?.apiUrl;
-    if(!api || !window.BillyAccounts?.active?.()){window.BillyDocumentsIndex?.end(list);return;}
+    if(!api || !window.BillyAccounts?.active?.()){
+      window.BillyOrganizer?.clear?.();
+      window.BillyDocumentsIndex?.end(list);return;
+    }
     const title=document.createElement("strong");
     title.className="simple-document-name";
     title.textContent="Team cloud records";
@@ -398,6 +401,8 @@
       }
       if(navigation.children.length)list.appendChild(navigation);
       window.BillyDocumentsIndex?.end(list);
+      // Fetch all approved unassigned root records independently of archive pagination.
+      void window.BillyOrganizer?.load?.();
     }catch(error){
       const info=document.createElement("p");
       info.textContent="Cloud history unavailable. Check the AI engine connection and team membership.";
