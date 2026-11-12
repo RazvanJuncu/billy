@@ -2,7 +2,7 @@
    Confirm the choice on device; no page content is uploaded for this check. */
 (() => {
   "use strict";
-  let pending=null,overlay=null,current=null,loader=null,renderer=null;
+  let pending=null,overlay=null,current=null,loader=null,renderer=null,automatic=null;
   const allowed=new WeakSet();
   const $=id=>document.getElementById(id);
   const mk=(tag,cls,value)=>{
@@ -57,6 +57,57 @@
       return new File([blob],file.name.replace(/\.pdf$/i,"")+"-page.jpg",{type:"image/jpeg"});
     }finally{await pdf.destroy();}
   }
+  async function groupedFile(task){
+    const result=await automatic.API.create();
+    const indices=Array.from({length:task.last_page-task.first_page+1},(_,j)=>task.first_page+j-1);
+    const pages=await result.copyPages(automatic.pdf,indices);
+    for(const page of pages)result.addPage(page);
+    const bytes=await result.save({useObjectStreams:false});
+    if(bytes.byteLength>10*1024*1024)throw Error("A grouped PDF exceeds the upload size limit.");
+    const label=automatic.file.name.replace(/\.pdf$/i,"");
+    const output=new File([bytes],label+"-document-"+(automatic.index+1)+".pdf",{type:"application/pdf"});
+    // A correctly grouped multi-page document can be classified as one file.
+    // One-page groups are rasterized to allow precise image-level child detection.
+    if(indices.length!==1){
+      allowed.add(output);
+      return output;
+    }
+    return await renderPage(output);
+  }
+  async function advanceAutomatic(){
+    if(!automatic||automatic.pending)return;
+    if(automatic.index>=automatic.groups.length){
+      automatic=null;return;
+    }
+    const active=automatic;
+    active.pending=true;
+    try{
+      const task=active.groups[active.index];
+      const file=await groupedFile(task);
+      if(automatic!==active)return;
+      active.current=file;
+      active.pending=false;
+      active.waiting=true;
+      window.BillyApp.openFile(file);
+    }catch(error){
+      if(automatic===active){active.pending=false;active.waiting=false;}
+      const target=$("simpleUploadNote");
+      if(target)target.textContent="Could not prepare PDF document: "+(error.message||"Unknown error");
+    }
+  }
+  function advanceAfterArchive(event){
+    if(!automatic||!automatic.waiting)return;
+    // The Parent+Child sequence must finish before the next independent PDF page.
+    if(window.BillyNested?.active?.())return;
+    automatic.waiting=false;
+    automatic.index++;
+    void advanceAutomatic();
+  }
+  window.addEventListener("billy:original-archived",advanceAfterArchive);
+  window.addEventListener("billy:nested-complete",()=>{
+    if(!automatic||!automatic.waiting)return;
+    automatic.waiting=false;automatic.index++;void advanceAutomatic();
+  });
   function close(){
     overlay?.remove();overlay=null;
   }
@@ -131,6 +182,28 @@
     const count=pdf.getPageCount();
     if(count<=1)return false;
     if(count>30)throw Error("PDF contains more than 30 pages. Split it into smaller batches.");
+    // One AI document map per uploaded PDF: identify independently meaningful
+    // documents AND inspect each page for smaller physically attached receipts.
+    try{
+      if(!window.BillyAccounts?.active?.())throw Error("Cloud account unavailable.");
+      const api=window.BILLY_AUTH_CONFIG?.apiUrl;
+      if(!api)throw Error("Billy AI endpoint unavailable.");
+      const headers=await window.BillyAccounts.sessionHeaders();
+      const form=new FormData();form.append("file",file,file.name);form.append("page_count",String(count));
+      const response=await fetch(api+"/api/vision/document-map",{method:"POST",body:form,headers});
+      if(!response.ok)throw Error("PDF structure analysis failed.");
+      const result=await response.json();
+      if(result.automatic===true&&Array.isArray(result.groups)&&result.groups.length){
+        automatic={file,pdf,API,count,groups:result.groups,index:0,
+          overlayPages:result.overlay_pages||[],current:null,pending:false,waiting:false};
+        void advanceAutomatic();
+        return true;
+      }
+    }catch(error){
+      console.warn("Billy PDF layout auto-detect unavailable",String(error.message).slice(0,90));
+    }
+    // Only when the model cannot verify structure, retain the existing manual
+    // page picker. Never silently guess independent documents from page count.
     current={file,pdf,API,count,selected:null,done:new Set()};
     showPages();updateResume();
     return true;
