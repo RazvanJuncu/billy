@@ -506,6 +506,41 @@ function canonicalFlight(raw){
   return /^[A-Z]{2,4}\d{1,5}[A-Z]?$/.test(compact)?
     {value:compact,status:"ok"}:{value:null,status:"ambiguous",reason:"Flight number format not confidently identified."};
 }
+// A handling line can have a *numeric quantity* with an explicit unit (8t,
+// 2h) and a *rate* in a currency per that unit (3,00€/t, 50,00€/h).
+// Only supported, unambiguous suffixes are removed for numeric parsing.
+// Their meaning is retained for accounting/inventory and downstream exports.
+function canonicalLineMeasure(raw,kind){
+  const source=String(raw??"").normalize("NFKC").replace(/[\u00a0\u202f]/g," ").trim();
+  const unitPattern="(?:t|tonnes?|metric\\s+tons?|h|hr|hrs|hours?|ore)";
+  const currencyPattern="(?:€|EUR|RON|LEI|USD|\\$|CHF|GBP|£)";
+  let amount=source,unit=null,currency=null;
+  if(kind==="quantity"){
+    const match=source.match(new RegExp("^(.+?)\\s*("+unitPattern+")$","i"));
+    if(match){amount=match[1].trim();unit=canonicalLineUnit(match[2]);}
+  }else if(kind==="unit_price"){
+    const match=source.match(new RegExp("^(.+?)\\s*("+currencyPattern+")\\s*\\/\\s*("+unitPattern+")$","i"));
+    if(match){
+      amount=match[1].trim();currency=canonicalCurrency(match[2]).value;
+      unit=canonicalLineUnit(match[3]);
+    }
+    // Rates without a currency symbol still parse as a rate, but document
+    // currency is not inferred or overwritten by this field.
+    else{
+      const plain=source.match(new RegExp("^(.+?)\\s*\\/\\s*("+unitPattern+")$","i"));
+      if(plain){amount=plain[1].trim();unit=canonicalLineUnit(plain[2]);}
+    }
+  }
+  const result=canonicalNumber(amount);
+  if(result.status!=="ok")return result;
+  return {value:result.value,status:"ok",...(unit?{unit}:{}),...(currency?{currency}:{})};
+}
+function canonicalLineUnit(raw){
+  const text=String(raw).toLowerCase().trim().replace(/\s+/g," ");
+  if(/^(?:t|tonne|tonnes|metric ton|metric tons)$/.test(text))return "t";
+  if(/^(?:h|hr|hrs|hour|hours|ore)$/.test(text))return "h";
+  return null;
+}
 function normalizeDocument(document,type,profile="generic_invoice"){
   const fields={},values={},issues=[],line_items=[];
   const issue=(path,code,message)=>{
@@ -592,16 +627,32 @@ function normalizeDocument(document,type,profile="generic_invoice"){
         issue("lines["+i+"].vat_rate","rate_unit_missing","VAT rate must explicitly use % for a standardized percentage.");
         continue;
       }
-      const parsed=canonicalNumber(text);
+      const parsed=name==="quantity"||name==="unit_price"?
+        canonicalLineMeasure(text,name):canonicalNumber(text);
       const path="lines["+i+"]."+name;
       if(parsed.status==="ok"){
-        item.values[name]=MONETARY_FIELDS.has(name)?{value:parsed.value,currency}:parsed.value;
-        fields[path]={raw:String(raw[name]),value:parsed.value,status:String(raw[name]).trim()===String(parsed.value)?"unchanged":"normalized"};
+        item.values[name]=MONETARY_FIELDS.has(name)?
+          {value:parsed.value,currency:parsed.currency||currency,
+            ...(parsed.unit?{per_unit:parsed.unit}:{})}:
+          parsed.value;
+        if(name==="quantity"&&parsed.unit)item.values.quantity_unit=parsed.unit;
+        fields[path]={raw:String(raw[name]),value:parsed.value,
+          status:String(raw[name]).trim()===String(parsed.value)?"unchanged":"normalized",
+          ...(parsed.unit?{unit:name==="unit_price"?"per "+parsed.unit:parsed.unit}:{}),
+          ...(parsed.currency?{currency:parsed.currency}:{})};
+        if(name==="unit_price"&&parsed.currency&&currency&&parsed.currency!==currency)
+          issue(path,"currency_mismatch","Line rate currency differs from document currency.");
       }else{
         fields[path]={raw:String(raw[name]),value:null,status:parsed.status,reason:parsed.reason};
         issue(path,parsed.status,parsed.reason);
       }
     }
+    // A rate in EUR/h cannot be combined with a quantity in tonnes.
+    const qUnit=item.values.quantity_unit;
+    const pUnit=item.values.unit_price?.per_unit;
+    if(qUnit&&pUnit&&qUnit!==pUnit)
+      issue("lines["+i+"].unit_price","unit_mismatch",
+        "Line quantity unit and per-unit price denominator differ.");
     line_items.push(item);
   }
   const explicitUnits=[values.fuel_unit,values.quantity_unit,
