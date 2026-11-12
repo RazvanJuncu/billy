@@ -1865,9 +1865,16 @@ async function organizeDocument(req,principal){
      !UUID_FORMAT.test(data.record_id)||!data.fields||
      typeof data.fields!=="object"||Array.isArray(data.fields))
     return error("Invalid organization fields.",400);
-  const keys=Object.keys(data.fields),choice=data.vendor_choice;
-  if((!keys.length&&!choice)||keys.length>3||
-     keys.some(key=>!["aircraft","airport","service"].includes(key)))
+  const submitted=Object.keys(data.fields);
+  // Older installed PWAs submit fields.vendor as a plain string. Interpret
+  // that as a new canonical vendor, without regressing authenticated v1 UI.
+  const legacyVendor=Object.hasOwn(data.fields,"vendor")?data.fields.vendor:undefined;
+  if(legacyVendor!==undefined&&data.vendor_choice!==undefined)
+    return error("Choose only one vendor assignment.",400);
+  const keys=submitted.filter(key=>key!=="vendor");
+  const choice=data.vendor_choice??(legacyVendor!==undefined?{new_name:legacyVendor}:undefined);
+  if((!submitted.length&&!choice)||keys.length>3||
+     submitted.some(key=>!["aircraft","airport","service","vendor"].includes(key)))
     return error("Unsupported organization fields.",400);
   if(choice!==undefined&&(!choice||typeof choice!=="object"||Array.isArray(choice)||
      Object.keys(choice).length!==1||
