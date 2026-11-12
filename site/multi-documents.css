@@ -1,0 +1,44 @@
+/* Stage 3A: editable document regions, intentionally separate from approval. */
+.billy-multi-open{overflow:hidden}
+.billy-multi-overlay{position:fixed;inset:0;z-index:1250;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(0,0,0,.8);color:#f3f3f3}
+.billy-multi-panel{display:flex;flex-direction:column;width:min(940px,100%);max-height:94dvh;border:1px solid #383b3e;border-radius:16px;background:#17191b;overflow:hidden;box-shadow:0 20px 72px #0009}
+.billy-multi-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:17px 20px;border-bottom:1px solid #323437}
+.billy-multi-header h2{margin:0;font-size:21px;font-weight:680;line-height:1.35;color:#f6f6f6}
+.billy-multi-header p{margin:4px 0 0;font-size:12px;color:#afb4b8}
+.billy-multi-exit{display:flex;align-items:center;justify-content:center;width:36px;height:36px;min-width:36px;padding:0!important;border:0!important;border-radius:9px!important;background:#292d30!important;color:#f2f2f2!important;font-size:25px!important;line-height:1!important;cursor:pointer}
+.billy-multi-content{display:flex;flex-direction:column;gap:11px;min-height:0;overflow-y:auto;padding:16px 20px 20px}
+.billy-multi-scene{position:relative;display:inline-block;align-self:center;width:fit-content;max-width:100%;background:#292c30;touch-action:auto;user-select:none}
+.billy-multi-image{display:block;max-width:100%;max-height:48dvh;width:auto;height:auto;object-fit:contain;pointer-events:none}
+.billy-multi-rect{position:absolute;box-sizing:border-box;border:2px solid #f4f4f4;background:rgba(255,255,255,.08);cursor:grab;touch-action:none}
+.billy-multi-rect:active{cursor:grabbing}
+.billy-multi-rect-label{position:absolute;top:4px;left:4px;display:grid;place-items:center;min-width:23px;height:23px;padding:0 5px;background:#f5f5f5;color:#17191b;border-radius:6px;font-size:12px;font-weight:700;pointer-events:none}
+.billy-multi-handle{position:absolute;width:21px;height:21px;border:2px solid #181a1c;background:#f5f5f5;border-radius:50%;touch-action:none;cursor:nwse-resize}
+.billy-multi-handle.corner-nw{top:-11px;left:-11px}
+.billy-multi-handle.corner-ne{top:-11px;right:-11px;cursor:nesw-resize}
+.billy-multi-handle.corner-sw{bottom:-11px;left:-11px;cursor:nesw-resize}
+.billy-multi-handle.corner-se{bottom:-11px;right:-11px}
+.billy-multi-hint{margin:3px 0;color:#afb3b8;font-size:12px;line-height:1.55;text-align:center}
+.billy-multi-list{display:flex;flex-direction:column;gap:6px}
+.billy-multi-row{display:flex;align-items:center;flex-wrap:wrap;gap:9px;padding:11px 13px;background:#222528;border-radius:9px}
+.billy-multi-row-copy{display:flex;flex:1;min-width:145px;flex-direction:column;gap:4px}
+.billy-multi-row-copy strong{font-size:13px;font-weight:660;color:#fff}
+.billy-multi-row-copy span,.billy-multi-row-status{font-size:11px;color:#adb2b8}
+.billy-multi-row-status:empty{display:none}
+.billy-multi-use,.billy-multi-remove,.billy-multi-add,.billy-multi-done,.billy-multi-resume{border:0!important;border-radius:9px!important;cursor:pointer;font-family:inherit;font-weight:630}
+.billy-multi-use{padding:10px 20px!important;background:#ededed!important;color:#161718!important}
+.billy-multi-remove{display:flex;align-items:center;justify-content:center;width:35px;height:35px;padding:0!important;background:#313438!important;color:white!important;font-size:21px!important}
+.billy-multi-actions{display:flex;justify-content:space-between;gap:8px}
+.billy-multi-add,.billy-multi-done{padding:11px 14px!important;background:#2c2f32!important;color:#f4f4f4!important;font-size:12px!important}
+.billy-multi-resume{padding:11px 14px!important;background:#292c30!important;color:#eee!important;font-size:12px;margin-top:10px;max-width:100%}
+.billy-multi-resume[hidden]{display:none!important}
+.billy-multi-panel button:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.billy-multi-panel button:disabled{opacity:.5;cursor:default}
+@media(max-width:700px){
+ .billy-multi-overlay{padding:0;align-items:stretch}
+ .billy-multi-panel{max-height:100dvh;height:100dvh;border:0;border-radius:0}
+ .billy-multi-content{padding:14px;gap:10px}
+ .billy-multi-image{max-height:45dvh}
+ .billy-multi-header{padding:15px}
+ .billy-multi-row{padding:10px}
+}
+@media(prefers-reduced-motion:reduce){.billy-multi-overlay *{transition:none!important;animation:none!important}}
