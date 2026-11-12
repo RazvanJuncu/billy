@@ -953,3 +953,25 @@ body[data-billy-screen="uploaded"] .simple-document-delete::after{content:"×";f
   .billy-doc-group-content{padding-left:4px}
   .billy-doc-toolbar{margin-top:11px}
 }
+
+/* Compact archive: understated accordion rows, more useful density. */
+body[data-billy-screen="uploaded"] #simpleUploaded{padding-top:12px!important}
+body[data-billy-screen="uploaded"] .simple-heading{display:flex;align-items:center;gap:11px;margin-bottom:9px!important}
+.billy-doc-info{display:inline-grid;place-items:center;width:23px;height:23px;flex:none;border:1px solid #494b4e!important;border-radius:50%;background:transparent!important;color:#a8adb1!important;font-size:12px!important;font-weight:700;cursor:pointer}
+.billy-doc-info:hover,.billy-doc-info[aria-expanded="true"]{background:#303236!important;color:#fff!important}
+.billy-doc-help{max-width:610px;font-size:12px!important;line-height:1.6!important;color:#999!important;margin:5px 0 12px!important}
+.billy-doc-help[hidden]{display:none!important}
+.billy-doc-toolbar{gap:9px!important;margin:8px 0 13px!important}
+.billy-doc-group{gap:0!important;margin-bottom:2px!important}
+.billy-doc-group-title{position:relative;min-height:44px!important;padding:10px 13px!important;background:transparent!important;border:0!important;border-bottom:1px solid #252729!important;border-radius:5px!important;font-size:13px!important;transition:background-color .15s ease}
+.billy-doc-group-title:hover,.billy-doc-group-title[aria-expanded="true"]{background:#1b1d1f!important}
+.billy-doc-group-title:focus-visible{outline:2px solid #8f9295;outline-offset:-2px}
+.billy-doc-count{background:#292b2e;color:#c0c2c4!important;border-radius:6px;padding:3px 8px;min-width:24px;text-align:center}
+.billy-doc-chevron{width:17px;text-align:center;font-size:21px;line-height:1;transition:transform .16s ease}
+.billy-doc-group-title[aria-expanded="true"] .billy-doc-chevron{transform:rotate(90deg)}
+.billy-doc-group-content{padding:5px 0 9px 15px!important;gap:4px!important}
+body[data-billy-screen="uploaded"] .simple-document-item{min-height:50px!important;padding:12px 14px!important;background:#191b1d!important;border-radius:6px!important}
+body[data-billy-screen="uploaded"] .simple-document-row{gap:5px!important}
+body[data-billy-screen="uploaded"] .simple-document-delete{min-height:50px!important;border-radius:6px!important}
+@media(max-width:720px){.billy-doc-group-title{min-height:48px!important}.billy-doc-group-content{padding-left:5px!important}}
+@media(prefers-reduced-motion:reduce){.billy-doc-chevron,.billy-doc-group-title{transition:none!important}}
