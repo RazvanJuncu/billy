@@ -160,6 +160,7 @@
     }
     $("simpleFlowHeader").hidden = next === "home";
     $("simpleFlowTitle").textContent = names[next] || "";
+    window.BillyNested?.decorateTitle(next,$("simpleFlowTitle"));
     $("simpleReviewToUpload").hidden = !(next === "review" && approved);
     $("simpleReviewChangeProfile").hidden = next !== "review" || approved;
     if (next === "edit") window.BillyWorkspace?.showView("capture");
