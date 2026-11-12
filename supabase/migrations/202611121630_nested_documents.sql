@@ -2,7 +2,7 @@
 -- A child can be linked only to a parent owned by the same organization/account
 -- (enforced by the authenticated Vision Edge Function).
 alter table public.document_records
-  add column if not exists parent_document_id uuid references public.document_records(id) on delete set null,
+  add column if not exists parent_document_id uuid references public.document_records(id) on delete restrict,
   add column if not exists relationship_type text;
 alter table public.document_records
   add constraint nested_record_not_self_parent
