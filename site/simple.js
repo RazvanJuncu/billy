@@ -521,7 +521,12 @@
   });
   window.addEventListener("billy:classification-needs-review",event => showManualClassification(event.detail));
   window.addEventListener("billy:process-complete",() => {
-    if(body.dataset.billyScreen==="process")updateProcess();
+    if(body.dataset.billyScreen==="process"){
+      updateProcess();
+      // Stage 3 nesting can load the primary during the classifier request.
+      // Start it only after that request has released the busy lock.
+      maybeStartProcessing();
+    }
   });
   window.addEventListener("billy:engine-updated",() => {
     if (body.dataset.billyScreen !== "process") return;
