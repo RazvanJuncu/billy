@@ -60,7 +60,13 @@ test("Organization endpoint is authenticated, owner-scoped for writes, and never
 });
 test("Needs attention is conditional and is absent when count zero",()=>{
   assert.match(hub,/const count=window\.BillyOrganizer\?\.count\?\.\(\)\|\|0/);
-  assert.match(hub,/if\(count>0\)\{/);
+  assert.match(hub,/if\(state\.mode==="Home"&&count>0&&attentionSlot\)\{/);
+  assert.match(hub,/attentionSlot\.hidden=!attentionSlot\.childElementCount/);
+  assert.match(hub,/headingRow\.append\(heading,attentionSlot\)/);
+  assert.match(hub,/attentionSlot\.append\(attention\)/);
+  assert.doesNotMatch(hub,/root\.append\(attention\)/);
+  assert.match(read("site/simple.css"),/\.billy-hub-heading-row\{display:flex/);
+  assert.match(read("site/simple.css"),/\.billy-hub-attention-slot\[hidden\]\{display:none!important\}/);
   assert.match(hub,/Needs attention/);
   assert.match(hub,/navigate\("Attention"\)/);
   assert.match(idx,/\["Home","Attention",\.\.\.modes\]/);
