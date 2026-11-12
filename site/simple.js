@@ -259,6 +259,7 @@
   async function renderUploaded(offset=0) {
     const list = $("simpleDocumentsList");
     list.replaceChildren();
+    window.BillyDocumentsIndex?.start?.(list);
     $("simpleDocumentsEmpty").hidden = sessionFiles.length > 0;
     $("simpleDocumentsIntro").textContent = "Cloud records contain extracted/approved fields, not source PDFs or photographs. Search and grouping apply to this page.";
     for (const item of sessionFiles) {
@@ -389,6 +390,7 @@
 
   function goBack() {
     const now = body.dataset.billyScreen;
+    if(now==="uploaded"&&window.BillyDocumentsIndex?.back?.())return;
     // Never return to the obsolete source-panel editor or extraction form.
     if (now === "process" && window.BillyApp?.isBusy?.()) {
       announce("Document processing is in progress. Document check will open automatically.");
