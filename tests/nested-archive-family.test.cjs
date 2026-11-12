@@ -45,7 +45,7 @@ test("Unrelated documents remain separate; a missing parent cannot appear as ind
 });
 test("Backend supplies only referenced parents when paginated child appears without parent",()=>{
   assert.match(backend,/const missing=\[\.\.\.new Set\(page\.map\(record=>record\.parent_document_id\)/);
-  assert.match(backend,/id:"in\."\+"\("\+missing\.join\(","\)\+"\)"/);
+  assert.ok(backend.includes('id:"in.("+missing.join(",")+")"'));
   assert.match(backend,/organization_id:"eq\."\+principal\.organization_id/);
   assert.match(backend,/parent_records:parents\.map\(visible\)/);
   assert.match(simple,/const extra=Array\.isArray\(result\.parent_records\)/);
