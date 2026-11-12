@@ -2295,10 +2295,10 @@ function assistantAggregate(rows,filter,partial){
     const sha=typeof rec.source_sha256==="string"&&/^[0-9a-f]{64}$/i.test(rec.source_sha256)?
       rec.source_sha256.toLowerCase():null;
     const profile=rec.review_metadata?.classification?.profile||rec.document_type||"";
-    const fingerprint=sha?[sha,profile,
-      String(approved.invoice_number||approved.release_number||""),
+    const docReference=String(approved.invoice_number||approved.release_number||"");
+    const fingerprint=sha?[sha,profile,docReference,
       vendor.toLocaleUpperCase("ro-RO"),
-      String(approved.grand_total||"")].join("|"):null;
+      docReference?"":String(approved.grand_total||"")].join("|"):null;
     if(fingerprint&&seenDocuments.has(fingerprint)){duplicates++;continue;}
     if(fingerprint)seenDocuments.add(fingerprint);
     matched++;
