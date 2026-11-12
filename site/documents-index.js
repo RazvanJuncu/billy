@@ -7,7 +7,7 @@
   // All definitions use the same 24x24 outline and inherit their parent's text color.
   const servicePaths={
     Fuel:['path:M4 21V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v15','path:M4 21h14','path:M7 8h6v5H7z','path:M16 9h2l2 3v7a2 2 0 0 0 4 0v-5','path:M20 12l-2-3','path:M6 17h8'],
-    Handling:['path:M6 3h9l4 4v14H6z','path:M15 3v5h4','path:M9 12h7','path:M9 16h7'],
+    Handling:['path:M3 16h16l2-3','path:M5 16V9h12v7','path:M7 9V6h8v3','circle:7 19 1.5','circle:17 19 1.5'],
     Taxi:['path:M5 17H3v-6l2-5h14l2 5v6h-2','path:M5 17h14','path:M3 11h18','circle:7 15 1','circle:17 15 1','path:M6 6l1-3h10l1 3'],
     Catering:['path:M3 19h18','path:M5 17a7 7 0 0 1 14 0','path:M12 10V8','circle:12 7 1'],
     Hotel:['path:M3 21V4h18v17','path:M7 8h3v3H7z','path:M14 8h3v3h-3z','path:M10 21v-6h4v6','path:M1 21h22'],
