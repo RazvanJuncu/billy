@@ -335,6 +335,24 @@ async function scanInvoice() {
     showNotification("Invoice ready. Connect a Vision server in Engine settings to extract the invoice.");
     return;
   }
+  // A PDF can contain several independent papers OR several pages of one paper.
+  // Ask before classification; never infer one document per page.
+  if(state.file.type==="application/pdf"&&window.BillyPdfSeparator?.preflight){
+    const pendingFile=state.file;
+    try{
+      const handled=await window.BillyPdfSeparator.preflight(pendingFile);
+      if(state.file!==pendingFile)return;
+      if(handled){
+        $("simpleRunProcess").disabled=false;
+        showNotification("");
+        return;
+      }
+    }catch(e){
+      $("simpleRunProcess").disabled=false;
+      showNotification("PDF page check failed: "+(e.message||"Could not open PDF."),true);
+      return;
+    }
+  }
   state.busy = true;
   const processingStarted = Date.now();
   let headersReady = processingStarted;
@@ -365,16 +383,18 @@ async function scanInvoice() {
       state.lastClassification = responseBody.classification || null;
       if(responseBody.classification?.multiple_documents_visible){
         // Never extract the composite as one approved document.
-        if(!/^image\/(jpeg|png|webp)$/.test(currentFile.type)){
-          showNotification("Multiple documents detected. Separate them into individual images before extraction.",true);
-          return;
-        }
         if(window.BillyMultiDocs?.open){
           try{
-            await window.BillyMultiDocs.open(currentFile,responseBody.classification.documents||[]);
+            let editable=currentFile;
+            if(currentFile.type==="application/pdf"&&window.BillyPdfSeparator?.toImage)
+              editable=await window.BillyPdfSeparator.toImage(currentFile);
+            if(!/^image\/(jpeg|png|webp)$/.test(editable.type))
+              throw Error("This format needs a single-page image for separation.");
+            if(state.file!==currentFile)return;
+            await window.BillyMultiDocs.open(editable,responseBody.classification.documents||[]);
             showNotification("");
-          }catch{
-            showNotification("Could not prepare multi-document selection. Try another image.",true);
+          }catch(e){
+            showNotification("Could not prepare document boundaries: "+(e.message||"Try another image."),true);
           }
           return;
         }
