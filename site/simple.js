@@ -249,7 +249,7 @@
     const button=document.createElement("button");
     button.type="button";
     button.className="simple-document-delete";
-    button.textContent="×";
+    button.textContent="Delete";
     button.setAttribute("aria-label","Delete "+label);
     button.title="Delete "+label;
     button.addEventListener("click",onDelete);
