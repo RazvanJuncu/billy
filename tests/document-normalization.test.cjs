@@ -57,7 +57,7 @@ test("Currencies are ISO and dates are unambiguous calendar dates",()=>{
   assert.equal(c.date("20/10/99").status,"ambiguous");
   const normalized=c.convert({issue_date:"20/10/26"},"invoice","generic_invoice");
   assert.equal(normalized.values.issue_date,"2026-10-20");
-  assert.equal(normalized.fields.issue_date.status,"ok");
+  assert.equal(normalized.fields.issue_date.status,"normalized");
   assert.ok(!normalized.issues.some(issue=>issue.field_path==="issue_date"));
 
   assert.equal(c.date("29.02.2025").status,"invalid");
