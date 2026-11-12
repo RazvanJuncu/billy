@@ -306,16 +306,22 @@
       const result=await reply.json();
       if(body.dataset.billyScreen!=="uploaded")return;
       const rows=Array.isArray(result.records)?result.records:[];
-      $("simpleDocumentsEmpty").hidden=sessionFiles.length>0 || rows.length>0;
+      const extra=Array.isArray(result.parent_records)?result.parent_records:[];
+      const rowIds=new Set(rows.map(row=>row.id));
+      const family=[...rows,...extra.filter(row=>row&&typeof row.id==="string"&&!rowIds.has(row.id))];
+      const byId=new Map(family.map(row=>[row.id,row]));
+      for(const record of family){
+        record.nested_parent=byId.get(record.parent_document_id)||null;
+        record.nested_children=family.filter(child=>child.parent_document_id===record.id);
+      }
+      $("simpleDocumentsEmpty").hidden=sessionFiles.length>0 || family.length>0;
       if(!rows.length && offset===0) {
         const empty=document.createElement("p");
         empty.textContent="No cloud records yet. Extract and approve a document first.";
         list.appendChild(empty);
       }
-      for(const record of rows){
+      for(const record of family){
         if(!record || typeof record.id!=="string")continue;
-        record.nested_children=rows.filter(child=>child.parent_document_id===record.id);
-        record.nested_parent=rows.find(parent=>parent.id===record.parent_document_id)||null;
         const button=document.createElement("button");
         button.type="button";
         button.className="simple-document-item";
@@ -323,8 +329,8 @@
         name.className="simple-document-name";
         const date=new Date(record.created_at);
         const when=Number.isNaN(date.valueOf())?"":date.toLocaleDateString();
-        name.textContent=(record.parent_document_id?"↳ ":"")+
-          (window.BillyDocumentsIndex?.label(record)||((record.document_type==="fuel_release"?"Fuel Release":"Invoice")+" · "+when));
+        name.textContent=window.BillyDocumentsIndex?.label(record)||
+          ((record.document_type==="fuel_release"?"Fuel Release":"Invoice")+" · "+when);
         if(record.parent_document_id)button.classList.add("billy-nested-child");
         const status=document.createElement("span");
         status.className="simple-document-status";
