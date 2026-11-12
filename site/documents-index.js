@@ -6,7 +6,7 @@
   // Small inline stroke icons; no emoji, images, third-party dependencies or user HTML.
   // All definitions use the same 24x24 outline and inherit their parent's text color.
   const servicePaths={
-    Fuel:['path:M12 22a8 8 0 0 0 8-8c0-5-8-12-8-12S4 9 4 14a8 8 0 0 0 8 8z'],
+    Fuel:['path:M4 21V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v15','path:M4 21h14','path:M7 8h6v5H7z','path:M16 9h2l2 3v7a2 2 0 0 0 4 0v-5','path:M20 12l-2-3','path:M6 17h8'],
     Handling:['path:M17 21v-8l-5-3V2a1 1 0 0 0-2 0v8l-5 3v8l6-2 6 2z','path:M3 13l7-3m4 0 7 3'],
     Taxi:['path:M5 17H3v-6l2-5h14l2 5v6h-2','path:M5 17h14','path:M3 11h18','circle:7 15 1','circle:17 15 1','path:M6 6l1-3h10l1 3'],
     Catering:['path:M3 19h18','path:M5 17a7 7 0 0 1 14 0','path:M12 10V8','circle:12 7 1'],
