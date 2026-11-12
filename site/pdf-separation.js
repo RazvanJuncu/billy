@@ -57,6 +57,14 @@
       return new File([blob],file.name.replace(/\.pdf$/i,"")+"-page.jpg",{type:"image/jpeg"});
     }finally{await pdf.destroy();}
   }
+  function indicesHint(task,overlays){
+    return Array.isArray(overlays)&&overlays.some(page=>
+      page>=task.first_page&&page<=task.last_page);
+  }
+  function prepare(form,file){
+    if(automatic&&automatic.current===file&&automatic.overlayHint)
+      form.set("layout_overlay_hint","true");
+  }
   async function groupedFile(task){
     const result=await automatic.API.create();
     const indices=Array.from({length:task.last_page-task.first_page+1},(_,j)=>task.first_page+j-1);
@@ -86,6 +94,7 @@
       const file=await groupedFile(task);
       if(automatic!==active)return;
       active.current=file;
+      active.overlayHint=indicesHint(active.groups[active.index],active.overlayPages);
       active.pending=false;
       active.waiting=true;
       window.BillyApp.openFile(file);
@@ -214,5 +223,5 @@
     current.selected=null;
     updateResume();
   });
-  window.BillyPdfSeparator={preflight,toImage:renderPage,showPages};
+  window.BillyPdfSeparator={preflight,toImage:renderPage,showPages,prepare};
 })();
