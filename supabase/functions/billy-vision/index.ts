@@ -454,9 +454,21 @@ function canonicalDate(raw){
     if(second>12)
       return {value:null,status:"ambiguous",reason:"Likely US-style date; review rather than guessing order."};
     day=first;month=second;year=2000+shortYear;
-  }else if((m=text.match(/^(\d{1,2})[ -]([a-z]{3,9})[ -](\d{4})$/i))){
-    const months=["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
-    day=+m[1];month=months.indexOf(m[2].toLowerCase().slice(0,3))+1;year=+m[3];
+  }else if((m=text.match(/^(\d{1,2})[ .\/-]+([a-zăâîșşțţ]{3,12})[ .\/-]+(\d{2}|\d{4})\.?$/i))){
+    // Romanian and English printed month names, including 09 NOI 26 on POS slips.
+    // A recognized named month establishes month/day order unambiguously.
+    const key=m[2].toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+      .replace(/ş/g,"s").replace(/ţ/g,"t").slice(0,3);
+    const months={
+      ian:1,jan:1,ene:1,feb:2,mar:3,apr:4,mai:5,may:5,
+      iun:6,jun:6,iul:7,jul:7,aug:8,sep:9,oct:10,okt:10,
+      noi:11,nov:11,dec:12,dez:12
+    };
+    day=+m[1];month=months[key]||0;
+    if(!month)return {value:null,status:"ambiguous",reason:"Unrecognized printed month name."};
+    if(m[3].length===2&&+m[3]>49)
+      return {value:null,status:"ambiguous",reason:"Two-digit year does not establish the century; confirm the source."};
+    year=m[3].length===2?2000+(+m[3]):+m[3];
   }else return {value:null,status:"ambiguous",reason:"Date format or timezone is not sufficiently explicit."};
   if(year<1900||year>2100||month<1||month>12||day<1||day>31){
     return {value:null,status:"invalid",reason:"Invalid calendar date."};
@@ -1280,7 +1292,7 @@ function applyDateVisualReadings(fields,regions,requests,readings){
     if(parsed.status!=="ok")continue;
     // The independent visual reading must represent the exact printed DATE,
     // not a paraphrase or an inferred ISO value.
-    if(!/^(?:\d{1,2}[.\/]\d{1,2}[.\/]\d{2,4}|\d{4}-\d{2}-\d{2})$/.test(date))
+    if(!/^(?:\d{1,2}[.\/]\d{1,2}[.\/]\d{2,4}|\d{4}-\d{2}-\d{2}|\d{1,2}[ .\/-]+[a-zăâîșşțţ]{3,12}[ .\/-]+\d{2,4}\.?)$/i.test(date))
       continue;
     const path=row.field_path,prev=fields[path];
     fields[path]=date;
