@@ -61,6 +61,17 @@ test("Shared grey family container and receipt glyph preserve distinct source se
   assert.match(css,/\.billy-doc-nested-connector::after/);
   assert.match(read("site/document-preview.js"),/openParent\.addEventListener\("click",\(\)=>open\(parent\)\)/);
 });
+test("Nested archive and previews use one color, one line and borderless links",()=>{
+  const preview=read("site/document-preview.js");
+  assert.match(css,/#simpleUploaded \.billy-doc-family \.simple-document-item:hover/);
+  assert.match(css,/#simpleUploaded \.billy-doc-nested-connector::after\{content:none!important/);
+  assert.match(css,/\.billy-preview-nested-open::before\{[\s\S]*?content:none!important/);
+  assert.match(css,/\.billy-preview-nested-open\{[\s\S]*?border:0!important/);
+  assert.match(preview,/node\("h3","","Parent document"\)/);
+  assert.match(preview,/node\("h3","","Attached documents"\)/);
+  assert.doesNotMatch(preview,/"↳ Attached to "/);
+  assert.match(preview,/documentLabel\(parent\)/);
+});
 test("After original archive, animated child emerges and scales into focus",()=>{
   assert.match(transition,/Preparing nested document/);
   assert.match(transition,/billy-nested-transition-parent/);
