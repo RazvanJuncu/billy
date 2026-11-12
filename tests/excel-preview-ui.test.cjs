@@ -23,7 +23,7 @@ test("Excel Preview and CSV are built from approved document-and-entry sections"
   assert.match(review,/const sheet=getApprovedSpreadsheetData\(\)/);
   assert.match(review,/sheet\.details\.map\(field=>\[field\.label,field\.value\]\)/);
   assert.match(review,/sheet\.entries\.rows/);
-  assert.match(review,/getApprovedSpreadsheetData\};/);
+  assert.match(review,/getApprovedSpreadsheetData,displayRegistration\};/);
   assert.match(simple,/exportable\?window\.BillyReview\?\.getApprovedSpreadsheetData\?\.\(\):null/);
   assert.match(simple,/window\.BillyExcelPreview\?\.render\(\$\("simpleExcelPreview"\),sheet\)/);
   assert.match(html,/Upload to company Excel/);
