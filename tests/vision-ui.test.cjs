@@ -19,7 +19,7 @@ test("Source, review, approval and exports are wired without client keys",()=>{
 test("Review does not invent confidence or post to Excel",()=>{
   assert.doesNotMatch(review,/100%\\s*confidence|confidence:\\s*100/i);
   assert.match(read("billy/vision.py"),/"confidence": None/);
-  assert.match(review,/The original is archived by Billy/);
+  assert.match(review,/Original archival follows separately/);
   assert.match(review,/company Excel is not updated/);
   assert.match(read("site/sw.js"),/vision-review.js/);
   assert.match(read("site/sw.js"),/review.css/);
