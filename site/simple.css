@@ -1099,3 +1099,13 @@ body[data-billy-screen="uploaded"] #simpleUploaded .billy-hub-symbol{
   padding:0!important;line-height:1!important;font-family:Arial,sans-serif!important;
   font-size:28px!important;font-weight:400!important;color:#eceeef!important;
 }
+
+/* Original Document Archive - private image/PDF viewer and minimal save feedback. */
+.billy-archive-status{display:flex;align-items:center;gap:11px;flex-wrap:wrap;font-size:12px;color:#b8bec3;line-height:1.4;margin:8px 0}
+.billy-archive-status[hidden],.billy-archive-retry[hidden]{display:none!important}
+.billy-archive-retry{border:0!important;border-radius:8px!important;background:#32363a!important;color:white!important;font-size:12px;padding:8px 12px!important;cursor:pointer}
+.billy-preview-original{display:grid;place-items:center;min-height:180px;max-width:100%;background:#202225;border-radius:10px;overflow:hidden;margin:0 0 15px}
+.billy-preview-original-loading{font-size:12px;color:#aeb3b8;padding:15px}
+.billy-preview-image{display:block;width:100%;max-height:53vh;object-fit:contain}
+.billy-preview-pdf{display:block;width:100%;height:min(55vh,580px);border:0;background:white}
+@media(max-width:720px){.billy-preview-pdf{height:46dvh}.billy-preview-image{max-height:48dvh}}

@@ -1231,15 +1231,106 @@ async function listRecords(principal,req) {
   if(!/^\d{1,6}$/.test(raw)||Number(raw)>999999)return error("Invalid records offset.",400);
   const offset=Number(raw);
   const rows=await database(principal,"GET","document_records",{
-    select:"id,created_by,document_type,state,created_at,approved_at,model_name,source_sha256,extracted_data,reviewed_data,review_metadata,regions_data,validation_warnings,translation_metadata",
+    select:"id,created_by,document_type,state,created_at,approved_at,model_name,source_sha256,extracted_data,reviewed_data,review_metadata,regions_data,validation_warnings,translation_metadata,original_storage_key,original_mime,original_bytes,original_saved_at",
     organization_id:"eq."+principal.organization_id,order:"created_at.desc",offset:String(offset),limit:"51"
   });
   const page=rows.slice(0,50);
   const hasMore=rows.length>50;
-  return json({records:page.map(record=>({
-    ...record,
-    original_validation_warnings:validate(record.extracted_data||{},record.document_type,record.regions_data||[],record.review_metadata?.classification?.profile)
-  })),has_more:hasMore,next_offset:hasMore?offset+page.length:null});
+  return json({records:page.map(record=>{
+    const {original_storage_key,...visible}=record;
+    return {...visible,has_original:Boolean(original_storage_key),
+      original_validation_warnings:validate(record.extracted_data||{},record.document_type,record.regions_data||[],record.review_metadata?.classification?.profile)};
+  }),has_more:hasMore,next_offset:hasMore?offset+page.length:null});
+}
+
+// Private Original Archive v1: only approved, owner-uploaded bytes identical to AI source.
+// Never provide direct public bucket URLs or accept caller-selected object paths.
+const ORIGINAL_BUCKET="billy-originals";
+const ORIGINAL_MIME_EXT={"application/pdf":"pdf","image/jpeg":"jpg","image/png":"png","image/webp":"webp"};
+const UUID_FORMAT=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function archiveId(req){return new URL(req.url).searchParams.get("record_id")||"";}
+async function archiveRecord(principal,id,owner=false){
+  if(!UUID_FORMAT.test(id))return null;
+  const rows=await database(principal,"GET","document_records",{
+    select:"id,organization_id,created_by,state,source_sha256,original_storage_key,original_mime,original_bytes",
+    id:"eq."+id,organization_id:"eq."+principal.organization_id,...(owner?{created_by:"eq."+principal.user_id}:{}),limit:"1"
+  });
+  return rows?.[0]||null;
+}
+function storedPath(principal,record){
+  const key=record.original_storage_key||"";
+  if(!key.startsWith(principal.organization_id+"/"+record.id+"/original.")||
+    !/^[-a-z0-9/._]+$/.test(key))throw Error("Invalid private original path.");
+  return key;
+}
+function storageAddress(principal,key,authenticated=false){
+  return principal.url+"/storage/v1/object/"+(authenticated?"authenticated/":"")+ORIGINAL_BUCKET+"/"+key;
+}
+function serviceHeaders(principal,more={}){
+  return {apikey:principal.secret,Authorization:"Bearer "+principal.secret,...more};
+}
+async function removeOriginalObject(principal,key){
+  const response=await fetch(storageAddress(principal,key),{
+    method:"DELETE",headers:serviceHeaders(principal),signal:AbortSignal.timeout(15000)
+  });
+  return response.ok||response.status===404;
+}
+async function uploadOriginal(req,principal){
+  const id=archiveId(req),record=await archiveRecord(principal,id,true);
+  if(!record)return error("Document not found or not owned by your account.",404);
+  if(record.state!=="approved")return error("Approve the document before archiving its original.",409);
+  if(record.original_storage_key)return error("An original is already archived for this document.",409);
+  const mime=(req.headers.get("content-type")||"").toLowerCase().split(";")[0].trim();
+  const ext=ORIGINAL_MIME_EXT[mime];
+  if(!ext)return error("Only PDF, JPEG, PNG and WebP originals can be archived.",415);
+  const declared=Number(req.headers.get("content-length")||0);
+  if(declared>MAX_BYTES)return error("Original exceeds 10 MiB.",413);
+  const bytes=new Uint8Array(await req.arrayBuffer());
+  if(!bytes.length||bytes.length>MAX_BYTES)return error("Original must be between 1 byte and 10 MiB.",413);
+  try{mimeOf("original."+ext,bytes);}catch{return error("Original content does not match its file type.",400);}
+  // The exact original AI analyzed is required, not an unrelated replacement.
+  if(await sha256(bytes)!==record.source_sha256)
+    return error("Original differs from the analyzed upload. Select the same file.",409);
+  const path=principal.organization_id+"/"+id+"/original."+ext;
+  const result=await fetch(storageAddress(principal,path),{
+    method:"POST",headers:serviceHeaders(principal,{"Content-Type":mime,"x-upsert":"false","cache-control":"private, max-age=0"}),
+    body:bytes,signal:AbortSignal.timeout(30000)
+  });
+  if(!result.ok)return error("Could not store the original securely. Retry.",503);
+  let updated=[];
+  try{
+    updated=await database(principal,"PATCH","document_records",{
+      select:"id",id:"eq."+id,organization_id:"eq."+principal.organization_id,
+      created_by:"eq."+principal.user_id,state:"eq.approved",original_storage_key:"is.null"
+    },{
+      original_storage_key:path,original_mime:mime,original_bytes:bytes.byteLength,
+      original_saved_at:new Date().toISOString()
+    });
+  }catch{
+    await removeOriginalObject(principal,path);
+    return error("Could not link the original to its document. Retry.",503);
+  }
+  if(!Array.isArray(updated)||updated.length!==1){
+    await removeOriginalObject(principal,path);
+    return error("Original already linked or document changed. Refresh your archive.",409);
+  }
+  return json({stored:true,record_id:id,original_mime:mime,original_bytes:bytes.byteLength});
+}
+async function downloadOriginal(req,principal){
+  const id=archiveId(req),record=await archiveRecord(principal,id);
+  if(!record)return error("Document unavailable to this team.",404);
+  if(record.state!=="approved"||!record.original_storage_key)return error("No original stored for this document.",404);
+  const key=storedPath(principal,record);
+  if(!ORIGINAL_MIME_EXT[record.original_mime])return error("Stored document media type is invalid.",500);
+  const response=await fetch(storageAddress(principal,key,true),{
+    method:"GET",headers:serviceHeaders(principal),signal:AbortSignal.timeout(30000)
+  });
+  if(!response.ok)return error("Original is temporarily unavailable.",503);
+  return new Response(response.body,{status:200,headers:{
+    "Content-Type":record.original_mime,"Content-Disposition":"inline",
+    "Cache-Control":"no-store, private","X-Content-Type-Options":"nosniff",
+    "Access-Control-Allow-Origin":ORIGIN,"Vary":"Origin"
+  }});
 }
 
 // Deleting pilot records is explicit, permanent, and restricted to the creator.
@@ -1256,6 +1347,13 @@ async function deleteRecord(req,principal){
   }catch{return error("Invalid delete request.",400);}
   if(typeof id!=="string"||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))
     return error("Invalid document ID.",400);
+  const record=await archiveRecord(principal,id,true);
+  if(!record)return error("Document not found or you are not its creator.",404);
+  if(record.original_storage_key){
+    const path=storedPath(principal,record);
+    if(!await removeOriginalObject(principal,path))
+      return error("Could not remove archived original. Document was not deleted.",503);
+  }
   const removed=await database(principal,"DELETE","document_records",{
     id:"eq."+id,organization_id:"eq."+principal.organization_id,
     created_by:"eq."+principal.user_id
@@ -1271,10 +1369,10 @@ Deno.serve(async req=>{
   const path=new URL(req.url).pathname;
   // Supabase may present the public path, function-local path, or a slug-prefixed path.
   // Match only known routes regardless of which valid prefix the edge runtime preserves.
-  const routes=["/api/vision/health","/api/vision/extract","/api/vision/recheck","/api/vision/approve","/api/vision/records","/api/vision/delete"];
+  const routes=["/api/vision/health","/api/vision/extract","/api/vision/recheck","/api/vision/approve","/api/vision/records","/api/vision/delete","/api/vision/original"];
   const suffix=routes.find(route=>path===route||path.endsWith("/billy-vision"+route));
   if(!suffix)return error("Not found.",404);
-  if(req.method!==(suffix==="/api/vision/extract"||suffix==="/api/vision/recheck"||suffix==="/api/vision/approve"||suffix==="/api/vision/delete"?"POST":"GET"))return error("Method not allowed.",405);
+  if(req.method!==(suffix==="/api/vision/extract"||suffix==="/api/vision/recheck"||suffix==="/api/vision/approve"||suffix==="/api/vision/delete"||suffix==="/api/vision/original"&&req.method==="POST"?"POST":"GET"))return error("Method not allowed.",405);
   try{
     const principal=await trusted(req);
     if(!principal)return error("Sign in to an approved Billy team first.",401);
@@ -1288,6 +1386,8 @@ Deno.serve(async req=>{
     if(suffix==="/api/vision/recheck")return await recheck(req,principal);
     if(suffix==="/api/vision/approve")return await approve(req,principal);
     if(suffix==="/api/vision/delete")return await deleteRecord(req,principal);
+    if(suffix==="/api/vision/original")
+      return req.method==="POST"?await uploadOriginal(req,principal):await downloadOriginal(req,principal);
     return await listRecords(principal,req);
   }catch(e){
     console.error("Billy Vision backend error:",e instanceof Error?e.message:"unknown");

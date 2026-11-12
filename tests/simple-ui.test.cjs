@@ -73,7 +73,7 @@ test("UI only shows actionable steps, with persistent Gemini data but no company
   assert.match(flow,/action.disabled = !ready/);
   assert.match(html,/Upload to company Excel/);
   assert.match(html,/Not connected/);
-  assert.match(flow,/Cloud records contain extracted\/approved fields/);
+  assert.match(flow,/Some older records contain only extracted fields/);
   assert.match(flow,/api\/vision\/records/);
   assert.match(flow,/sessionFiles/);
   assert.match(app,/window.BillyApp/);
@@ -211,7 +211,7 @@ test("Uploaded archive opens a saved-document preview instead of downloading JSO
   assert.match(preview,/addField\(brief,"Airport"/);
   assert.match(preview,/document\.createElement\(tag\)/);
   assert.match(index,/Fuel:\['path:M4 21V6/);
-  assert.match(html,/document-preview\.js\?v=1\.0\.1/);
+  assert.match(html,/document-preview\.js\?v=1\.1\.0/);
   assert.match(read("site/sw.js"),/document-preview\.js/);
 });
 
