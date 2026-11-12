@@ -40,17 +40,15 @@ test("Only selected fields open for confirmation and original evidence is initia
   assert.match(ramp,/Show original document and colored regions/);
   assert.match(ramp,/evidence\.hidden=!evidence\.hidden/);
 });
-test("Reverse AI recheck is image-bound and cannot auto-save or auto-replace operator edits",()=>{
-  assert.match(backend,/async function recheck\(req,principal\)/);
-  assert.match(backend,/await sha256\(bytes\)!==record\.source_sha256/);
-  assert.match(backend,/created_by:"eq\."\+principal\.user_id/);
-  assert.ok(backend.includes('"/api/vision/recheck"'));
-  assert.match(backend,/AI did not verify this field/);
-  assert.match(backend,/approval_unlocked:false/);
-  assert.match(ramp,/form\.append\("reviewed_document",JSON\.stringify\(doc\)\)/);
-  assert.match(ramp,/checkedRevision=revision/);
-  assert.match(ramp,/Meter readings or fuel totals are mathematically inconsistent/);
-  assert.match(ramp,/ai_assessment_not_a_calibrated_confidence:true/);
+test("Operator review never calls Gemini again to verify human corrections",()=>{
+  assert.doesNotMatch(ramp,/\/api\/vision\/recheck|Recheck with AI|recheckWithAI|checkedRevision/);
+  assert.match(ramp,/const readyToApprove=\(\)=>!busy&&allResolved\(\)/);
+  assert.match(ramp,/state\.set\(path,\{level:"blue",reason:changed\?/);
+  assert.match(ramp,/const finish=create\("button","ramp-primary","Approve & continue"\)/);
+  assert.match(ramp,/ai_recheck_count:0/);
+  assert.match(backend,/verification_policy:"operator_final_no_ai_recheck"/);
+  assert.match(backend,/function approvedFieldProvenance\(/);
+  assert.match(backend,/const warnings=validate\(checked,data\.document_type,approvalRegions/);
 });
 test("Approve and upload remain gated; no ramp UI writes to company Excel",()=>{
   assert.match(review,/BillyReview\?\.canApprove/);
@@ -70,9 +68,8 @@ test("Absent-field button clears the value, skips AI lookup and retains human au
   assert.match(ramp,/notOnDocument\.add\(path\)/);
   assert.match(ramp,/notOnDocument\.delete\(path\)/);
   assert.match(ramp,/if\(notOnDocument\.has\(path\)\)/);
-  assert.match(ramp,/form\.append\("not_on_document",JSON\.stringify\(\[\.\.\.notOnDocument\]\)\)/);
   assert.match(ramp,/not_on_document:\[\.\.\.notOnDocument\]/);
-  assert.match(ramp,/pending===0&&\(revision===0\|\|checkedRevision===revision\)/);
+  assert.match(ramp,/finish\.hidden=!readyToApprove\(\)/);
   assert.match(css,/\.ramp-not-present\{/);
   assert.match(review,/not_on_document:window\.BillyReview\?\.rampAudit/);
   assert.match(backend,/function checkedAbsentPaths\(/);
@@ -80,33 +77,17 @@ test("Absent-field button clears the value, skips AI lookup and retains human au
   assert.match(backend,/not_on_document:absentPaths/);
 });
 
-test("Operator-confirmed fields turn blue with centered check and stay distinct from initial AI green",()=>{
+test("Operator verification turns the field blue and retains evidence provenance",()=>{
   assert.match(css,/\.ramp-blue\{background:#72aff4!important\}/);
-  assert.match(css,/\.ramp-segment-check\{/);
-  assert.match(ramp,/if\(item\.level==="blue"\)\{/);
-  assert.match(ramp,/create\("span","ramp-segment-check","✓"\)/);
-  assert.match(ramp,/icon\.setAttribute\("aria-hidden","true"\)/);
-  assert.doesNotMatch(ramp,/count\.textContent/);
-  assert.match(ramp,/const totals=riskCounts\(\)/);
   assert.match(ramp,/state\.set\(path,\{level:"blue",reason:"Operator confirmed absent/);
-  assert.match(ramp,/state\.set\(path,\{level:"blue",reason:"Operator accepted unclear/);
-  assert.match(ramp,/state\.set\(path,\{level:"blue",reason:checkedRevision===revision/);
-  assert.match(ramp,/humanReviewed\.has\(path\)\?"blue":"green"/);
-  assert.match(ramp,/state\.set\(path,\{level:"red",reason:item\.reason/);
-});
-
-test("Blue is visually reviewed, but modified fields still require AI recheck before approval",()=>{
-  assert.match(ramp,/const count=\{green:0,blue:0,yellow:0,red:0\}/);
+  assert.match(ramp,/state\.set\(path,\{level:"blue",reason:changed\?/);
+  assert.match(ramp,/humanReviewed\.add\(path\)/);
+  assert.match(ramp,/const readyToApprove=\(\)=>!busy&&allResolved\(\)/);
   assert.match(ramp,/entry\.level==="green"\|\|entry\.level==="blue"/);
-  assert.match(ramp,/const readyToApprove=\(\)=>!busy&&allResolved\(\)&&/);
-  assert.match(ramp,/revision===0\|\|checkedRevision===revision/);
-  assert.match(ramp,/const changed=value!==String\(before\?\?""\)/);
-  assert.match(ramp,/revision\+\+;\s*checkedRevision=-1/);
-  assert.match(ramp,/recheck\.hidden=needsReview\.length>0/);
-  assert.match(ramp,/\(value\.level==="red"\|\|value\.level==="yellow"\)&&!humanReviewed\.has\(path\)/);
-  assert.match(ramp,/statusText=allResolved\(\)/);
+  assert.match(backend,/source:userActed\?"operator_verified":"ai_extracted"/);
+  assert.match(backend,/field_provenance:provenance/);
+  assert.doesNotMatch(ramp,/recheck\.focus\(\)|recheck\.hidden/);
 });
-
 test("Gemini-only review does not run a second browser OCR model",()=>{
   assert.doesNotMatch(html,/desktop-trocr/i);
   assert.doesNotMatch(ramp,/TrOCR|BillyDesktopTrOCR|compareLocalOCR|showLocalReading|handwriting_disagreement/);
@@ -163,7 +144,7 @@ test("Competing readings override Gemini's own visually clear classification",()
 
 test("Human checks remain audit metadata; no training consent or document memory",()=>{
   assert.match(ramp,/manual_confirmations:\[\.\.\.humanReviewed\]/);
-  assert.match(ramp,/ambiguity_acknowledgements:\[\.\.\.manualAcknowledged\]/);
+  assert.match(ramp,/ambiguity_acknowledgements:\[\]/);
   assert.match(backend,/manual_confirmations:confirmationClaims/);
   assert.doesNotMatch(backend,/intelligence_opt_in|billy_intelligence_examples/);
 });
