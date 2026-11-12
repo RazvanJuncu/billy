@@ -1890,7 +1890,7 @@ async function organizeDocument(req,principal){
     if(typeof value!=="string")return error("Invalid organization field.",400);
     const clean=value.normalize("NFKC").trim();
     if(key==="aircraft"){
-      const reg=clean.toUpperCase().replace(/^YR\\s+/,"YR-");
+      const reg=clean.toUpperCase().replace(/^YR\s+/,"YR-");
       if(!ORGANIZATION_FLEET.includes(reg))return error("Select an aircraft from the fleet.",400);
       verified.aircraft=reg;
     }else if(key==="airport"){
@@ -1914,7 +1914,7 @@ async function organizeDocument(req,principal){
     }else{
       newName=choice.new_name;
       if(typeof newName!=="string")return error("Enter a valid new vendor name.",400);
-      newName=newName.normalize("NFKC").replace(/\\s+/gu," ").trim();
+      newName=newName.normalize("NFKC").replace(/\s+/gu," ").trim();
       newKey=vendorKey(newName);
       if(!newKey||newName.length>120)
         return error("Enter a valid new vendor name.",400);
@@ -1973,6 +1973,7 @@ async function listRecords(principal,req) {
     const effective=withResolvedVendor(record,directory);
     const {original_storage_key,...rest}=effective;
     return {...rest,has_original:Boolean(original_storage_key),
+      organization_missing_fields:organizationMissing(record,directory),
       original_validation_warnings:validate(record.extracted_data||{},record.document_type,
         record.regions_data||[],record.review_metadata?.classification?.profile)};
   };
