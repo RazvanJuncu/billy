@@ -363,6 +363,22 @@ async function scanInvoice() {
     if (responseBody.classification_required) {
       if (state.file !== currentFile) return;
       state.lastClassification = responseBody.classification || null;
+      if(responseBody.classification?.multiple_documents_visible){
+        // Never extract the composite as one approved document.
+        if(!/^image\/(jpeg|png|webp)$/.test(currentFile.type)){
+          showNotification("Multiple documents detected. Separate them into individual images before extraction.",true);
+          return;
+        }
+        if(window.BillyMultiDocs?.open){
+          try{
+            await window.BillyMultiDocs.open(currentFile,responseBody.classification.documents||[]);
+            showNotification("");
+          }catch{
+            showNotification("Could not prepare multi-document selection. Try another image.",true);
+          }
+          return;
+        }
+      }
       window.dispatchEvent(new CustomEvent("billy:classification-needs-review",{
         detail:{classification:responseBody.classification||null,reason:responseBody.detail||""}
       }));
