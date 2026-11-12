@@ -50,7 +50,7 @@
     const title=state.aircraft|| (state.mode==="Home"?"Uploaded Documents":state.mode);
     const label=make("span","billy-hub-title",title);
     heading.replaceChildren();
-    if(state.mode!=="Home"){
+    if(state.mode!=="Home"&&state.mode!=="Attention"){
       const iconSurface=make("span","billy-hub-heading-icon");
       iconSurface.append(icon(state.mode,"billy-hub-title-symbol"));
       heading.append(iconSurface);
@@ -87,7 +87,24 @@
         card.addEventListener("click",()=>navigate(view));
         grid.append(card);
       }
-      root.append(grid);return;
+      root.append(grid);
+      const count=window.BillyOrganizer?.count?.()||0;
+      if(count>0){
+        const attention=make("button","billy-hub-attention");
+        attention.type="button";
+        attention.append(make("span","billy-hub-attention-icon","!"));
+        const copy=make("span","billy-hub-attention-copy");
+        copy.append(make("strong","","Needs attention"),
+          make("span","",count+" document"+(count===1?"":"s")+" to organize"));
+        attention.append(copy,make("span","billy-hub-attention-count",String(count)));
+        attention.addEventListener("click",()=>navigate("Attention"));
+        root.append(attention);
+      }
+      return;
+    }
+    if(state.mode==="Attention"){
+      window.BillyOrganizer?.render?.(root);
+      return;
     }
     if(state.mode!=="Aircraft")return;
     if(!state.aircraft){

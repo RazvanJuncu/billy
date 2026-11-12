@@ -49,11 +49,12 @@
     const m=record.review_metadata||{};
     const classification=m.classification||{};
     const norm=m.normalization?.approved?.values||m.normalization?.extracted?.values||{};
-    const aircraft=registration(value(norm,"aircraft_registration")||value(d,"aircraft_registration"));
-    const category=text(classification.expense_category).toLowerCase();
+    const overrides=m.organization_overrides||{};
+    const aircraft=registration(text(overrides.aircraft)||value(norm,"aircraft_registration")||value(d,"aircraft_registration"));
+    const category=(text(overrides.service)||text(classification.expense_category)).toLowerCase();
     const profile=text(classification.profile);
-    const airport=value(norm,"airport_icao")||value(d,"airport_icao","airport");
-    const vendor=value(d,"supplier_name","property_name","operator_name");
+    const airport=text(overrides.airport)||value(norm,"airport_icao")||value(d,"airport_icao","airport");
+    const vendor=text(overrides.vendor)||value(d,"supplier_name","property_name","operator_name");
     const service=categories[category]||(!category&&profile==="fuel_release"?"Fuel":"Unassigned");
     const title=profile?profile.replaceAll("_"," ").replace(/\b\w/g,x=>x.toUpperCase()):(record.document_type==="fuel_release"?"Fuel Release":"Invoice");
     const date=Date.parse(record.created_at||"");
@@ -65,6 +66,7 @@
   function tag(node,record){
     node.dataset.docEntry="1";node.__billyDocument=info(record);
     const button=node.matches("button")?node:node.querySelector(".simple-document-item");
+    node.__billyRecord=record;
     node.__billyRecordId=record.id||null;
     node.__billyParentId=record.parent_document_id||null;
     if(button)button.prepend(serviceIcon(node.__billyParentId?"Receipt":node.__billyDocument.service));
@@ -145,6 +147,11 @@
     tabs.forEach(t=>t.setAttribute("aria-pressed",String(t.dataset.mode===state.mode)));
     const sort=state.host.querySelector(".billy-doc-sort");sort.textContent=state.descending?"↓":"↑";sort.title=state.descending?"Newest first":"Oldest first";
     const families=groupFamilies(state.records);
+    if(state.mode==="Attention"){
+      list.replaceChildren();
+      window.BillyDocumentsHub?.render(state,navigate);
+      return;
+    }
     const needle=state.query.toLocaleLowerCase();
     const filtered=families.filter(family=>{
       const nodes=[family.root,...family.children];
@@ -205,7 +212,7 @@
     refresh();
   }
   function navigate(mode,aircraft=null){
-    state.mode=["Home",...modes].includes(mode)?mode:"Home";
+    state.mode=["Home","Attention",...modes].includes(mode)?mode:"Home";
     state.aircraft=state.mode==="Aircraft"?aircraft:null;
     state.query="";
     state.opened.clear();
@@ -226,5 +233,14 @@
     install(list);
     navigate("Home");
   }
-  window.BillyDocumentsIndex={tag,session,label,end,info,registration,navigate,back,start,groupFamilies};
+  function refreshOrganization(id,overrides){
+    for(const row of state.records){
+      if(row.__billyRecordId!==id||!row.__billyRecord)continue;
+      const r=row.__billyRecord;
+      r.review_metadata={...(r.review_metadata||{}),organization_overrides:overrides};
+      row.__billyDocument=info(r);
+    }
+    refresh();
+  }
+  window.BillyDocumentsIndex={tag,session,label,end,info,registration,navigate,back,start,groupFamilies,refresh,refreshOrganization};
 })();

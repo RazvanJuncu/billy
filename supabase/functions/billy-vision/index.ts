@@ -1737,6 +1737,129 @@ async function approve(req,principal){
     normalized_data:approvedNormalized,review_metadata:reviewMetadata,
     posted_to_excel:false});
 }
+// Smart Organization operates on archive metadata only. The approved document,
+// original image and its immutable extracted/reviewed fields never change.
+const ORGANIZATION_FLEET=["YR-WNT","YR-DSR","YR-WHO","YR-DDN","YR-WSF","YR-NKA","YR-BIG"];
+const ORGANIZATION_SERVICES=["fuel","handling","taxi","city_tax","catering","hotel",
+  "pax_gifts","parking","crew_expenses","aircraft_supplies","other"];
+const AVIATION_ORGANIZATION_PROFILES=new Set(["fuel_release","fuel_invoice",
+  "handling_invoice","catering_bill","aircraft_supplies_invoice"]);
+function organizationMissing(record){
+  if(!record||record.state!=="approved"||record.parent_document_id)return [];
+  const doc=record.reviewed_data||record.extracted_data||{};
+  const metadata=record.review_metadata||{};
+  const normalized=metadata.normalization?.approved?.values||
+    metadata.normalization?.extracted?.values||{};
+  const overrides=metadata.organization_overrides||{};
+  const profile=metadata.classification?.profile||"";
+  const aviation=AVIATION_ORGANIZATION_PROFILES.has(profile);
+  const missing=[];
+  const aircraft=String(overrides.aircraft||normalized.aircraft_registration||
+    doc.aircraft_registration||"").toUpperCase().trim().replace(/^YR\s+/,"YR-");
+  const airport=String(overrides.airport||normalized.airport_icao||
+    doc.airport_icao||doc.airport||"").trim().toUpperCase();
+  const service=String(overrides.service||metadata.classification?.expense_category||"").trim().toLowerCase();
+  const vendor=String(overrides.vendor||doc.supplier_name||doc.property_name||
+    doc.operator_name||"").trim();
+  if(aviation&&!ORGANIZATION_FLEET.includes(aircraft))missing.push("aircraft");
+  if(aviation&&!/^[A-Z]{4}$/.test(airport))missing.push("airport");
+  if(!["payment_slip","supplier_statement","generic_document"].includes(profile)&&
+     !ORGANIZATION_SERVICES.includes(service))missing.push("service");
+  if(!vendor)missing.push("vendor");
+  return missing;
+}
+async function organizationInbox(principal){
+  const pending=[];
+  // Server-side scan is independent of archive's currently visible page.
+  // Never claim an empty inbox before all eligible pages have been examined.
+  const selection="id,created_by,document_type,state,created_at,approved_at,source_sha256,"+
+    "extracted_data,reviewed_data,review_metadata,parent_document_id,original_storage_key,original_mime";
+  let offset=0;
+  while(true){
+    const chunk=await database(principal,"GET","document_records",{
+      select:selection,organization_id:"eq."+principal.organization_id,
+      state:"eq.approved",parent_document_id:"is.null",
+      order:"created_at.desc",limit:"250",offset:String(offset)
+    });
+    for(const record of chunk){
+      const missing=organizationMissing(record);
+      if(missing.length){
+        const {original_storage_key,...visible}=record;
+        pending.push({...visible,has_original:Boolean(original_storage_key),missing_fields:missing});
+      }
+    }
+    if(chunk.length<250)break;
+    offset+=250;
+    if(offset>=10000)return error("Organization inbox is too large. Contact support.",503);
+  }
+  return json({records:pending,count:pending.length});
+}
+async function organizeDocument(req,principal){
+  let data;
+  try{
+    const raw=await req.text();
+    if(raw.length>3000)throw Error("Oversized request.");
+    data=JSON.parse(raw);
+  }catch{return error("Invalid organization request.",400);}
+  if(!data||typeof data!=="object"||Array.isArray(data)||
+     Object.keys(data).some(k=>!["record_id","fields"].includes(k))||
+     !UUID_FORMAT.test(data.record_id)||!data.fields||
+     typeof data.fields!=="object"||Array.isArray(data.fields))
+    return error("Invalid organization fields.",400);
+  const keys=Object.keys(data.fields);
+  if(!keys.length||keys.length>4||
+     keys.some(key=>!["aircraft","airport","service","vendor"].includes(key)))
+    return error("Unsupported organization fields.",400);
+  const rows=await database(principal,"GET","document_records",{
+    select:"id,created_by,state,parent_document_id,document_type,reviewed_data,extracted_data,review_metadata",
+    organization_id:"eq."+principal.organization_id,
+    created_by:"eq."+principal.user_id,id:"eq."+data.record_id,limit:"1"
+  });
+  const record=rows[0];
+  if(!record||record.state!=="approved"||record.parent_document_id)
+    return error("Only the owner can organize an approved parent document.",403);
+  const missing=organizationMissing(record);
+  if(keys.some(key=>!missing.includes(key)))
+    return error("Only missing organizational fields can be supplied.",409);
+  const verified={};
+  for(const key of keys){
+    const value=data.fields[key];
+    if(typeof value!=="string")return error("Invalid organization field.",400);
+    const clean=value.normalize("NFKC").trim();
+    if(key==="aircraft"){
+      const reg=clean.toUpperCase().replace(/^YR\s+/,"YR-");
+      if(!ORGANIZATION_FLEET.includes(reg))return error("Select an aircraft from the fleet.",400);
+      verified.aircraft=reg;
+    }else if(key==="airport"){
+      if(!/^[A-Z]{4}$/.test(clean.toUpperCase()))
+        return error("Enter a four-letter ICAO airport code.",400);
+      verified.airport=clean.toUpperCase();
+    }else if(key==="service"){
+      if(!ORGANIZATION_SERVICES.includes(clean))
+        return error("Select a supported service category.",400);
+      verified.service=clean;
+    }else if(key==="vendor"){
+      if(clean.length<2||clean.length>120||/[\u0000-\u001f<>]/.test(clean))
+        return error("Enter a valid provider name.",400);
+      verified.vendor=clean;
+    }
+  }
+  const metadata={...(record.review_metadata||{})};
+  metadata.organization_overrides={...(metadata.organization_overrides||{}),...verified};
+  metadata.organization_audit={
+    verified_by:principal.user_id,verified_at:new Date().toISOString(),
+    source:"operator_verified",fields:Object.keys(metadata.organization_overrides)
+  };
+  const updated=await database(principal,"PATCH","document_records",{
+    select:"id,review_metadata",
+    id:"eq."+record.id,organization_id:"eq."+principal.organization_id,
+    created_by:"eq."+principal.user_id,state:"eq.approved",parent_document_id:"is.null"
+  },{review_metadata:metadata});
+  if(updated.length!==1)return error("Document organization could not be saved.",409);
+  const refreshed={...record,review_metadata:metadata};
+  return json({saved:true,record_id:record.id,
+    missing_fields:organizationMissing(refreshed),organization_overrides:metadata.organization_overrides});
+}
 async function listRecords(principal,req) {
   const raw=new URL(req.url).searchParams.get("offset")||"0";
   if(!/^\d{1,6}$/.test(raw)||Number(raw)>999999)return error("Invalid records offset.",400);
@@ -1898,10 +2021,10 @@ Deno.serve(async req=>{
   const path=new URL(req.url).pathname;
   // Supabase may present the public path, function-local path, or a slug-prefixed path.
   // Match only known routes regardless of which valid prefix the edge runtime preserves.
-  const routes=["/api/vision/health","/api/vision/extract","/api/vision/recheck","/api/vision/approve","/api/vision/records","/api/vision/delete","/api/vision/original","/api/vision/document-map"];
+  const routes=["/api/vision/health","/api/vision/extract","/api/vision/recheck","/api/vision/approve","/api/vision/records","/api/vision/delete","/api/vision/original","/api/vision/document-map","/api/vision/organization"];
   const suffix=routes.find(route=>path===route||path.endsWith("/billy-vision"+route));
   if(!suffix)return error("Not found.",404);
-  if(req.method!==(suffix==="/api/vision/document-map"||suffix==="/api/vision/extract"||suffix==="/api/vision/recheck"||suffix==="/api/vision/approve"||suffix==="/api/vision/delete"||suffix==="/api/vision/original"&&req.method==="POST"?"POST":"GET"))return error("Method not allowed.",405);
+  if(req.method!==(suffix==="/api/vision/document-map"||suffix==="/api/vision/extract"||suffix==="/api/vision/recheck"||suffix==="/api/vision/approve"||suffix==="/api/vision/organization"&&req.method==="POST"||suffix==="/api/vision/delete"||suffix==="/api/vision/original"&&req.method==="POST"?"POST":"GET"))return error("Method not allowed.",405);
   try{
     const principal=await trusted(req);
     if(!principal)return error("Sign in to an approved Billy team first.",401);
@@ -1911,6 +2034,7 @@ Deno.serve(async req=>{
       document_types:["auto","invoice","fuel_release"],profiles:PROFILE_NAMES.filter(p=>p!=="unknown"),categories:CATEGORIES,organization_id:principal.organization_id,
       handwriting:{enabled:false,source:"not_configured"},storage:"supabase_private_ledger"
     });
+    if(suffix==="/api/vision/organization")return req.method==="POST"?await organizeDocument(req,principal):await organizationInbox(principal);
     if(suffix==="/api/vision/document-map")return await mapPdfDocuments(req);
     if(suffix==="/api/vision/extract")return await extract(req,principal);
     if(suffix==="/api/vision/recheck")return await recheck(req,principal);
