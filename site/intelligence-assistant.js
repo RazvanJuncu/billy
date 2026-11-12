@@ -157,11 +157,12 @@
             "Showing the first 12 sources. Totals include all matching records.")));
       wrapper.append(area);
     }
-    if(c.without_valid_amount||c.skipped_missing_date||c.skipped_invoice_date_only){
+    if(c.without_valid_amount||c.skipped_missing_date||c.skipped_invoice_date_only||c.duplicate_records_excluded){
       const area=section(t("Acoperire și excluderi","Coverage and exclusions"));
       if(c.without_valid_amount)appendRow(area,t("Fără sumă validă","Without valid amount"),c.without_valid_amount);
       if(c.skipped_missing_date)appendRow(area,t("Fără dată utilă","Without matching date"),c.skipped_missing_date);
       if(c.skipped_invoice_date_only)appendRow(area,t("Doar data facturii","Invoice date only"),c.skipped_invoice_date_only);
+      if(c.duplicate_records_excluded)appendRow(area,t("Copii duplicate excluse","Duplicate copies excluded"),c.duplicate_records_excluded);
       wrapper.append(area);
     }
     const footer=make("div","billy-ai-guardrails");
