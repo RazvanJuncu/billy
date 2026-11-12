@@ -89,6 +89,12 @@ const CLASSIFIER_SCHEMA = {
     profile:{type:"string",enum:PROFILE_NAMES},
     expense_category:{type:"string",enum:CATEGORIES},
     multiple_documents_visible:{type:"boolean"},
+    nested_documents:{type:"array",maxItems:3,items:{
+      type:"object",properties:{
+        label:{type:"string"},x1:{type:"integer"},y1:{type:"integer"},
+        x2:{type:"integer"},y2:{type:"integer"}
+      },required:["label","x1","y1","x2","y2"],additionalProperties:false
+    }},
     documents:{type:"array",maxItems:4,items:{
       type:"object",properties:{
         label:{type:"string"},
@@ -96,7 +102,7 @@ const CLASSIFIER_SCHEMA = {
       },required:["label","x1","y1","x2","y2"],additionalProperties:false
     }},
     reason:{type:"string"}
-  },required:["status","profile","expense_category","multiple_documents_visible","documents","reason"],
+  },required:["status","profile","expense_category","multiple_documents_visible","nested_documents","documents","reason"],
   additionalProperties:false
 };
 const CLASSIFIER_PROMPT =
@@ -111,6 +117,12 @@ const CLASSIFIER_PROMPT =
   "Distinguish expense category from physical document form: a payment slip supports a charge, it is not another expense. " +
   "Use generic_invoice, generic_receipt, generic_document ONLY when no specific profile fits. If unclear use ambiguous or unknown, category unknown rather than inventing. " +
   "If two or more PHYSICAL documents appear in one picture/page (invoice with attached POS slip), mark multiple_documents_visible true. " +
+  "When a SMALL separate paper is visibly placed ON TOP OF a larger primary document, " +
+  "treat the full background page as PRIMARY and put only the attached smaller papers in nested_documents. " +
+  "Provide a bounding box for each small paper, not for the large page behind it. " +
+  "If the papers are side by side instead, use documents boxes; nested_documents must then be empty. " +
+  "Never treat a logo, line-item table, signature box, printed payment section or annex text as another paper. " +
+  "Return nested_documents=[] when their boundaries are uncertain. " +
   "When multiple distinct physical papers are visible, return up to 4 approximate separate bounding rectangles in documents. " +
   "Coordinates are INTEGERS from 0 to 1000 normalized to full image width/height, top-left origin, x1,y1 top-left and x2,y2 bottom-right. " +
   "Boxes should cover each entire physical document, not each invoice line, stamp, slip section or multi-page content. " +
@@ -905,6 +917,25 @@ function documentBoxes(input,multiple){
   }
   return accepted.length>=2?accepted:[];
 }
+function nestedBoxes(input,multiple){
+  if(!multiple||!Array.isArray(input))return [];
+  const result=[];
+  for(const value of input.slice(0,3)){
+    const rect=validDocumentBox(value);
+    if(!rect)continue;
+    // A nested attachment should be a substantial, smaller paper; never mark
+    // a nearly full-page document as the child.
+    const area=(rect.x2-rect.x1)*(rect.y2-rect.y1);
+    if(area>650000)continue;
+    if(result.some(b=>{
+      const overlap=Math.max(0,Math.min(rect.x2,b.x2)-Math.max(rect.x1,b.x1))*
+        Math.max(0,Math.min(rect.y2,b.y2)-Math.max(rect.y1,b.y1));
+      return overlap/Math.min(area,(b.x2-b.x1)*(b.y2-b.y1))>.4;
+    }))continue;
+    result.push(rect);
+  }
+  return result;
+}
 // Classifier sees only the current document; no historical user data or feedback.
 // A truncated model answer is an AI formatting failure, not a bad document.
 function parseClassificationResponse(raw){
@@ -923,6 +954,7 @@ function parseClassificationResponse(raw){
     expense_category:FORCED_CATEGORY[data.profile]||data.expense_category,
     multiple_documents_visible:data.multiple_documents_visible,
     documents:documentBoxes(data.documents,data.multiple_documents_visible),
+    nested_documents:nestedBoxes(data.nested_documents,data.multiple_documents_visible),
     reason:typeof data.reason==="string"?data.reason.slice(0,200):"",
     source:"gemini",classifier_model:MODEL
   };
@@ -972,7 +1004,33 @@ async function extract(req,principal){
   if(!file.size||file.size>MAX_BYTES)return error("Vision file must be 10 MiB or smaller.",413);
   const bytes=new Uint8Array(await file.arrayBuffer());
   let mime;try{mime=mimeOf(file.name,bytes);}catch(e){return error(e.message,400);}
-  // Explicit manual overrides skip another paid classifier invocation.
+  // Nested extraction never authorizes approval or arbitrary document linking.
+  const nestedPrimary=form.get("nested_primary")==="true";
+  if(form.has("nested_primary")&&!nestedPrimary)return error("Invalid nested extraction mode.",400);
+  let excludedNested=[];
+  if(nestedPrimary){
+    try{
+      const raw=form.get("nested_exclude");
+      if(typeof raw!=="string"||raw.length>1500)throw Error("Invalid attached regions.");
+      const parsed=JSON.parse(raw);
+      if(!Array.isArray(parsed)||!parsed.length||parsed.length>3)throw Error("Invalid attached regions.");
+      excludedNested=parsed.map(item=>validDocumentBox(item));
+      if(excludedNested.some(item=>!item))throw Error("Invalid attached region.");
+    }catch{return error("Invalid attached region coordinates.",400);}
+  }
+  const parentId=form.get("parent_document_id");
+  if(parentId!==null&&(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(parentId)||nestedPrimary))
+    return error("Invalid parent record.",400);
+  if(parentId){
+    const parents=await database(principal,"GET","document_records",{
+      select:"id,state,parent_document_id",id:"eq."+parentId,
+      organization_id:"eq."+principal.organization_id,
+      created_by:"eq."+principal.user_id,limit:"1"
+    });
+    if(parents.length!==1||parents[0].state!=="approved"||parents[0].parent_document_id)
+      return error("Parent document must be approved and owned by your team account.",409);
+  }
+  // Explicit overrides skip an extra classifier invocation.
   let classification;
   const override=form.get("profile_override");
   if(override!==null){
@@ -996,6 +1054,8 @@ async function extract(req,principal){
           "Classification uncertain. Choose the appropriate document profile to continue."});
     }
   }
+  if(nestedPrimary&&!(override!==null&&classification.profile!=="unknown"))
+    return error("Primary nested document requires an identified profile.",400);
   const profile=classification.profile;
   const type=profile==="fuel_release"?"fuel_release":"invoice";
   // SHA-256 binds a subsequent recheck to this upload only; no duplicate lookup.
@@ -1004,7 +1064,12 @@ async function extract(req,principal){
     contents:[{role:"user",parts:[
       {text:INSTRUCTIONS+" Extraction profile: "+profile+". Expense category: "+
         classification.expense_category+". "+PROFILE_INSTRUCTIONS[profile]+
-        " The classification name does not justify inferring text not present on the paper."},
+        " The classification name does not justify inferring text not present on the paper."+
+        (nestedPrimary?" IMPORTANT: A separate document is physically attached/overlaid on this PRIMARY page. "+
+          "Extract only the large underlying PRIMARY document. Ignore all data printed on the smaller overlaid paper. "+
+          "Do not copy totals, dates, references or vendors from the overlay. Mark obscured fields uncertain rather than inventing. "+
+          "Ignore content inside these normalized 0-1000 x1,y1,x2,y2 rectangles: "+
+          JSON.stringify(excludedNested.map(({x1,y1,x2,y2})=>({x1,y1,x2,y2})))+".":"")},
       {inline_data:{mime_type:mime,data:b64(bytes)}}
     ]}],
     generationConfig:{responseMimeType:"application/json",
@@ -1050,15 +1115,18 @@ async function extract(req,principal){
   await database(principal,"POST","document_records",{},{
     id,organization_id:principal.organization_id,created_by:principal.user_id,
     document_type:type,source_sha256:hash,state:"extracted",
+    parent_document_id:parentId||null,relationship_type:parentId?"attached_document":null,
     extracted_data:fields,regions_data:regions,validation_warnings:warnings,
     translation_metadata:translation,
     review_metadata:{classification,extraction_profile_version:"1.1",external_checks:externalChecks,
-      normalization:{version:NORMALIZATION_VERSION,extracted:normalized}},
+      normalization:{version:NORMALIZATION_VERSION,extracted:normalized},
+      ...(nestedPrimary?{nested_primary:true}:{})},
     model_name:MODEL,token_usage:usage
   });
   return json({
     schema_version:"0.7",engine:"Billy Vision",provider:"gemini",
     document_type:type,classification,model:MODEL,filename:safeFileName(file.name),
+    parent_document_id:parentId||null,
     source_sha256:hash,extraction_id:id,
     invoice:type==="invoice"?fields:null,
     fuel_release:type==="fuel_release"?fields:null,
@@ -1290,7 +1358,7 @@ async function listRecords(principal,req) {
   if(!/^\d{1,6}$/.test(raw)||Number(raw)>999999)return error("Invalid records offset.",400);
   const offset=Number(raw);
   const rows=await database(principal,"GET","document_records",{
-    select:"id,created_by,document_type,state,created_at,approved_at,model_name,source_sha256,extracted_data,reviewed_data,review_metadata,regions_data,validation_warnings,translation_metadata,original_storage_key,original_mime,original_bytes,original_saved_at",
+    select:"id,created_by,document_type,state,created_at,approved_at,model_name,source_sha256,extracted_data,reviewed_data,review_metadata,regions_data,validation_warnings,translation_metadata,original_storage_key,original_mime,original_bytes,original_saved_at,parent_document_id,relationship_type",
     organization_id:"eq."+principal.organization_id,order:"created_at.desc",offset:String(offset),limit:"51"
   });
   const page=rows.slice(0,50);
@@ -1408,6 +1476,11 @@ async function deleteRecord(req,principal){
     return error("Invalid document ID.",400);
   const record=await archiveRecord(principal,id,true);
   if(!record)return error("Document not found or you are not its creator.",404);
+  const attached=await database(principal,"GET","document_records",{
+    select:"id",parent_document_id:"eq."+id,
+    organization_id:"eq."+principal.organization_id,limit:"1"
+  });
+  if(attached.length)return error("Delete attached documents before deleting their parent.",409);
   if(record.original_storage_key){
     const path=storedPath(principal,record);
     if(!await removeOriginalObject(principal,path))

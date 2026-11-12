@@ -160,6 +160,7 @@
     }
     $("simpleFlowHeader").hidden = next === "home";
     $("simpleFlowTitle").textContent = names[next] || "";
+    window.BillyNested?.decorateTitle(next,$("simpleFlowTitle"));
     $("simpleReviewToUpload").hidden = !(next === "review" && approved);
     $("simpleReviewChangeProfile").hidden = next !== "review" || approved;
     if (next === "edit") window.BillyWorkspace?.showView("capture");
@@ -216,6 +217,7 @@
   }
 
   function recordFile(file) {
+    window.BillyNested?.fileLoaded(file);
     activeFile = file;
     approved = false;
     window.BillyOriginals?.reset?.();
@@ -311,6 +313,8 @@
       }
       for(const record of rows){
         if(!record || typeof record.id!=="string")continue;
+        record.nested_children=rows.filter(child=>child.parent_document_id===record.id);
+        record.nested_parent=rows.find(parent=>parent.id===record.parent_document_id)||null;
         const button=document.createElement("button");
         button.type="button";
         button.className="simple-document-item";
@@ -318,10 +322,14 @@
         name.className="simple-document-name";
         const date=new Date(record.created_at);
         const when=Number.isNaN(date.valueOf())?"":date.toLocaleDateString();
-        name.textContent=window.BillyDocumentsIndex?.label(record)||((record.document_type==="fuel_release"?"Fuel Release":"Invoice")+" · "+when);
+        name.textContent=(record.parent_document_id?"↳ ":"")+
+          (window.BillyDocumentsIndex?.label(record)||((record.document_type==="fuel_release"?"Fuel Release":"Invoice")+" · "+when));
+        if(record.parent_document_id)button.classList.add("billy-nested-child");
         const status=document.createElement("span");
         status.className="simple-document-status";
-        status.textContent=(record.state==="approved"?"✓":"○")+" · "+when;
+        status.textContent=(record.state==="approved"?"✓":"○")+
+          (record.nested_children.length?" · "+record.nested_children.length+" attached":"")+
+          (record.parent_document_id?" · Nested":"")+" · "+when;
         button.append(name,status);
         if((record.state==="approved" && record.reviewed_data)||record.extracted_data){
           button.addEventListener("click",()=>window.BillyDocumentPreview?.open(record));
@@ -514,7 +522,12 @@
   });
   window.addEventListener("billy:classification-needs-review",event => showManualClassification(event.detail));
   window.addEventListener("billy:process-complete",() => {
-    if(body.dataset.billyScreen==="process")updateProcess();
+    if(body.dataset.billyScreen==="process"){
+      updateProcess();
+      // Stage 3 nesting can load the primary during the classifier request.
+      // Start it only after that request has released the busy lock.
+      maybeStartProcessing();
+    }
   });
   window.addEventListener("billy:engine-updated",() => {
     if (body.dataset.billyScreen !== "process") return;

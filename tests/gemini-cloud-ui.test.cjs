@@ -109,7 +109,7 @@ function mockBackend(opts={}) {
         Object.assign(existing,JSON.parse(init.body));
         return new Response(JSON.stringify([{id}]),{status:200});
       }
-      const filters=["id","organization_id","created_by","source_sha256","document_type","state"];
+      const filters=["id","organization_id","created_by","source_sha256","document_type","state","parent_document_id"];
       let list=[...stored.values()].filter(item=>filters.every(field=>{
         const expected=url.searchParams.get(field);
         return !expected||expected==="eq."+item[field];

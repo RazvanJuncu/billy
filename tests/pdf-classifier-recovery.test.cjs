@@ -16,7 +16,7 @@ function harness(answers){
   const mock={
     MODEL:"gemini-test",CLASSIFIER_PROMPT:"test",CLASSIFIER_SCHEMA:{type:"object"},
     PROFILE_NAMES:["generic_invoice","handling_invoice","unknown"],CATEGORIES:["handling","unknown"],
-    FORCED_CATEGORY:{},documentBoxes:()=>[],b64:()=>"base64",
+    FORCED_CATEGORY:{},documentBoxes:()=>[],nestedBoxes:()=>[],b64:()=>"base64",
     providerKey:()=>"secret",AbortSignal,
     console:{warn:()=>{}},
     fetch:async(_url,opts)=>{
@@ -62,7 +62,7 @@ test("PDF requires operator decision: multipage is not automatically two documen
   assert.match(pdf,/window\.BillyPdfSeparator=\{preflight,toImage:renderPage,showPages\}/);
   assert.match(pdf,/pdfjs-dist@3\.11\.174/);
   assert.match(app,/await window\.BillyPdfSeparator\.preflight\(pendingFile\)/);
-  assert.match(app,/await window\.BillyPdfSeparator\.toImage\(currentFile\)/);
+  assert.match(app,/await window\.BillyNested\.start\(currentFile,responseBody\.classification\)/);
   assert.match(read("site/simple.js"),/\$\("simpleRunProcess"\)\.disabled=false/);
   assert.match(read("site/index.html"),/pdf-separation\.js\?v=1\.0\.0/);
 });

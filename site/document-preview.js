@@ -114,6 +114,23 @@
       })();
     }
     body.append(note);
+    if(record.parent_document_id){
+      const relation=node("p","billy-preview-source-note",
+        "Nested document · attached to "+(record.nested_parent?.review_metadata?.classification?.profile||"parent document").replaceAll("_"," "));
+      body.append(relation);
+    }
+    if(Array.isArray(record.nested_children)&&record.nested_children.length){
+      const children=node("section","billy-preview-nested");
+      children.append(node("h3","","Attached documents"));
+      for(const child of record.nested_children){
+        const label=(child.review_metadata?.classification?.profile||child.document_type||"Document").replaceAll("_"," ");
+        const openChild=node("button","billy-preview-nested-open",label+" · "+(child.state==="approved"?"Approved":"Needs review"));
+        openChild.type="button";
+        openChild.addEventListener("click",()=>open(child));
+        children.append(openChild);
+      }
+      body.append(children);
+    }
     const brief=node("dl","billy-preview-primary");
     addField(brief,"Aircraft",norm.aircraft_registration||doc.aircraft_registration);
     addField(brief,"Airport",norm.airport_icao||doc.airport_icao||doc.airport);
