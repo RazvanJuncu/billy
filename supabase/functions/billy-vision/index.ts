@@ -1119,8 +1119,8 @@ async function extract(req,principal){
     extracted_data:fields,regions_data:regions,validation_warnings:warnings,
     translation_metadata:translation,
     review_metadata:{classification,extraction_profile_version:"1.1",external_checks:externalChecks,
-      ...(nestedPrimary?{nested_primary:true}:{}),
-      normalization:{version:NORMALIZATION_VERSION,extracted:normalized}},
+      normalization:{version:NORMALIZATION_VERSION,extracted:normalized},
+      ...(nestedPrimary?{nested_primary:true}:{})},
     model_name:MODEL,token_usage:usage
   });
   return json({
