@@ -10,7 +10,7 @@ const client=read("site/nested-documents.js");
 test("Nested classifier distinguishes a small attached paper from a whole parent",()=>{
   assert.match(edge,/nested_documents:\{type:"array",maxItems:3/);
   assert.match(edge,/PRIMARY and put only the attached smaller papers in nested_documents/);
-  assert.match(edge,/nested_documents:nestedBoxes\(data\.nested_documents,data\.multiple_documents_visible\)/);
+  assert.match(edge,/nested_documents:\(\(\)=>\{const direct=nestedBoxes\(data\.nested_documents,data\.multiple_documents_visible\)/);
   const start=edge.indexOf("function validDocumentBox(");
   const end=edge.indexOf("// Classifier sees only",start);
   const ctx={Math,Number};
@@ -93,6 +93,6 @@ test("Nest status and archived hierarchy remain visible without box selection",(
   assert.match(simple,/record\.parent_document_id\?"↳ ":""/);
   assert.match(preview,/Attached documents/);
   assert.match(storage,/billy:original-archived/);
-  assert.match(html,/nested-documents\.js\?v=1\.0\.0/);
+  assert.match(html,/nested-documents\.js\?v=1\.1\.0/);
   assert.doesNotMatch(html,/multi-documents\.js\?v=/);
 });
