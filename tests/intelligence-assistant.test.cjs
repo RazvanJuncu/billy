@@ -65,6 +65,22 @@ test("No cross-currency totals, no duplicate payment slips/children, service-dat
   assert.equal(r.coverage.mission_verified,false);
   assert.equal(r.coverage.skylegs_connected,false);
 });
+test("Repeated uploads of the same approved invoice do not double-count",()=>{
+  const e=engine(),a=record("original",99,"EUR"),b=record("copy",99,"EUR");
+  a.source_sha256="a".repeat(64);b.source_sha256=a.source_sha256;
+  a.reviewed_data.invoice_number="INV-77";b.reviewed_data.invoice_number="INV-77";
+  const filter={aircraft_registration:"YR-DSR",start_date:"2026-11-11",end_date:"2026-11-11",
+    expense_category:null,vendor_name:null,flight_number:null};
+  const r=e.aggregate([a,b],filter,false);
+  assert.equal(r.groups[0].total_minor,9900);
+  assert.equal(r.coverage.duplicate_records_excluded,1);
+  const different=record("other",40,"EUR");
+  different.source_sha256=a.source_sha256;
+  different.reviewed_data.invoice_number="INV-78";
+  const expanded=e.aggregate([a,b,different],filter,false);
+  assert.equal(expanded.groups[0].total_minor,13900);
+  assert.equal(expanded.coverage.duplicate_records_excluded,1);
+});
 test("Ambiguous money is excluded, no raw OCR arithmetic or assumed exchange rates",()=>{
   const e=engine(),a=record("x",9,"EUR");
   delete a.review_metadata.normalization.approved.values.grand_total;
