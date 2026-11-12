@@ -65,6 +65,10 @@
     if(automatic&&automatic.current===file&&automatic.overlayHint)
       form.set("layout_overlay_hint","true");
   }
+  function fileLoaded(file){
+    if(automatic&&file!==automatic.file&&file!==automatic.current&&
+       !window.BillyNested?.active?.())automatic=null;
+  }
   async function groupedFile(task){
     const result=await automatic.API.create();
     const indices=Array.from({length:task.last_page-task.first_page+1},(_,j)=>task.first_page+j-1);
@@ -223,5 +227,5 @@
     current.selected=null;
     updateResume();
   });
-  window.BillyPdfSeparator={preflight,toImage:renderPage,showPages,prepare};
+  window.BillyPdfSeparator={preflight,toImage:renderPage,showPages,prepare,fileLoaded};
 })();
