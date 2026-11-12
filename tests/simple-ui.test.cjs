@@ -195,7 +195,7 @@ test("Uploaded Documents has distinct monochrome icons for all service categorie
   assert.match(index,/header\.append\(serviceIcon\(key\)\)/);
   assert.match(index,/button\.prepend\(serviceIcon\(node\.__billyDocument\.service\)\)/);
   assert.match(css,/\.billy-service-icon/);
-  assert.match(read("site/index.html"),/documents-index\.js\?v=1\.3\.0/);
+  assert.match(read("site/index.html"),/documents-index\.js\?v=1\.4\.0/);
 });
 
 test("Uploaded archive opens a saved-document preview instead of downloading JSON",()=>{
@@ -213,4 +213,36 @@ test("Uploaded archive opens a saved-document preview instead of downloading JSO
   assert.match(index,/Fuel:\['path:M4 21V6/);
   assert.match(html,/document-preview\.js\?v=1\.0\.1/);
   assert.match(read("site/sw.js"),/document-preview\.js/);
+});
+
+test("Uploaded Documents defaults to a visual hub with no recent documents",()=>{
+  const index=read("site/documents-index.js");
+  const hub=read("site/documents-hub.js");
+  const css=read("site/simple.css");
+  assert.match(index,/mode:"Home",aircraft:null/);
+  assert.match(index,/function navigate\(mode,aircraft=null\)/);
+  assert.match(index,/function back\(\)/);
+  assert.match(index,/function start\(list\)/);
+  assert.match(flow,/BillyDocumentsIndex\?\.start\?\.\(list\)/);
+  assert.match(flow,/BillyDocumentsIndex\?\.back\?\.\(\)/);
+  assert.match(hub,/const views=\["All","Aircraft","Services","Airports","Vendors"\]/);
+  assert.match(hub,/billy-hub-circle/);
+  assert.match(css,/#simpleUploaded\[data-billy-doc-view="Home"\] #simpleDocumentsList/);
+  assert.match(hub,/if\(state.mode==="Home"\)/);
+  assert.match(hub,/if\(state.mode!=="Aircraft"\)return/);
+  assert.match(read("site/index.html"),/documents-hub\.js\?v=1\.0\.0/);
+});
+test("Fleet is explicitly registered; no OCR-constructed aircraft cards",()=>{
+  const hub=read("site/documents-hub.js");
+  const index=read("site/documents-index.js");
+  for(const reg of ["YR-WNT","YR-DSR","YR-WHO","YR-DDN","YR-WSF","YR-NKA","YR-BIG"]){
+    assert.ok(hub.includes('registration:"'+reg+'"'),"Missing fleet aircraft: "+reg);
+  }
+  assert.equal((hub.match(/registration:"YR-[A-Z]{3}"/g)||[]).length,7);
+  assert.match(hub,/photo:null/);
+  assert.match(hub,/const unmatched=state\.records\.filter/);
+  assert.match(index,/knownAircraft\.has\(node\.__billyDocument\.aircraft\)/);
+  assert.match(hub,/billy-fleet-card/);
+  assert.match(hub,/billy-fleet-hero/);
+  assert.match(read("site/simple.css"),/prefers-reduced-motion:reduce/);
 });
