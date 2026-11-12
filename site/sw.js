@@ -1,6 +1,6 @@
 /* Billy offline scanner shell. OCR remains a separately connected backend. */
-const CACHE = "billydpi-orbit-v86-attention-header";
-const ASSETS = ["./","./index.html","./styles.css","./brand.css","./billydpi-logo.svg","./upload-new-mark.svg","./review.css","./excel-preview.css","./ramp-review.css","./vision-regions.css","./accounts.css","./document-type.css","./simple.css","./multi-documents.css","./scanner-enhance.css","./quickscan.css","./quickscan.js","./snap.css","./snap.webmanifest","./install.html","./install.css","./install.js","./simple.js","./documents-index.js","./organization-inbox.js","./documents-hub.js","./document-preview.js","./original-archive.js","./preloader.css","./preloader.js","./account-config.js","./accounts.js","./vision-regions.js","./vision-review.js","./excel-preview.js","./quickverify-crop.js","./ramp-review.js","./nested-transition.js","./nested-documents.js","./pdf-separation.js","./app.js","./workspace.js","./scanner.js","./perspective.js","./manifest.webmanifest","./favicon.svg","./icon-192.png","./icon-512.png"];
+const CACHE = "billydpi-orbit-v87-intelligence-assistant";
+const ASSETS = ["./","./index.html","./styles.css","./brand.css","./billydpi-logo.svg","./upload-new-mark.svg","./review.css","./excel-preview.css","./ramp-review.css","./vision-regions.css","./accounts.css","./document-type.css","./simple.css","./multi-documents.css","./scanner-enhance.css","./quickscan.css","./quickscan.js","./snap.css","./snap.webmanifest","./install.html","./install.css","./install.js","./simple.js","./intelligence-assistant.js","./intelligence-assistant.css","./documents-index.js","./organization-inbox.js","./documents-hub.js","./document-preview.js","./original-archive.js","./preloader.css","./preloader.js","./account-config.js","./accounts.js","./vision-regions.js","./vision-review.js","./excel-preview.js","./quickverify-crop.js","./ramp-review.js","./nested-transition.js","./nested-documents.js","./pdf-separation.js","./app.js","./workspace.js","./scanner.js","./perspective.js","./manifest.webmanifest","./favicon.svg","./icon-192.png","./icon-512.png"];
 self.addEventListener("install",event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting()));
 });
@@ -22,7 +22,7 @@ self.addEventListener("fetch",event=>{
   }
   // Network-first keeps new app releases fresh; cached files remain usable offline.
   const path = new URL(request.url).pathname;
-  const critical = /\/(?:simple\.css|simple\.js|scanner\.js|scanner-enhance\.css|quickscan\.css|quickscan\.js|vision-regions\.css|vision-regions\.js|vision-review\.js|excel-preview\.js|excel-preview\.css|quickverify-crop\.js|ramp-review\.js|ramp-review\.css|review\.css|app\.js|upload-new-mark\.svg)$/.test(path);
+  const critical = /\/(?:intelligence-assistant\.css|intelligence-assistant\.js|simple\.css|simple\.js|scanner\.js|scanner-enhance\.css|quickscan\.css|quickscan\.js|vision-regions\.css|vision-regions\.js|vision-review\.js|excel-preview\.js|excel-preview\.css|quickverify-crop\.js|ramp-review\.js|ramp-review\.css|review\.css|app\.js|upload-new-mark\.svg)$/.test(path);
   event.respondWith(fetch(request,critical ? {cache:"no-store"} : undefined).then(response=>{
     if(response.ok){const copy=response.clone();caches.open(CACHE).then(cache=>cache.put(request,copy));}
     return response;
