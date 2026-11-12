@@ -143,9 +143,9 @@
       if(!session)return;
       session.selected=index;
       close();
-      // Existing single-document processing/approval remains authoritative.
+      // Billy's normal file-loaded handler already starts auto-processing.
+      // Do not change screens here: that would interrupt its process stage.
       window.BillyApp.openFile(file);
-      window.BillySimple?.showScreen("edit");
       updateLauncher();
     }catch(error){status.textContent=error.message||"Could not crop document.";}
     finally{button.disabled=false;}
