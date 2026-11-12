@@ -80,5 +80,5 @@ test("Split inbox shows private original and only missing form controls",()=>{
   assert.match(idx,/m\.organization_overrides\|\|\{\}/);
   assert.match(idx,/refreshOrganization/);
   assert.match(read("site/simple.js"),/window\.BillyOrganizer\?\.load\?\.\(\)/);
-  assert.match(read("site/index.html"),/organization-inbox\.js\?v=1\.0\.0/);
+  assert.match(read("site/index.html"),/organization-inbox\.js\?v=1\.1\.0/);
 });

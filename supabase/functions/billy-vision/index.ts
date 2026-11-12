@@ -1744,7 +1744,61 @@ const ORGANIZATION_SERVICES=["fuel","handling","taxi","city_tax","catering","hot
   "pax_gifts","parking","crew_expenses","aircraft_supplies","other"];
 const AVIATION_ORGANIZATION_PROFILES=new Set(["fuel_release","fuel_invoice",
   "handling_invoice","catering_bill","aircraft_supplies_invoice"]);
-function organizationMissing(record){
+// Exact, team-scoped vendor dictionary. OCR remains the literal document
+// reading; display grouping is resolved separately and is never a model guess.
+function vendorKey(raw){
+  if(typeof raw!=="string")return "";
+  const value=raw.normalize("NFKC").trim().replace(/\s+/gu," ").toLocaleUpperCase("ro-RO");
+  if(value.length<2||value.length>160||
+     /[<>\u0000-\u001f]/.test(value)||
+     /^(?:UNASSIGNED|UNKNOWN|N\/A|NONE|NOT PROVIDED|ILLEGIBLE)$/.test(value))return "";
+  return value;
+}
+function rawDocumentVendor(record){
+  const doc=record.reviewed_data||record.extracted_data||{};
+  return String(doc.supplier_name||doc.property_name||doc.operator_name||"").trim();
+}
+async function vendorDirectory(principal){
+  const all=async(table,select)=>{
+    const result=[];let offset=0;
+    while(true){
+      const batch=await database(principal,"GET",table,{
+        select,organization_id:"eq."+principal.organization_id,
+        order:table==="billy_vendors"?"created_at.asc":"alias_key.asc",
+        limit:"250",offset:String(offset)
+      });
+      result.push(...batch);
+      if(batch.length<250)break;
+      offset+=250;
+      if(offset>=10000)throw Error("Vendor directory capacity exceeded.");
+    }
+    return result;
+  };
+  const vendors=await all("billy_vendors","id,display_name,name_key");
+  const aliases=await all("billy_vendor_aliases","alias_key,vendor_id");
+  const byId=new Map(vendors.map(v=>[v.id,v]));
+  const byKey=new Map();
+  for(const vendor of vendors)byKey.set(vendor.name_key,vendor);
+  for(const alias of aliases){
+    const vendor=byId.get(alias.vendor_id);
+    if(vendor)byKey.set(alias.alias_key,vendor);
+  }
+  return {vendors:vendors.map(({id,display_name})=>({id,name:display_name})),byKey};
+}
+function resolvedVendor(record,directory){
+  if(!directory)return null;
+  return directory.byKey.get(vendorKey(rawDocumentVendor(record)))||null;
+}
+function withResolvedVendor(record,directory){
+  const meta=record.review_metadata||{};
+  if(meta.organization_overrides?.vendor)return record;
+  const vendor=resolvedVendor(record,directory);
+  if(!vendor)return record;
+  return {...record,review_metadata:{...meta,organization_overrides:{
+    ...(meta.organization_overrides||{}),vendor:vendor.display_name,vendor_id:vendor.id
+  }}};
+}
+function organizationMissing(record,directory){
   if(!record||record.state!=="approved"||record.parent_document_id)return [];
   const doc=record.reviewed_data||record.extracted_data||{};
   const metadata=record.review_metadata||{};
@@ -1765,11 +1819,15 @@ function organizationMissing(record){
   if(aviation&&!/^[A-Z]{4}$/.test(airport))missing.push("airport");
   if(!["payment_slip","supplier_statement","generic_document"].includes(profile)&&
      !ORGANIZATION_SERVICES.includes(service))missing.push("service");
-  if(!vendor)missing.push("vendor");
+  // A nonempty OCR reading is NOT a known vendor. Only a verified exact
+  // alias/canonical-name match, or a historical manual override, resolves it.
+  if(!overrides.vendor && (directory?!resolvedVendor(record,directory):!vendor))
+    missing.push("vendor");
   return missing;
 }
 async function organizationInbox(principal){
   const pending=[];
+  const directory=await vendorDirectory(principal);
   // Server-side scan is independent of archive's currently visible page.
   // Never claim an empty inbox before all eligible pages have been examined.
   const selection="id,created_by,document_type,state,created_at,approved_at,source_sha256,"+
@@ -1782,9 +1840,10 @@ async function organizationInbox(principal){
       order:"created_at.desc",limit:"250",offset:String(offset)
     });
     for(const record of chunk){
-      const missing=organizationMissing(record);
+      const missing=organizationMissing(record,directory);
       if(missing.length){
-        const {original_storage_key,...visible}=record;
+        const effective=withResolvedVendor(record,directory);
+        const {original_storage_key,...visible}=effective;
         pending.push({...visible,has_original:Boolean(original_storage_key),missing_fields:missing});
       }
     }
@@ -1792,7 +1851,7 @@ async function organizationInbox(principal){
     offset+=250;
     if(offset>=10000)return error("Organization inbox is too large. Contact support.",503);
   }
-  return json({records:pending,count:pending.length});
+  return json({records:pending,count:pending.length,vendors:directory.vendors});
 }
 async function organizeDocument(req,principal){
   let data;
@@ -1802,14 +1861,25 @@ async function organizeDocument(req,principal){
     data=JSON.parse(raw);
   }catch{return error("Invalid organization request.",400);}
   if(!data||typeof data!=="object"||Array.isArray(data)||
-     Object.keys(data).some(k=>!["record_id","fields"].includes(k))||
+     Object.keys(data).some(k=>!["record_id","fields","vendor_choice"].includes(k))||
      !UUID_FORMAT.test(data.record_id)||!data.fields||
      typeof data.fields!=="object"||Array.isArray(data.fields))
     return error("Invalid organization fields.",400);
-  const keys=Object.keys(data.fields);
-  if(!keys.length||keys.length>4||
-     keys.some(key=>!["aircraft","airport","service","vendor"].includes(key)))
+  const submitted=Object.keys(data.fields);
+  // Older installed PWAs submit fields.vendor as a plain string. Interpret
+  // that as a new canonical vendor, without regressing authenticated v1 UI.
+  const legacyVendor=Object.hasOwn(data.fields,"vendor")?data.fields.vendor:undefined;
+  if(legacyVendor!==undefined&&data.vendor_choice!==undefined)
+    return error("Choose only one vendor assignment.",400);
+  const keys=submitted.filter(key=>key!=="vendor");
+  const choice=data.vendor_choice??(legacyVendor!==undefined?{new_name:legacyVendor}:undefined);
+  if((!submitted.length&&!choice)||keys.length>3||
+     submitted.some(key=>!["aircraft","airport","service","vendor"].includes(key)))
     return error("Unsupported organization fields.",400);
+  if(choice!==undefined&&(!choice||typeof choice!=="object"||Array.isArray(choice)||
+     Object.keys(choice).length!==1||
+     !("vendor_id" in choice)&&!("new_name" in choice)))
+    return error("Select one existing vendor or create a new one.",400);
   const rows=await database(principal,"GET","document_records",{
     select:"id,created_by,state,parent_document_id,document_type,reviewed_data,extracted_data,review_metadata",
     organization_id:"eq."+principal.organization_id,
@@ -1818,8 +1888,9 @@ async function organizeDocument(req,principal){
   const record=rows[0];
   if(!record||record.state!=="approved"||record.parent_document_id)
     return error("Only the owner can organize an approved parent document.",403);
-  const missing=organizationMissing(record);
-  if(keys.some(key=>!missing.includes(key)))
+  const directory=await vendorDirectory(principal);
+  const missing=organizationMissing(record,directory);
+  if(keys.some(key=>!missing.includes(key))||(choice&&!missing.includes("vendor")))
     return error("Only missing organizational fields can be supplied.",409);
   const verified={};
   for(const key of keys){
@@ -1838,29 +1909,56 @@ async function organizeDocument(req,principal){
       if(!ORGANIZATION_SERVICES.includes(clean))
         return error("Select a supported service category.",400);
       verified.service=clean;
-    }else if(key==="vendor"){
-      if(clean.length<2||clean.length>120||/[\u0000-\u001f<>]/.test(clean))
-        return error("Enter a valid provider name.",400);
-      verified.vendor=clean;
     }
   }
-  const metadata={...(record.review_metadata||{})};
-  metadata.organization_overrides={...(metadata.organization_overrides||{}),...verified};
-  metadata.organization_audit={
-    verified_by:principal.user_id,verified_at:new Date().toISOString(),
-    source:"operator_verified",fields:Object.keys(metadata.organization_overrides)
-  };
-  const updated=await database(principal,"PATCH","document_records",{
-    select:"id,review_metadata",
-    id:"eq."+record.id,organization_id:"eq."+principal.organization_id,
-    created_by:"eq."+principal.user_id,state:"eq.approved",parent_document_id:"is.null"
-  },{review_metadata:metadata});
-  if(updated.length!==1)return error("Document organization could not be saved.",409);
-  const refreshed={...record,review_metadata:metadata};
+  let overrides;
+  if(choice){
+    let vendorId=null,newName=null,newKey=null;
+    if("vendor_id" in choice){
+      if(typeof choice.vendor_id!=="string"||!UUID_FORMAT.test(choice.vendor_id)||
+         !directory.vendors.some(v=>v.id===choice.vendor_id))
+        return error("Select an existing vendor from this team.",400);
+      vendorId=choice.vendor_id;
+    }else{
+      newName=choice.new_name;
+      if(typeof newName!=="string")return error("Enter a valid new vendor name.",400);
+      newName=newName.normalize("NFKC").replace(/\s+/gu," ").trim();
+      newKey=vendorKey(newName);
+      if(!newKey||newName.length>120)
+        return error("Enter a valid new vendor name.",400);
+    }
+    const rawAlias=rawDocumentVendor(record);
+    const aliasKey=vendorKey(rawAlias);
+    const result=await database(principal,"POST","rpc/billy_organize_with_vendor",{},{
+      p_org:principal.organization_id,p_actor:principal.user_id,p_record:record.id,
+      p_fields:verified,p_vendor_id:vendorId,p_new_name:newName,p_new_key:newKey,
+      p_source_alias:aliasKey?rawAlias:null,p_source_key:aliasKey||null
+    });
+    overrides=result.organization_overrides;
+  }else{
+    const metadata={...(record.review_metadata||{})};
+    metadata.organization_overrides={...(metadata.organization_overrides||{}),...verified};
+    metadata.organization_audit={
+      verified_by:principal.user_id,verified_at:new Date().toISOString(),
+      source:"operator_verified",fields:Object.keys(metadata.organization_overrides)
+    };
+    const updated=await database(principal,"PATCH","document_records",{
+      select:"id,review_metadata",
+      id:"eq."+record.id,organization_id:"eq."+principal.organization_id,
+      created_by:"eq."+principal.user_id,state:"eq.approved",parent_document_id:"is.null"
+    },{review_metadata:metadata});
+    if(updated.length!==1)return error("Document organization could not be saved.",409);
+    overrides=metadata.organization_overrides;
+  }
+  const refreshed={...record,review_metadata:{...(record.review_metadata||{}),
+    organization_overrides:overrides}};
+  const finalDirectory=choice?await vendorDirectory(principal):directory;
   return json({saved:true,record_id:record.id,
-    missing_fields:organizationMissing(refreshed),organization_overrides:metadata.organization_overrides});
+    missing_fields:organizationMissing(refreshed,finalDirectory),
+    organization_overrides:overrides});
 }
 async function listRecords(principal,req) {
+  const directory=await vendorDirectory(principal);
   const raw=new URL(req.url).searchParams.get("offset")||"0";
   if(!/^\d{1,6}$/.test(raw)||Number(raw)>999999)return error("Invalid records offset.",400);
   const offset=Number(raw);
@@ -1880,8 +1978,10 @@ async function listRecords(principal,req) {
     organization_id:"eq."+principal.organization_id,id:"in.("+missing.join(",")+")",limit:"50"
   }):[];
   const visible=record=>{
-    const {original_storage_key,...rest}=record;
+    const effective=withResolvedVendor(record,directory);
+    const {original_storage_key,...rest}=effective;
     return {...rest,has_original:Boolean(original_storage_key),
+      organization_missing_fields:organizationMissing(record,directory),
       original_validation_warnings:validate(record.extracted_data||{},record.document_type,
         record.regions_data||[],record.review_metadata?.classification?.profile)};
   };
