@@ -260,7 +260,7 @@
     const list = $("simpleDocumentsList");
     list.replaceChildren();
     $("simpleDocumentsEmpty").hidden = sessionFiles.length > 0;
-    $("simpleDocumentsIntro").textContent = "Current-session files are only on this device. Cloud records contain extracted/approved fields, not source PDFs or photographs.";
+    $("simpleDocumentsIntro").textContent = "Cloud records contain extracted/approved fields, not source PDFs or photographs. Search and grouping apply to this page.";
     for (const item of sessionFiles) {
       const button = document.createElement("button");
       button.type = "button";
@@ -282,10 +282,12 @@
         if(index>=0)sessionFiles.splice(index,1);
         if(body.dataset.billyScreen==="uploaded")renderUploaded(offset);
       });
-      list.appendChild(makeDocumentRow(button,remove));
+      const row=makeDocumentRow(button,remove);
+      window.BillyDocumentsIndex?.session(row,item);
+      list.appendChild(row);
     }
     const api = window.BILLY_AUTH_CONFIG?.apiUrl;
-    if(!api || !window.BillyAccounts?.active?.())return;
+    if(!api || !window.BillyAccounts?.active?.()){window.BillyDocumentsIndex?.end(list);return;}
     const title=document.createElement("strong");
     title.className="simple-document-name";
     title.textContent="Team cloud records";
@@ -312,10 +314,10 @@
         name.className="simple-document-name";
         const date=new Date(record.created_at);
         const when=Number.isNaN(date.valueOf())?"":date.toLocaleDateString();
-        name.textContent=(record.document_type==="fuel_release"?"Fuel Release":"Invoice")+" · "+when;
+        name.textContent=window.BillyDocumentsIndex?.label(record)||((record.document_type==="fuel_release"?"Fuel Release":"Invoice")+" · "+when);
         const status=document.createElement("span");
         status.className="simple-document-status";
-        status.textContent=record.state==="approved"?"Approved · download JSON":"Extracted · review not saved";
+        status.textContent=(record.state==="approved"?"✓":"○")+" · "+when;
         button.append(name,status);
         if(record.state==="approved" && record.reviewed_data){
           button.addEventListener("click",()=>{
@@ -369,8 +371,11 @@
               info.textContent="Deletion failed: "+(error.message||"Unknown error")+". The record is still saved.";
             }
           });
-          list.appendChild(makeDocumentRow(button,remove));
+          const row=makeDocumentRow(button,remove);
+          window.BillyDocumentsIndex?.tag(row,record);
+          list.appendChild(row);
         }else{
+          window.BillyDocumentsIndex?.tag(button,record);
           list.appendChild(button);
         }
       }
@@ -392,10 +397,12 @@
         navigation.appendChild(older);
       }
       if(navigation.children.length)list.appendChild(navigation);
+      window.BillyDocumentsIndex?.end(list);
     }catch(error){
       const info=document.createElement("p");
       info.textContent="Cloud history unavailable. Check the AI engine connection and team membership.";
       list.appendChild(info);
+      window.BillyDocumentsIndex?.end(list);
     }
   }
 
