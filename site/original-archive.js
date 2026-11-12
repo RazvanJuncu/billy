@@ -51,6 +51,7 @@
       const result=await response.json();
       if(!response.ok||result.stored!==true)throw Error(result.detail||"Archive unavailable.");
       if(pending?.id===id&&pending?.file===file){savedId=id;pending=null;status("✓ Original archived",false);}
+      window.dispatchEvent(new CustomEvent("billy:original-archived",{detail:{recordId:id}}));
       return true;
     }catch(e){
       if(pending?.id===id&&pending?.file===file)status("Original not saved. "+String(e.message||"Retry archive."),true);
