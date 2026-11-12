@@ -452,10 +452,7 @@
       });
       if(next){openEditor(next);return;}
       closeEditor();
-      if(!recheck.hidden){
-        feedback.textContent="Ready for Recheck";
-        recheck.focus();
-      }else if(!finish.hidden){
+      if(!finish.hidden){
         feedback.textContent="Ready for approval";
         finish.focus();
       }
