@@ -50,11 +50,14 @@
     if(token!==job)return false;
     session={source:file,primaryProfile:classification.profile,
       primaryCategory:classification.expense_category||"unknown",
-      children,index:0,parentId:null,current:file,stage:"primary"};
+      boxes,children,index:0,parentId:null,current:file,stage:"primary"};
     // No manual boxes or extra scan. Same file triggers existing extraction,
     // this time with the model-selected primary profile.
     window.BillyApp.openFile(file);
     return true;
+  }
+  function fileLoaded(file){
+    if(session&&file!==session.current)reset();
   }
   function prepare(form,file){
     if(!session||file!==session.current)return;
@@ -62,6 +65,7 @@
       form.set("profile_override",session.primaryProfile);
       form.set("category_override",session.primaryCategory);
       form.set("nested_primary","true");
+      form.set("nested_exclude",JSON.stringify(session.boxes));
     }else if(session.stage==="child"&&session.parentId){
       form.set("parent_document_id",session.parentId);
     }
@@ -88,5 +92,5 @@
     },350);
   }
   window.addEventListener("billy:document-approved",advance);
-  window.BillyNested={start,prepare,active,reset,decorateTitle};
+  window.BillyNested={start,prepare,fileLoaded,active,reset,decorateTitle};
 })();
