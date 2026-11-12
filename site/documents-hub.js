@@ -16,8 +16,8 @@
     All:["M8 3h11a2 2 0 0 1 2 2v12","M5 7h11a2 2 0 0 1 2 2v11H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z","M7 12h7","M7 16h7"],
     Aircraft:["M12 2l3 8 7 4v3l-9-3v5l3 2v2l-4-1-4 1v-2l3-2v-5l-9 3v-3l7-4z"],
     Services:["M3 7l9-4 9 4-9 4z","M3 12l9 4 9-4","M3 17l9 4 9-4"],
-    Airports:["M4 21h16","M7 21l3-13h4l3 13","M9 8V5h6v3","M12 5V2","M8 12h8","M9 16h6","M10 21v-3h4v3","M4 7h5","M15 7h5"],
-    Vendors:["M4 10v11h16V10","M3 5h18l1 5H2l1-5z","M6 5V3h12v2","M8 10v4a2 2 0 0 1-4 0v-4","M12 10v4a2 2 0 0 1-4 0","M16 10v4a2 2 0 0 1-4 0","M20 10v4a2 2 0 0 1-4 0","M9 21v-5h6v5"]
+    Airports:["M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0z","M12 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"],
+    Vendors:["M20.6 13.1l-7.5 7.5a2 2 0 0 1-2.8 0L3 13.3V4h9.3l8.3 8.3a1 1 0 0 1 0 .8z","M8 8h.01"]
   };
   const make=(tag,cls,content)=>{
     const node=document.createElement(tag);
@@ -51,11 +51,6 @@
     const label=make("span","billy-hub-title",title);
     heading.replaceChildren();
     if(state.mode!=="Home"){
-      const back=make("button","billy-hub-back");
-      back.type="button";back.setAttribute("aria-label","Back");
-      back.textContent="‹";
-      back.addEventListener("click",()=>window.BillyDocumentsIndex?.back());
-      heading.append(back);
       const iconSurface=make("span","billy-hub-heading-icon");
       iconSurface.append(icon(state.mode,"billy-hub-title-symbol"));
       heading.append(iconSurface);
