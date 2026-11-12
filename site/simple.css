@@ -1299,3 +1299,8 @@ body[data-billy-screen="uploaded"] #simpleUploaded .billy-hub-symbol{
   .billy-org-original{height:min(48dvh,450px);min-height:220px}
   .billy-hub-attention{margin:0 auto 32px}
 }
+
+/* Vendor identity: preserve the literal document reading, keep the assignment
+   controls compact and hide the optional canonical-name field until needed. */
+.billy-org-read{font-size:11px;color:#aeb4b8;line-height:1.4}
+.billy-org-new-vendor[hidden]{display:none!important}
