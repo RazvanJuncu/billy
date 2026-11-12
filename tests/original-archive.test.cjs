@@ -98,5 +98,5 @@ test("Original browser code stores only approved file and supports authentic pre
   assert.match(edge,/has_original:Boolean\(original_storage_key\)/);
   assert.match(sql,/false,10485760/);
   assert.doesNotMatch(sql,/create policy/i);
-  assert.match(html,/original-archive\.js\?v=1\.0\.0/);
+  assert.match(html,/original-archive\.js\?v=1\.1\.0/);
 });
