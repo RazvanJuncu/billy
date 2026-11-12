@@ -517,8 +517,11 @@
           "Public sources are suggestions, not proof of wording printed on this document. Billy never fills this field automatically."));
       }
       fieldTitle.textContent=labelFor(path,type,doc,profile)+(missing?" · Missing":"");
-      fieldInput.value=valueAt(doc,path)??"";
-      currentValue.textContent=missing?"":String(valueAt(doc,path));
+      const originalValue=valueAt(doc,path);
+      fieldInput.value=originalValue??"";
+      const displayed=path==="aircraft_registration"?
+        (window.BillyReview?.displayRegistration?.(originalValue,normalizedData)??originalValue):originalValue;
+      currentValue.textContent=missing?"":String(displayed);
       fieldNotPresent.textContent=notOnDocument.has(path)?"Not on document ✓":"Not on document";
       fieldNotPresent.hidden=missing;
       inspectOriginal.textContent=missing?"View document":"View full document";
@@ -534,8 +537,9 @@
         String(valueAt(doc,path)??"").trim()===canonical.raw&&
         String(canonical.value)!==canonical.raw;
       normalizedHint.hidden=!canShow;
-      normalizedHint.textContent=canShow?"Inventory format: "+String(canonical.value)+
-        (canonical.unit?" "+canonical.unit:""):"";
+      normalizedHint.textContent=canShow?(path==="aircraft_registration"&&String(displayed)===String(canonical.value)?
+        "Original OCR: "+canonical.raw:"Inventory format: "+String(canonical.value)+
+        (canonical.unit?" "+canonical.unit:"")):"";
       const region=regions.find(item=>item.field_path===path&&
         window.BillyQuickVerifyCrop?.validRegion(item));
       sourceTitle.textContent=region?

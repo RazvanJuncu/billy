@@ -72,6 +72,16 @@ const textbox=(value,onUpdate,cls="review-input",path=null)=>{const e=node("inpu
 function dirty(){approved=false;if(approveButton){approveButton.disabled=false;approveButton.textContent="Submit corrections";}if(notice)notice.textContent="Changes not submitted. Verify the values against the original.";if(exportPanel)exportPanel.hidden=true;const meter=document.querySelector(".review-meter-check");if(meter&&documentType==="fuel_release")meter.textContent=localMeterCheck(draft);}
 function download(text,name,mime){const u=URL.createObjectURL(new Blob([text],{type:mime}));const a=node("a");a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1000);}
 function escapeCell(value){const s=String(value??"");const dangerous=/^\s*[=+@]/.test(s) || (/^\s*-/.test(s) && !/^\s*-\d+(?:[.,]\d+)?\s*$/.test(s));const safe=dangerous?"'"+s:s;return '"'+safe.replaceAll('"','""')+'"';}
+// Presentation-only conservative fallback for pre-normalization records.
+ // Do not modify the original extraction or user-entered draft values.
+function displayRegistration(raw,canonical=null){
+  const backed=canonical?.values?.aircraft_registration;
+  if(typeof backed==="string"&&/^YR-[A-Z0-9]{3}$/.test(backed))return backed;
+  if(typeof raw!=="string")return raw;
+  const text=raw.normalize("NFKC").replace(/[\u2010-\u2015]/g,"-").trim().toUpperCase();
+  const match=text.match(/^YR[-\s]?([A-Z0-9]{3})$/);
+  return match?"YR-"+match[1]:raw;
+}
 function getApprovedSpreadsheetData(){
   if(!approved||!draft)return null;
   // These fallbacks also keep independent CSV preview helpers self-contained.
@@ -84,6 +94,7 @@ function getApprovedSpreadsheetData(){
   const details=fieldKeys
     .filter(([key])=>draft[key]!==null&&draft[key]!==undefined&&String(draft[key]).trim()!=="")
     .map(([key,label])=>({key,label,value:
+      key==="aircraft_registration"?displayRegistration(draft[key],canonical):
       Object.prototype.hasOwnProperty.call(canonicalValues,key)?canonicalValues[key]:draft[key]}));
   // Free-text notes are part of the approved extraction, not disposable extras.
   if(Array.isArray(draft.notes))draft.notes.forEach((value,index)=>{
@@ -215,7 +226,12 @@ function render(result,endpoint,authHeaders,sourceFile=null){
  const grid=node("div","review-grid");
  fieldKeys.forEach(pair=>{
    const label=node("label","review-field");
-   label.append(node("span","review-field-name",pair[1]),textbox(draft[pair[0]],v=>{draft[pair[0]]=v;},"review-input",pair[0]));
+   const displayed=pair[0]==="aircraft_registration"?
+     displayRegistration(draft[pair[0]],auditMeta?.normalized_data):draft[pair[0]];
+   const input=textbox(displayed,v=>{draft[pair[0]]=v;},"review-input",pair[0]);
+   if(pair[0]==="aircraft_registration"&&String(displayed??"")!==String(draft[pair[0]]??""))
+     input.title="Original OCR: "+String(draft[pair[0]]);
+   label.append(node("span","review-field-name",pair[1]),input);
    if(flaggedPaths.has(pair[0])||documentType==="fuel_release"&&["meter_start","meter_finish","delivered_quantity"].includes(pair[0]))
      label.appendChild(node("span","review-field-alert","Needs verification against the original"));
    grid.appendChild(label);
@@ -317,5 +333,5 @@ function render(result,endpoint,authHeaders,sourceFile=null){
  }
 }
 window.BillyReview={render,exportCSV,exportJSON,exportRawJSON,
-  getApprovedSpreadsheetData};
+  getApprovedSpreadsheetData,displayRegistration};
 })();
