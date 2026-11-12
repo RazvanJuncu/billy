@@ -46,6 +46,20 @@ test("Currencies are ISO and dates are unambiguous calendar dates",()=>{
   assert.equal(c.date("2026-11-10").value,"2026-11-10");
   assert.equal(c.date("10-Nov-2026").value,"2026-11-10");
   assert.equal(c.date("11/10/2026").status,"ambiguous");
+  // Date-only documents do not need a timezone. A day above 12 also
+  // disambiguates DD/MM/YY from US MM/DD/YY.
+  assert.equal(c.date("20/10/26").value,"2026-10-20");
+  assert.equal(c.date("20.10.26").value,"2026-10-20");
+  assert.equal(c.date("10.11.26").value,"2026-11-10");
+  assert.equal(c.date("10/11/26").status,"ambiguous");
+  assert.equal(c.date("10/20/26").status,"ambiguous");
+  assert.equal(c.date("29/02/25").status,"invalid");
+  assert.equal(c.date("20/10/99").status,"ambiguous");
+  const normalized=c.convert({issue_date:"20/10/26"},"invoice","generic_invoice");
+  assert.equal(normalized.values.issue_date,"2026-10-20");
+  assert.equal(normalized.fields.issue_date.status,"ok");
+  assert.ok(!normalized.issues.some(issue=>issue.field_path==="issue_date"));
+
   assert.equal(c.date("29.02.2025").status,"invalid");
 });
 test("Normalization preserves raw evidence and creates typed inventory values",()=>{
