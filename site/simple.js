@@ -206,7 +206,7 @@
     $("simpleExportCsv").disabled = !exportable;
     $("simpleExportJson").disabled = !exportable;
     $("simpleUploadNote").textContent = exportable
-      ? "Approved fields are saved to your Billy team records when connected to cloud. The original file and company Excel are not updated."
+      ? "Approved fields are saved to Billy cloud. The original is archived separately; company Excel is not updated."
       : "Review and approve the document before exporting.";
     // Preview and CSV use the same approved document summary and entry rows.
     // Never display an unapproved AI extraction as an Excel-ready result.
@@ -218,6 +218,7 @@
   function recordFile(file) {
     activeFile = file;
     approved = false;
+    window.BillyOriginals?.reset?.();
     reviewAvailable = false;
     reviewedType = null;
     reviewedProfile = null;
@@ -261,7 +262,7 @@
     list.replaceChildren();
     window.BillyDocumentsIndex?.start?.(list);
     $("simpleDocumentsEmpty").hidden = sessionFiles.length > 0;
-    $("simpleDocumentsIntro").textContent = "Cloud records contain extracted/approved fields, not source PDFs or photographs. Search and grouping apply to this page.";
+    $("simpleDocumentsIntro").textContent = "Some older records contain only extracted fields. Search and grouping apply to this page.";
     for (const item of sessionFiles) {
       const button = document.createElement("button");
       button.type = "button";
@@ -531,11 +532,14 @@
     chooseGreeting(String(event.detail?.firstName || "").trim().slice(0,32));
     if (body.dataset.billyScreen === "process") updateProcess();
   });
-  window.addEventListener("billy:document-approved",() => {
+  window.addEventListener("billy:document-approved",(event) => {
+    const approvedFile=activeFile;
+    const approvalId=event.detail?.approvalId;
     approved = true;
     const rec = sessionFiles.find(item => item.file === activeFile);
     if (rec) rec.status = "Approved in pilot";
     showScreen("upload");
+    if(approvedFile&&approvalId)void window.BillyOriginals?.save(approvalId,approvedFile);
   });
 
   showScreen("home");
