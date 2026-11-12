@@ -230,7 +230,7 @@ test("Uploaded Documents defaults to a visual hub with no recent documents",()=>
   assert.match(css,/#simpleUploaded\[data-billy-doc-view="Home"\] #simpleDocumentsList/);
   assert.match(hub,/if\(state.mode==="Home"\)/);
   assert.match(hub,/if\(state.mode!=="Aircraft"\)return/);
-  assert.match(read("site/index.html"),/documents-hub\.js\?v=1\.0\.0/);
+  assert.match(read("site/index.html"),/documents-hub\.js\?v=1\.1\.0/);
 });
 test("Fleet is explicitly registered; no OCR-constructed aircraft cards",()=>{
   const hub=read("site/documents-hub.js");
