@@ -37,11 +37,19 @@
     }
     return svg;
   }
-  let root=null,heading=null,help=null;
+  let root=null,heading=null,help=null,attentionSlot=null;
   function mount(list,toolbar){
     if(root?.isConnected)return;
     heading=list.parentElement?.querySelector(".simple-heading")||null;
     help=heading?.querySelector(".billy-doc-info")||null;
+    if(heading){
+      // Keep the actionable inbox beside, not inside, the h1. That preserves
+      // the heading's accessible name as exactly "Uploaded Documents".
+      const headingRow=make("div","billy-hub-heading-row");
+      attentionSlot=make("div","billy-hub-attention-slot");
+      heading.before(headingRow);
+      headingRow.append(heading,attentionSlot);
+    }
     root=make("div","billy-hub-content");
     toolbar.before(root);
   }
@@ -57,7 +65,22 @@
     }
     heading.append(label);
     if(state.mode==="Home"&&help)heading.append(help);
-
+    attentionSlot?.replaceChildren();
+    const count=window.BillyOrganizer?.count?.()||0;
+    if(state.mode==="Home"&&count>0&&attentionSlot){
+      const attention=make("button","billy-hub-attention");
+      attention.type="button";
+      attention.setAttribute("aria-label",
+        "Needs attention: "+count+" document"+(count===1?"":"s")+" to organize");
+      attention.append(make("span","billy-hub-attention-icon","!"));
+      const copy=make("span","billy-hub-attention-copy");
+      copy.append(make("strong","","Needs attention"),
+        make("span","",count+" document"+(count===1?"":"s")+" to organize"));
+      attention.append(copy,make("span","billy-hub-attention-count",String(count)));
+      attention.addEventListener("click",()=>navigate("Attention"));
+      attentionSlot.append(attention);
+    }
+    if(attentionSlot)attentionSlot.hidden=!attentionSlot.childElementCount;
   }
   function photoBlock(aircraft,hero=false){
     const photo=make("div",hero?"billy-fleet-hero-image":"billy-fleet-photo");
@@ -88,18 +111,6 @@
         grid.append(card);
       }
       root.append(grid);
-      const count=window.BillyOrganizer?.count?.()||0;
-      if(count>0){
-        const attention=make("button","billy-hub-attention");
-        attention.type="button";
-        attention.append(make("span","billy-hub-attention-icon","!"));
-        const copy=make("span","billy-hub-attention-copy");
-        copy.append(make("strong","","Needs attention"),
-          make("span","",count+" document"+(count===1?"":"s")+" to organize"));
-        attention.append(copy,make("span","billy-hub-attention-count",String(count)));
-        attention.addEventListener("click",()=>navigate("Attention"));
-        root.append(attention);
-      }
       return;
     }
     if(state.mode==="Attention"){

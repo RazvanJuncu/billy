@@ -230,7 +230,7 @@ test("Uploaded Documents defaults to a visual hub with no recent documents",()=>
   assert.match(css,/#simpleUploaded\[data-billy-doc-view="Home"\] #simpleDocumentsList/);
   assert.match(hub,/if\(state.mode==="Home"\)/);
   assert.match(hub,/if\(state.mode!=="Aircraft"\)return/);
-  assert.match(read("site/index.html"),/documents-hub\.js\?v=1\.3\.0/);
+  assert.match(read("site/index.html"),/documents-hub\.js\?v=1\.4\.0/);
 });
 test("Fleet is explicitly registered; no OCR-constructed aircraft cards",()=>{
   const hub=read("site/documents-hub.js");
@@ -261,5 +261,5 @@ test("Uploaded Documents has neutral headings and only one proper back chevron",
   assert.match(hub,/Airports:\["M20 10c0 5/);
   assert.match(hub,/Vendors:\["M20\.6 13\.1/);
   assert.match(hub,/All:\["M8 3h11/);
-  assert.match(read("site/index.html"),/documents-hub\.js\?v=1\.3\.0/);
+  assert.match(read("site/index.html"),/documents-hub\.js\?v=1\.4\.0/);
 });
