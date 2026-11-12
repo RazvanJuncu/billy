@@ -87,7 +87,7 @@
     exit.title="Close preview";exit.setAttribute("aria-label","Close preview");
     exit.addEventListener("click",close);header.append(heading,exit);
     const body=node("div","billy-preview-body");
-    const hasOriginal=record.state==="approved"&&Boolean(record.original_storage_key);
+    const hasOriginal=record.state==="approved"&&record.has_original===true;
     const note=node("p","billy-preview-source-note",hasOriginal
       ?"Original archived securely. Approved fields below."
       :"Saved data preview. Original PDF/photo is not archived.");
