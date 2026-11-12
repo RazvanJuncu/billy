@@ -16,12 +16,12 @@
     if(text!==undefined)n.textContent=String(text);
     return n;
   };
-  let entries=[],selectedId=null,previewUrl=null,version=0,loading=false,error="";
+  let entries=[],vendors=[],selectedId=null,previewUrl=null,version=0,loading=false,error="";
   const count=()=>entries.length;
   const selected=()=>entries.find(row=>row.id===selectedId)||entries[0]||null;
   const stopPreview=()=>{if(previewUrl){URL.revokeObjectURL(previewUrl);previewUrl=null;}};
   function clear(){
-    version++;entries=[];selectedId=null;error="";stopPreview();
+    version++;entries=[];vendors=[];selectedId=null;error="";stopPreview();
     window.BillyDocumentsIndex?.refresh?.();
   }
   async function load(){
@@ -35,6 +35,7 @@
       if(!response.ok)throw Error("Could not load organization inbox.");
       const result=await response.json();
       if(token!==version)return;
+      vendors=Array.isArray(result.vendors)?result.vendors.filter(v=>v&&v.id&&v.name):[];
       entries=Array.isArray(result.records)?result.records.filter(row=>
         row&&row.state==="approved"&&!row.parent_document_id&&Array.isArray(row.missing_fields)&&row.missing_fields.length):[];
       if(!entries.some(row=>row.id===selectedId))selectedId=entries[0]?.id||null;
@@ -107,12 +108,32 @@
       for(const [v,name] of options){
         const option=create("option","",name);option.value=v;input.append(option);
       }
+    }else if(key==="vendor"){
+      const source=record.reviewed_data||record.extracted_data||{};
+      const read=source.supplier_name||source.property_name||source.operator_name||"";
+      if(read)wrap.append(create("small","billy-org-read","Read from document: "+read));
+      input=create("select","billy-org-input");
+      input.append(create("option","","Select a vendor"));
+      for(const vendor of vendors){
+        const option=create("option","",vendor.name);option.value=vendor.id;input.append(option);
+      }
+      const createNew=create("option","","+ Create new vendor");
+      createNew.value="__new__";input.append(createNew);
+      const name=create("input","billy-org-input billy-org-new-vendor");
+      name.type="text";name.autocomplete="organization";name.maxLength=120;
+      name.placeholder="Canonical vendor name";name.hidden=true;
+      name.dataset.vendorNew="true";
+      input.addEventListener("change",()=>{
+        name.hidden=input.value!=="__new__";
+        if(!name.hidden)name.focus();
+      });
+      if(!vendors.length){input.value="__new__";name.hidden=false;}
+      wrap.append(input,name);
     }else{
       input=create("input","billy-org-input");
       input.type="text";input.autocomplete="off";
-      input.placeholder=key==="airport"?"ICAO (e.g. LRBS)":"Provider name";
-      input.maxLength=key==="airport"?4:120;
-      if(key==="airport")input.style.textTransform="uppercase";
+      input.placeholder="ICAO (e.g. LRBS)";
+      input.maxLength=4;input.style.textTransform="uppercase";
     }
     input.dataset.organizationField=key;
     input.id="billy-org-"+key;
@@ -122,12 +143,21 @@
   }
   async function save(record,form,button,status){
     if(!window.BillyAccounts?.active?.())return;
-    const values={};
+    const values={};let vendorChoice=null;
     for(const key of record.missing_fields){
       const input=form.querySelector('[data-organization-field="'+key+'"]');
       const value=String(input?.value||"").trim();
       if(!value){status.textContent="Complete "+titles[key].toLowerCase()+".";input?.focus();return;}
-      values[key]=key==="airport"?value.toUpperCase():value;
+      if(key==="vendor"){
+        if(value==="__new__"){
+          const name=form.querySelector("[data-vendor-new]");
+          const canonical=String(name?.value||"").trim();
+          if(canonical.length<2){
+            status.textContent="Enter the new vendor name.";name?.focus();return;
+          }
+          vendorChoice={new_name:canonical};
+        }else vendorChoice={vendor_id:value};
+      }else values[key]=key==="airport"?value.toUpperCase():value;
     }
     const api=window.BILLY_AUTH_CONFIG?.apiUrl;
     button.disabled=true;status.textContent="Saving organization...";
@@ -135,7 +165,8 @@
       const headers=await window.BillyAccounts.sessionHeaders();
       const response=await fetch(api+"/api/vision/organization",{
         method:"POST",headers:{"Content-Type":"application/json",...headers},
-        body:JSON.stringify({record_id:record.id,fields:values})
+        body:JSON.stringify({record_id:record.id,fields:values,
+          ...(vendorChoice?{vendor_choice:vendorChoice}:{})})
       });
       const result=await response.json();
       if(!response.ok||result.saved!==true)
@@ -143,6 +174,12 @@
       record.review_metadata={...(record.review_metadata||{}),
         organization_overrides:result.organization_overrides||values};
       window.BillyDocumentsIndex?.refreshOrganization?.(record.id,record.review_metadata.organization_overrides);
+      if(vendorChoice){
+        const src=record.reviewed_data||record.extracted_data||{};
+        const raw=src.supplier_name||src.property_name||src.operator_name||"";
+        window.BillyDocumentsIndex?.rememberVendorAlias?.(
+          raw,result.organization_overrides?.vendor,result.organization_overrides?.vendor_id);
+      }
       if(!result.missing_fields?.length){
         entries=entries.filter(row=>row.id!==record.id);
         selectedId=entries[0]?.id||null;
