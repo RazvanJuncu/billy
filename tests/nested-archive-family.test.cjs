@@ -83,6 +83,6 @@ test("After original archive, animated child emerges and scales into focus",()=>
   assert.match(flow,/window\.BillyNestedTransition\?\.play\?\.\(label\)/);
   assert.match(flow,/window\.BillyNestedTransition\?\.stop\?\.\(\)/);
   assert.match(flow,/transition\?1450:150/);
-  assert.match(read("site/index.html"),/nested-transition\.js\?v=1\.0\.0/);
+  assert.match(read("site/index.html"),/nested-transition\.js\?v=1\.1\.0/);
   assert.match(read("site/sw.js"),/nested-transition\.js/);
 });
