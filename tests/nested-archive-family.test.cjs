@@ -85,7 +85,7 @@ test("After original archive, the approved mitosis replaces the old handoff UI",
   assert.match(mitosis,/window\.BillyMitosis=\{mount,geometryAt\}/);
   const flow=read("site/nested-documents.js");
   assert.match(flow,/window\.BillyNestedTransition\?\.play\?\.\(label\)/);
-  assert.match(flow,/transition\?1450:150/);
+  assert.match(flow,/},150\)/);
   assert.match(flow,/window\.BillyNestedTransition\?\.reading\?\.\(\)/);
   assert.match(html,/nested-mitosis\.js\?v=0\.3\.0/);
   assert.match(html,/nested-mitosis\.css\?v=0\.3\.0/);
