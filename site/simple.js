@@ -531,8 +531,14 @@
     }
     $("simpleRunProcess").disabled = false;
     showScreen("review");
+    // The child has reached its real review state; only now remove the
+    // nested loading surface. Never reveal the generic loader in between.
+    window.BillyNested?.finishHandoff?.();
   });
-  window.addEventListener("billy:classification-needs-review",event => showManualClassification(event.detail));
+  window.addEventListener("billy:classification-needs-review",event => {
+    showManualClassification(event.detail);
+    window.BillyNested?.finishHandoff?.();
+  });
   window.addEventListener("billy:process-complete",() => {
     if(body.dataset.billyScreen==="process"){
       updateProcess();
@@ -540,6 +546,9 @@
       // Start it only after that request has released the busy lock.
       maybeStartProcessing();
     }
+    // Handles unsuccessful extraction as well as a manual classification
+    // fallback. The handoff may be closed only once the request completes.
+    window.BillyNested?.finishHandoff?.();
   });
   window.addEventListener("billy:engine-updated",() => {
     if (body.dataset.billyScreen !== "process") return;
