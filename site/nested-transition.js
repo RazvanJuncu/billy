@@ -1,7 +1,7 @@
 /* Billy nested transition: visual continuity from approved parent to attached child. */
 (() => {
   "use strict";
-  let layer=null;
+  let layer=null,titleNode=null,detailNode=null;
   function glyph(kind){
     const svg=document.createElementNS("http://www.w3.org/2000/svg","svg");
     svg.setAttribute("viewBox","0 0 24 24");
@@ -18,8 +18,17 @@
     return svg;
   }
   function stop(){
-    layer?.remove();layer=null;
+    layer?.remove();layer=null;titleNode=null;detailNode=null;
     document.body?.classList.remove("billy-nested-transition-open");
+  }
+  // After the one-time handoff animation finishes, keep a stable progress
+  // surface until the child has actually reached review or an error state.
+  // Never imply that processing finished just because the animation ended.
+  function reading(){
+    if(!layer)return false;
+    layer.classList.add("is-reading");
+    if(titleNode)titleNode.textContent="Reading nested document";
+    return true;
   }
   function play(label="Attached document"){
     stop();
@@ -36,9 +45,10 @@
     visual.append(parent,branch,child);
     const title=document.createElement("strong");title.textContent="Preparing nested document";
     const detail=document.createElement("p");detail.textContent=String(label||"Attached document").slice(0,65);
+    titleNode=title;detailNode=detail;
     card.append(visual,title,detail);layer.append(card);
     document.body.append(layer);document.body.classList.add("billy-nested-transition-open");
     return true;
   }
-  window.BillyNestedTransition={play,stop};
+  window.BillyNestedTransition={play,reading,stop,isActive:()=>Boolean(layer)};
 })();
