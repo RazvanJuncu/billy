@@ -1499,12 +1499,29 @@ async function extract(req,principal,authMs=0){
     console.error("Gemini invalid structured response",String(e).slice(0,180));
     return timedError("The AI engine returned an invalid structured document. Try another scan.",502);
   }
-  // Resolve suspicious date glyphs at source rather than asking an operator
-  // to fix obvious printed digits. Never downgrade an unresolved warning.
-  let dateVisualCorrections=[];
-  try{dateVisualCorrections=await visuallyRecheckDates(bytes,mime,fields,regions);}
-  catch(e){console.warn("Billy date visual check unavailable",String(e.message).slice(0,100));}
-  const externalChecks=await autoVerifyEntities(fields,regions,identityHints);
+  // Visual date rereading and public entity checks examine independent
+  // fields. Running them concurrently preserves every safety check while
+  // reducing their combined wall time to approximately the slower call.
+  const verificationStarted=performance.now();
+  const [dateVisualCorrections,externalChecks]=await Promise.all([
+    (async()=>{
+      const started=performance.now();
+      try{return await visuallyRecheckDates(bytes,mime,fields,regions,timing);}
+      catch(e){
+        console.warn("Billy date visual check unavailable",String(e.message).slice(0,100));
+        return [];
+      }finally{timing.mark("date_recheck_ms",started);}
+    })(),
+    (async()=>{
+      const started=performance.now();
+      try{
+        const result=await autoVerifyEntities(fields,regions,identityHints);
+        timing.count("entity_lookup_calls",result.attempts);
+        return result;
+      }finally{timing.mark("entity_verification_ms",started);}
+    })()
+  ]);
+  timing.mark("verification_wall_ms",verificationStarted);
   const validationStarted=performance.now();
   const warnings=validate(fields,type,regions,profile);
   const normalized=normalizeDocument(fields,type,profile);
