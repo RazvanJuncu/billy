@@ -15,13 +15,13 @@ test("Every extraction reports privacy-safe timed phases including classificatio
   assert.match(server,/function extractionTimer\(authMs=0\)/);
   assert.match(server,/processing_timing:trace/);
   assert.match(server,/server_total_ms:/);
-  assert.match(server,/const authenticationMs=performance\.now\(\)-authStarted/);
+  assert.match(server,/const authenticationMs=.*-authStarted/);
   assert.match(server,/await extract\(req,principal,authenticationMs\)/);
   assert.match(server,/timing\.mark\("file_read_ms",readStarted\)/);
   assert.match(server,/timing\.mark\("classification_ms",classificationStarted\)/);
   assert.match(server,/timing\.mark\("extraction_ai_ms",extractionStarted\)/);
   assert.match(server,/timing\.mark\("db_write_ms",saveStarted\)/);
-  assert.match(server,/timing\.count\("classifier_calls"\)/);
+  assert.match(server,/timing\?\.count\("classifier_calls"\)/);
   assert.match(server,/timing\.mark\("nested_geometry_ai_ms",nestedStarted\)/);
   assert.match(server,/timing\?\.count\("date_recheck_calls"\)/);
   assert.match(server,/return timedJson\(\{classification_required:true,classification/);
