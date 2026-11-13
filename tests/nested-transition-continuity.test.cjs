@@ -13,6 +13,7 @@ const html=read("site/index.html");
 
 function environment(){
   const listeners=new Map(),opened=[],timers=[];
+  const mitosis={mounts:[],plays:0,destroys:0};
   class Element{
     constructor(tag){
       this.tag=tag;this.children=[];this.attributes={};this.className="";
@@ -46,7 +47,14 @@ function environment(){
   const win={
     addEventListener:(event,fn)=>listeners.set(event,[...(listeners.get(event)||[]),fn]),
     dispatchEvent:event=>emit(event.type,event.detail),
-    BillyApp:{openFile:file=>opened.push(file)}
+    BillyApp:{openFile:file=>opened.push(file)},
+    BillyMitosis:{mount:(el,opts)=>{
+      mitosis.mounts.push({el,opts});
+      return {
+        play:()=>{mitosis.plays++;return true;},
+        destroy:()=>{mitosis.destroys++;}
+      };
+    }}
   };
   const file={name:"handling.jpg",type:"image/jpeg",size:8000};
   const image={naturalWidth:1000,naturalHeight:1200,decode:async()=>{}};
@@ -68,7 +76,7 @@ function environment(){
     expense_category:"handling",multiple_documents_visible:true,
     nested_documents:[{label:"Payment slip",x1:10,y1:20,x2:280,y2:440}]
   };
-  return {window:win,document,opened,timers,emit,file,classification};
+  return {window:win,document,opened,timers,emit,file,classification,mitosis};
 }
 
 test("Nested transition persists until the child has actually reached review",async()=>{
@@ -92,8 +100,14 @@ test("Nested transition persists until the child has actually reached review",as
   const layer=h.document.body.children.at(-1);
   assert.equal(layer.classList.contains("is-reading"),true);
   const text=layer.children[0].children.find(el=>el.tag==="strong");
-  assert.equal(text.textContent,"Reading nested document");
+  assert.equal(text.textContent,"Preparing nested document");
+  assert.equal(h.mitosis.mounts.length,1);
+  assert.equal(h.mitosis.plays,1);
+  assert.equal(h.mitosis.mounts[0].opts.loop,true);
+  assert.equal(h.mitosis.mounts[0].opts.duration,2800);
   assert.equal(nested.finishHandoff(),true);
+  assert.equal(h.mitosis.destroys,1,
+    "Completing review must stop animation frames and detach listeners");
   assert.equal(ui.isActive(),false);
   assert.equal(h.document.body.classList.contains("billy-nested-transition-open"),false);
   assert.equal(nested.isHandoff(child),false);
@@ -114,6 +128,8 @@ test("Reset or a different user-selected file clears the active handoff",async()
   nested.fileLoaded({name:"unrelated.jpg"});
   assert.equal(ui.isActive(),false);
   assert.equal(nested.active(),false);
+  assert.equal(h.mitosis.destroys,1,
+    "Selecting an unrelated file must cancel the active mitosis");
 });
 
 test("Generic orbit never replaces the active nested transition during extraction",()=>{
@@ -128,9 +144,17 @@ test("Generic orbit never replaces the active nested transition during extractio
   const manual=simpleCode.slice(simpleCode.indexOf('window.addEventListener("billy:classification-needs-review"'),
     simpleCode.indexOf('window.addEventListener("billy:process-complete"'));
   assert.match(manual,/window\.BillyNested\?\.finishHandoff\?\.\(\)/);
-  assert.match(css,/\.billy-nested-transition\.is-reading \.billy-nested-transition-child/);
-  assert.match(css,/@keyframes billy-nested-reading/);
-  assert.match(html,/nested-transition\.js\?v=1\.1\.0/);
+  assert.match(css,/\.billy-nested-transition-stage\{/);
+  assert.match(css,/\.billy-nested-transition-visual \.billy-mitosis\{/);
+  assert.match(css,/\.billy-nested-transition\{[^}]*background:#050607/);
+  assert.match(html,/nested-mitosis\.css\?v=0\.3\.0/);
+  assert.match(html,/nested-mitosis\.js\?v=0\.3\.0/);
+  assert.match(html,/nested-transition\.js\?v=1\.2\.0/);
+  assert.ok(html.indexOf("nested-mitosis.js")<html.indexOf("nested-transition.js"),
+    "Mitosis component must load before its production caller");
+  assert.match(transitionCode,/window\.BillyMitosis\.mount\(visual,\{loop:true,duration:2800\}\)/);
+  assert.doesNotMatch(transitionCode,/Reading nested document/);
+  assert.doesNotMatch(transitionCode,/billy-nested-transition-child|billy-nested-transition-path/);
   assert.match(html,/nested-documents\.js\?v=1\.3\.0/);
 });
 
