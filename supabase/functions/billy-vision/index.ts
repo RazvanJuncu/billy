@@ -1361,22 +1361,33 @@ async function visuallyRecheckDates(bytes,mime,fields,regions,timing?:Extraction
   const parsed=JSON.parse(message);
   return applyDateVisualReadings(fields,regions,requests,parsed.readings);
 }
-async function extract(req,principal){
-  if(!providerKey())return error("The AI engine is not configured on the server.",503);
+async function extract(req,principal,authMs=0){
+  const timing=extractionTimer(authMs);
+  const timedJson=(data:Record<string,unknown>,status=200)=>{
+    const trace=timing.snapshot();
+    // Safe for Supabase logs: timings and call counts only, no file/user data.
+    console.info("Billy extraction performance",JSON.stringify({
+      status,server_total_ms:trace.server_total_ms,stages_ms:trace.stages_ms,
+      calls:trace.calls
+    }));
+    return json({...data,processing_timing:trace},status);
+  };
+  const timedError=(detail:string,status:number)=>timedJson({detail},status);
+  if(!providerKey())return timedError("The AI engine is not configured on the server.",503);
   const contentType=req.headers.get("content-type")||"";
-  if(!contentType.startsWith("multipart/form-data"))return error("Upload a document using multipart form data.",400);
+  if(!contentType.startsWith("multipart/form-data"))return timedError("Upload a document using multipart form data.",400);
   // A 10 MiB file becomes larger when parsed. Refuse oversized bodies early.
   const declared=Number(req.headers.get("content-length")||0);
-  if(declared>MAX_BYTES+1024*1024)return error("Vision file must be 10 MiB or smaller.",413);
+  if(declared>MAX_BYTES+1024*1024)return timedError("Vision file must be 10 MiB or smaller.",413);
   const form=await req.formData(),file=form.get("file"),requestedType=form.get("document_type")||"auto";
-  if(!(file instanceof File))return error("Missing document.",400);
-  if(!["auto","invoice","fuel_release"].includes(requestedType))return error("Unsupported document type.",400);
-  if(!file.size||file.size>MAX_BYTES)return error("Vision file must be 10 MiB or smaller.",413);
+  if(!(file instanceof File))return timedError("Missing document.",400);
+  if(!["auto","invoice","fuel_release"].includes(requestedType))return timedError("Unsupported document type.",400);
+  if(!file.size||file.size>MAX_BYTES)return timedError("Vision file must be 10 MiB or smaller.",413);
   const bytes=new Uint8Array(await file.arrayBuffer());
-  let mime;try{mime=mimeOf(file.name,bytes);}catch(e){return error(e.message,400);}
+  let mime;try{mime=mimeOf(file.name,bytes);}catch(e){return timedError(e.message,400);}
   // Nested extraction never authorizes approval or arbitrary document linking.
   const nestedPrimary=form.get("nested_primary")==="true";
-  if(form.has("nested_primary")&&!nestedPrimary)return error("Invalid nested extraction mode.",400);
+  if(form.has("nested_primary")&&!nestedPrimary)return timedError("Invalid nested extraction mode.",400);
   let excludedNested=[];
   if(nestedPrimary){
     try{
@@ -1386,11 +1397,11 @@ async function extract(req,principal){
       if(!Array.isArray(parsed)||!parsed.length||parsed.length>3)throw Error("Invalid attached regions.");
       excludedNested=parsed.map(item=>validDocumentBox(item));
       if(excludedNested.some(item=>!item))throw Error("Invalid attached region.");
-    }catch{return error("Invalid attached region coordinates.",400);}
+    }catch{return timedError("Invalid attached region coordinates.",400);}
   }
   const parentId=form.get("parent_document_id");
   if(parentId!==null&&(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(parentId)||nestedPrimary))
-    return error("Invalid parent record.",400);
+    return timedError("Invalid parent record.",400);
   if(parentId){
     const parents=await database(principal,"GET","document_records",{
       select:"id,state,parent_document_id",id:"eq."+parentId,
@@ -1398,14 +1409,14 @@ async function extract(req,principal){
       created_by:"eq."+principal.user_id,limit:"1"
     });
     if(parents.length!==1||parents[0].state!=="approved"||parents[0].parent_document_id)
-      return error("Parent document must be approved and owned by your team account.",409);
+      return timedError("Parent document must be approved and owned by your team account.",409);
   }
   // Explicit overrides skip an extra classifier invocation.
   let classification;
   const override=form.get("profile_override");
   if(override!==null){
     try{classification=manualClassification(override,form.get("category_override")||"unknown");}
-    catch{return error("Invalid manual classification.",400);}
+    catch{return timedError("Invalid manual classification.",400);}
   }else if(requestedType!=="auto"){
     const profile=requestedType==="fuel_release"?"fuel_release":"generic_invoice";
     classification=manualClassification(profile,FORCED_CATEGORY[profile]||"unknown");
@@ -1414,19 +1425,19 @@ async function extract(req,principal){
     try{classification=await classifyDocument(bytes,mime,forceNestedCheck);}
     catch(e){
       console.error("Billy auto-detect",String(e).slice(0,140));
-      return error("Automatic classification failed. Retry or select a document profile manually.",502);
+      return timedError("Automatic classification failed. Retry or select a document profile manually.",502);
     }
     if(classification.status!=="confident"||classification.profile==="unknown"||
       (classification.expense_category==="unknown"&&!NON_EXPENSE_PROFILES.includes(classification.profile))||
       classification.multiple_documents_visible){
-      return json({classification_required:true,classification,
+      return timedJson({classification_required:true,classification,
         detail:classification.multiple_documents_visible?
           "Multiple physical documents detected. Review their boundaries before continuing.":
           "Classification uncertain. Choose the appropriate document profile to continue."});
     }
   }
   if(nestedPrimary&&!(override!==null&&classification.profile!=="unknown"))
-    return error("Primary nested document requires an identified profile.",400);
+    return timedError("Primary nested document requires an identified profile.",400);
   const profile=classification.profile;
   const type=profile==="fuel_release"?"fuel_release":"invoice";
   // SHA-256 binds a subsequent recheck to this upload only; no duplicate lookup.
@@ -1454,7 +1465,7 @@ async function extract(req,principal){
   });
   if(!google.ok){
     console.error("Gemini error status",google.status);
-    return error("The AI engine returned HTTP "+google.status+". Check provider billing, quota and model access.",502);
+    return timedError("The AI engine returned HTTP "+google.status+". Check provider billing, quota and model access.",502);
   }
   const response=await google.json();
   let fields,sourceDoc,regions,translation,identityHints=[];
@@ -1472,7 +1483,7 @@ async function extract(req,principal){
     translation=translated.metadata;
   }catch(e){
     console.error("Gemini invalid structured response",String(e).slice(0,180));
-    return error("The AI engine returned an invalid structured document. Try another scan.",502);
+    return timedError("The AI engine returned an invalid structured document. Try another scan.",502);
   }
   // Resolve suspicious date glyphs at source rather than asking an operator
   // to fix obvious printed digits. Never downgrade an unresolved warning.
@@ -1500,7 +1511,7 @@ async function extract(req,principal){
       ...(nestedPrimary?{nested_primary:true}:{})},
     model_name:MODEL,token_usage:usage
   });
-  return json({
+  return timedJson({
     schema_version:"0.7",engine:"Billy Vision",provider:"gemini",
     document_type:type,classification,model:MODEL,filename:safeFileName(file.name),
     parent_document_id:parentId||null,
@@ -2454,7 +2465,9 @@ Deno.serve(async req=>{
   if(!suffix)return error("Not found.",404);
   if(req.method!==(suffix==="/api/vision/document-map"||suffix==="/api/vision/extract"||suffix==="/api/vision/recheck"||suffix==="/api/vision/approve"||suffix==="/api/vision/organization"&&req.method==="POST"||suffix==="/api/vision/assistant"||suffix==="/api/vision/delete"||suffix==="/api/vision/original"&&req.method==="POST"?"POST":"GET"))return error("Method not allowed.",405);
   try{
+    const authStarted=performance.now();
     const principal=await trusted(req);
+    const authenticationMs=performance.now()-authStarted;
     if(!principal)return error("Sign in to an approved Billy team first.",401);
     if(suffix==="/api/vision/health")return json({
       status:"online",provider:"gemini",model:MODEL,configured:!!providerKey(),
@@ -2466,7 +2479,7 @@ Deno.serve(async req=>{
     if(suffix==="/api/vision/assistant")return await assistantAsk(req,principal);
     if(suffix==="/api/vision/assistant-source")return await assistantSource(req,principal);
     if(suffix==="/api/vision/document-map")return await mapPdfDocuments(req);
-    if(suffix==="/api/vision/extract")return await extract(req,principal);
+    if(suffix==="/api/vision/extract")return await extract(req,principal,authenticationMs);
     if(suffix==="/api/vision/recheck")return await recheck(req,principal);
     if(suffix==="/api/vision/approve")return await approve(req,principal);
     if(suffix==="/api/vision/delete")return await deleteRecord(req,principal);
