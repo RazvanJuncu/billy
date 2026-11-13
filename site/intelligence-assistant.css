@@ -226,3 +226,147 @@ body.auth-locked .billy-ai-dock{display:none!important}
   .billy-ai-launch{transition:none!important}
   .billy-ai-disclosure summary::after{transition:none!important}
 }
+
+/* Piggybank v0.3: financial analysis is a separate, evidence-backed HUD.
+   Blur only the app underneath. Keep the right-hand chat crisp and interactive. */
+.billy-ai-dock{z-index:1700}
+.billy-ai-orbit img{width:31px;height:31px}
+.billy-ai-head-mark{width:26px;height:26px}
+.piggybank-hud-backdrop{
+  position:fixed;inset:0;z-index:1600;
+  background:rgba(0,0,0,.35);
+  -webkit-backdrop-filter:blur(10px) brightness(.7);
+  backdrop-filter:blur(10px) brightness(.7);
+}
+.piggybank-hud-backdrop[hidden],.piggybank-hud[hidden]{display:none!important}
+.piggybank-hud{
+  position:fixed;z-index:1650;top:50%;left:calc((100vw - 500px)/2);
+  transform:translate(-50%,-50%);
+  display:flex;flex-direction:column;
+  width:min(790px,calc(100vw - 565px));height:min(760px,calc(100dvh - 76px));
+  min-width:0;overflow:hidden;color:#f1f1f1;
+  background:#1a1b1d;border:0!important;border-radius:17px!important;
+  box-shadow:0 24px 90px #000a;animation:piggybank-hud-appear .22s ease-out both;
+}
+@keyframes piggybank-hud-appear{
+  from{opacity:0;transform:translate(-50%,-48%) scale(.985)}
+  to{opacity:1;transform:translate(-50%,-50%) scale(1)}
+}
+.piggybank-hud-head{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:18px;
+  padding:24px 27px 19px;border-bottom:1px solid #303236;flex:none;
+}
+.piggybank-hud-heading{display:flex;flex-direction:column;gap:7px;min-width:0}
+.piggybank-hud-kicker{
+  color:#999da1;font-size:10px;font-weight:680;letter-spacing:.095em;
+}
+.piggybank-hud-heading h2{
+  color:#f5f5f5;font-size:clamp(24px,2.5vw,35px);
+  line-height:1.2;letter-spacing:-.05em;font-weight:680;margin:0;
+}
+.piggybank-hud-close{
+  display:grid;place-items:center;flex:none;width:35px;height:35px;padding:0!important;
+  border:0!important;border-radius:9px!important;color:#bfc1c3!important;
+  background:#2b2d30!important;cursor:pointer;
+}
+.piggybank-hud-close:hover{background:#393b3e!important;color:#fff!important}
+.piggybank-hud-close:focus-visible,.piggybank-hud-doc-open:focus-visible{
+  outline:2px solid #ededed;outline-offset:3px;
+}
+.piggybank-hud-close svg{width:17px;height:17px;stroke:currentColor;stroke-width:1.7;
+  fill:none;stroke-linecap:round;stroke-linejoin:round}
+.piggybank-hud-content{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;
+  display:flex;flex-direction:column;gap:22px;padding:23px 27px 30px;
+  scrollbar-color:#44464a transparent;scrollbar-width:thin}
+.piggybank-hud-request{
+  color:#f2f2f2;font-size:15px;font-weight:520;line-height:1.5;
+  overflow-wrap:anywhere;margin:0;
+}
+.piggybank-hud-scope{font-size:11px;line-height:1.4;color:#aaaeb0;margin:-14px 0 0}
+.piggybank-hud-totals{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+  gap:11px}
+.piggybank-hud-total{padding:21px 19px 19px;background:#25272a;border-radius:12px;
+  display:flex;flex-direction:column;gap:12px;min-width:0}
+.piggybank-hud-total-label{font-size:11px;color:#b0b2b4;letter-spacing:.005em}
+.piggybank-hud-total-amount{font-size:clamp(28px,3.2vw,39px);
+  line-height:1.12;letter-spacing:-.055em;font-weight:710;
+  font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.piggybank-hud-total-meta{font-size:11px;color:#a7aaac}
+.piggybank-hud-stats{display:flex;flex-wrap:wrap;gap:23px;
+  padding:0 1px;color:#b3b5b8;font-size:11px}
+.piggybank-hud-stats strong{color:#f0f0f0;font-variant-numeric:tabular-nums;font-weight:650}
+.piggybank-hud-section{display:flex;flex-direction:column;gap:13px;min-width:0}
+.piggybank-hud-section-head{display:flex;align-items:baseline;gap:12px;
+  justify-content:space-between}
+.piggybank-hud-section h3{
+  font-size:14px!important;margin:0!important;font-weight:650!important;
+  line-height:1.4;color:#f1f1f1;
+}
+.piggybank-hud-section-head span{font-size:11px;color:#aaadaf}
+.piggybank-hud-splits{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:17px}
+.piggybank-hud-breakdown{min-width:0;display:flex;flex-direction:column;gap:9px;
+  background:#222427;border-radius:12px;padding:16px}
+.piggybank-hud-breakdown h4{font-size:11px!important;font-weight:650!important;
+  color:#dedfe1;margin:0 0 4px!important}
+.piggybank-hud-breakdown-row{display:flex;flex-direction:column;gap:5px;padding:3px 0;
+  border-bottom:1px solid #343639}
+.piggybank-hud-breakdown-row:last-child{border:0}
+.piggybank-hud-breakdown-copy{display:flex;gap:9px;justify-content:space-between;
+  align-items:baseline;font-size:11px;color:#babdbf}
+.piggybank-hud-breakdown-copy span{min-width:0;overflow-wrap:anywhere}
+.piggybank-hud-breakdown-copy strong{flex:none;font-size:11px;font-weight:650;
+  color:#ededed;font-variant-numeric:tabular-nums}
+.piggybank-hud-progress{height:2px;background:#393b3f;border-radius:2px;overflow:hidden}
+.piggybank-hud-progress>span{display:block;height:100%;border-radius:2px;
+  background:#c6c8ca}
+.piggybank-hud-docs{display:flex;flex-direction:column;gap:0}
+.piggybank-hud-document{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(95px,.6fr) auto;
+  align-items:center;gap:16px;padding:13px 0;border-bottom:1px solid #303236}
+.piggybank-hud-document:last-child{border-bottom:0}
+.piggybank-hud-doc-info{display:flex;flex-direction:column;min-width:0;gap:4px}
+.piggybank-hud-doc-info strong{font-size:12px;font-weight:640;line-height:1.4;
+  color:#ebebeb;overflow-wrap:anywhere}
+.piggybank-hud-doc-info span{font-size:10px;line-height:1.45;color:#a6a9ac}
+.piggybank-hud-doc-price{font-size:12px;font-weight:680;color:#f1f1f1;
+  white-space:nowrap;font-variant-numeric:tabular-nums;text-align:right}
+.piggybank-hud-doc-open{
+  border:0!important;border-radius:8px!important;
+  background:#303235!important;color:#f2f2f2!important;cursor:pointer;
+  font-size:11px!important;min-height:32px;padding:6px 11px!important
+}
+.piggybank-hud-doc-open:hover{background:#3e4144!important}
+.piggybank-hud-empty{font-size:12px;line-height:1.6;color:#b4b6b9;margin:0}
+.piggybank-hud-notes{display:flex;flex-direction:column;gap:6px;
+  padding-top:16px;border-top:1px solid #333538}
+.piggybank-hud-notes p{font-size:10px;line-height:1.55;color:#a9abad;margin:0}
+.piggybank-hud-chips{display:flex;flex-wrap:wrap;gap:6px}
+.piggybank-hud-chip{padding:7px 10px;background:#2a2c2f;border-radius:7px;
+  color:#bcbec1;font-size:11px}
+.piggybank-hud-chat-link{
+  margin-top:9px;align-self:flex-start;padding:6px 10px!important;
+  border:0!important;border-radius:8px!important;color:#f1f1f1!important;
+  background:#303235!important;font-size:11px!important;cursor:pointer;
+}
+.piggybank-hud-chat-link:hover{background:#424448!important}
+@media(max-width:1050px){
+  /* At narrower widths a wide ledger and 430px chat cannot remain side by side.
+     HUD becomes a focused layer; closing returns to the still-open chat. */
+  .piggybank-hud{position:fixed;inset:0!important;top:0;left:0;transform:none!important;
+    width:100vw;height:100dvh;max-height:100dvh;border-radius:0!important;z-index:1800;
+    animation:none}
+  .piggybank-hud-head{padding:max(20px,env(safe-area-inset-top)) 22px 17px}
+  .piggybank-hud-content{padding:21px 22px max(28px,env(safe-area-inset-bottom))}
+}
+@media(max-width:600px){
+  .piggybank-hud-splits{grid-template-columns:minmax(0,1fr)}
+  .piggybank-hud-document{grid-template-columns:minmax(0,1fr) auto;gap:7px}
+  .piggybank-hud-doc-price{grid-column:2;grid-row:1}
+  .piggybank-hud-doc-open{grid-column:2;grid-row:2;justify-self:end}
+  .piggybank-hud-doc-info{grid-row:1/span 2}
+  .piggybank-hud-head{padding:18px 18px 16px}
+  .piggybank-hud-content{gap:19px;padding:19px 18px max(28px,env(safe-area-inset-bottom))}
+  .piggybank-hud-totals{grid-template-columns:1fr}
+}
+@media(prefers-reduced-motion:reduce){
+  .piggybank-hud{animation:none!important}
+}
