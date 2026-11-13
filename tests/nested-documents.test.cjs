@@ -94,6 +94,6 @@ test("Nest status and archived hierarchy remain visible without box selection",(
   assert.match(index,/billy-doc-nested-connector/);
   assert.match(preview,/Attached documents/);
   assert.match(storage,/billy:original-archived/);
-  assert.match(html,/nested-documents\.js\?v=1\.2\.0/);
+  assert.match(html,/nested-documents\.js\?v=1\.3\.0/);
   assert.doesNotMatch(html,/multi-documents\.js\?v=/);
 });
