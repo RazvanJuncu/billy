@@ -376,13 +376,17 @@ body[data-billy-screen="home"] .billy-preview-overlay{z-index:2100!important}
 .billy-ai-hud-notice{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
 .billy-ai-hud-notice p{font-size:12px;line-height:1.65;color:#e0e0e0;margin:0}
 
-/* Piggybank's occasional bottom-edge stroll: jump out of the circle,
-   toddle along the bottom of the viewport, turn around, and jump back in. */
+/* A short hop to the floor, a stroll, an instant turnaround and a hop home.
+   Translation, stepping and facing live on separate elements so turning never
+   interpolates through a flat, paper-thin silhouette. */
 .piggybank-stroll{
   position:absolute;left:10px;bottom:10px;
   width:34px;height:34px;pointer-events:none;z-index:1;
   visibility:hidden;opacity:0;
   --piggy-walk-distance:-210px;
+}
+.piggybank-stroll-step{
+  display:block;width:34px;height:34px;
 }
 .piggybank-stroll-mark{
   display:block;width:34px;height:34px;object-fit:contain;
@@ -390,54 +394,67 @@ body[data-billy-screen="home"] .billy-preview-overlay{z-index:2100!important}
 }
 .billy-ai-dock.is-strolling .billy-ai-orbit img{opacity:0}
 .billy-ai-dock.is-strolling .piggybank-stroll{
-  visibility:visible;animation:piggybank-bottom-stroll 4.3s linear both;
+  visibility:visible;animation:piggybank-bottom-stroll 3.6s linear both;
+}
+.billy-ai-dock.is-strolling .piggybank-stroll-step{
+  animation:piggybank-tiny-steps .3s ease-in-out infinite alternate;
 }
 .billy-ai-dock.is-strolling .piggybank-stroll-mark{
-  animation:piggybank-tiny-steps .32s ease-in-out infinite alternate;
+  animation:piggybank-instant-turn 3.6s steps(1,end) both;
 }
 @keyframes piggybank-bottom-stroll{
-  0%{opacity:0;transform:translate(0,0) rotate(0deg) scale(.83)}
-  5%{opacity:1;transform:translate(-4px,-16px) rotate(-9deg) scale(1)}
-  15%{opacity:1;transform:translate(-20px,24px) rotate(-2deg) scaleX(-1)}
-  25%{opacity:1;transform:translate(calc(var(--piggy-walk-distance)*.25),24px) rotate(-3deg) scaleX(-1)}
-  39%{opacity:1;transform:translate(calc(var(--piggy-walk-distance)*.7),24px) rotate(2deg) scaleX(-1)}
-  49%{opacity:1;transform:translate(var(--piggy-walk-distance),24px) rotate(0deg) scaleX(-1)}
-  57%{opacity:1;transform:translate(var(--piggy-walk-distance),24px) rotate(-5deg) scaleX(1)}
-  70%{opacity:1;transform:translate(calc(var(--piggy-walk-distance)*.7),24px) rotate(3deg)}
-  84%{opacity:1;transform:translate(-32px,24px) rotate(2deg)}
-  94%{opacity:1;transform:translate(-4px,-15px) rotate(10deg)}
-  100%{opacity:0;transform:translate(0,0) rotate(0deg) scale(.83)}
+  0%{opacity:0;transform:translate(0,0) scale(.92)}
+  2%{opacity:1;transform:translate(-2px,-11px) scale(1)}
+  8%{opacity:1;transform:translate(-16px,24px) scale(1)}
+  24%{opacity:1;transform:translate(calc(var(--piggy-walk-distance)*.36),24px)}
+  49%{opacity:1;transform:translate(var(--piggy-walk-distance),24px)}
+  53%{opacity:1;transform:translate(var(--piggy-walk-distance),24px)}
+  76%{opacity:1;transform:translate(calc(var(--piggy-walk-distance)*.4),24px)}
+  91%{opacity:1;transform:translate(-14px,24px)}
+  96%{opacity:1;transform:translate(-2px,-12px)}
+  100%{opacity:0;transform:translate(0,0) scale(.92)}
+}
+/* The 50% keyframe is an actual cut, not a 3D squash or a scaleX tween. */
+@keyframes piggybank-instant-turn{
+  0%,49.99%{transform:scaleX(-1)}
+  50%,100%{transform:scaleX(1)}
 }
 @keyframes piggybank-tiny-steps{
-  from{transform:translateY(0) rotate(-4deg)}
-  to{transform:translateY(-2px) rotate(4deg)}
+  from{transform:translateY(0) rotate(-3deg)}
+  to{transform:translateY(-2px) rotate(3deg)}
 }
 @media(max-width:640px){
   .piggybank-stroll{--piggy-walk-distance:-120px}
 }
 @media(prefers-reduced-motion:reduce){
   .piggybank-stroll,.billy-ai-dock.is-strolling .piggybank-stroll,
+  .billy-ai-dock.is-strolling .piggybank-stroll-step,
   .billy-ai-dock.is-strolling .piggybank-stroll-mark{
     animation:none!important;visibility:hidden!important;opacity:0!important;
   }
   .billy-ai-dock.is-strolling .billy-ai-orbit img{opacity:1!important}
 }
 
-/* Opening the Piggybank chat triggers one quick backwards somersault.
-   Animate only the icon; the button stays clickable and the panel opens at once. */
+/* A single uninterrupted 360° rotation + an independent parabolic hop.
+   The spin never restarts its easing between intermediate angle keyframes. */
 .billy-ai-dock.is-backflipping .billy-ai-launch{position:relative;z-index:2}
-.billy-ai-dock.is-backflipping .billy-ai-orbit{animation:none!important;perspective:320px}
+.billy-ai-dock.is-backflipping .billy-ai-orbit{
+  animation:piggybank-chat-hop 880ms ease-in-out both!important;
+}
 .billy-ai-dock.is-backflipping .billy-ai-orbit img{
-  animation:piggybank-chat-backflip 820ms cubic-bezier(.24,.7,.22,1) both!important;
-  transform-origin:50% 58%;backface-visibility:visible;
+  animation:piggybank-chat-backflip 880ms cubic-bezier(.28,.55,.22,1) both!important;
+  transform-origin:50% 50%;backface-visibility:visible;
+}
+@keyframes piggybank-chat-hop{
+  0%{transform:translateY(0) scale(1)}
+  45%{transform:translateY(-27px) scale(1.07)}
+  100%{transform:translateY(0) scale(1)}
 }
 @keyframes piggybank-chat-backflip{
-  0%{transform:translateY(0) rotate(0deg) scale(1)}
-  18%{transform:translateY(-11px) rotate(-55deg) scale(1.05)}
-  48%{transform:translateY(-24px) rotate(-180deg) scale(1.15)}
-  78%{transform:translateY(-12px) rotate(-300deg) scale(1.05)}
-  100%{transform:translateY(0) rotate(-360deg) scale(1)}
+  from{transform:rotate(0deg)}
+  to{transform:rotate(-360deg)}
 }
 @media(prefers-reduced-motion:reduce){
+  .billy-ai-dock.is-backflipping .billy-ai-orbit,
   .billy-ai-dock.is-backflipping .billy-ai-orbit img{animation:none!important}
 }
