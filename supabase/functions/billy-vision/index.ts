@@ -1092,7 +1092,24 @@ function parseClassificationResponse(raw){
     source:"gemini",classifier_model:MODEL
   };
 }
-async function classifyDocument(bytes,mime,forceNestedCheck=false){
+// Timings are numbers only; no user/document identifiers or extracted values.
+function extractionTimer(authMs=0){
+  const started=(typeof performance==="undefined"?Date.now():performance.now());
+  const stages={authentication_ms:Math.round(Math.max(0,authMs))};
+  const calls={};
+  return {
+    mark(name,began){
+      if(!Number.isFinite(began))return;
+      stages[name]=(stages[name]||0)+Math.round(Math.max(0,(typeof performance==="undefined"?Date.now():performance.now())-began));
+    },
+    count(name,value=1){calls[name]=(calls[name]||0)+value;},
+    snapshot(){return {version:1,model:MODEL,
+      server_total_ms:Math.round(Math.max(0,authMs)+(typeof performance==="undefined"?Date.now():performance.now())-started),
+      stages_ms:{...stages},calls:{...calls}};
+    }
+  };
+}
+async function classifyDocument(bytes,mime,forceNestedCheck=false,timing=null){
   const payload={
     contents:[{role:"user",parts:[{text:CLASSIFIER_PROMPT},
       {inline_data:{mime_type:mime,data:b64(bytes)}}]}],
@@ -1102,12 +1119,15 @@ async function classifyDocument(bytes,mime,forceNestedCheck=false){
   for(let attempt=0;attempt<2;attempt++){
     // Retry only malformed/unsupported responses, not HTTP errors.
     if(attempt)payload.generationConfig.maxOutputTokens=4096;
+    timing?.count("classifier_calls");
+    const classifierStarted=(typeof performance==="undefined"?Date.now():performance.now());
     const response=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+MODEL+":generateContent",{
       method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":providerKey()},
       body:JSON.stringify(payload),signal:AbortSignal.timeout(65000)
     });
     if(!response.ok)throw Error("Classifier returned HTTP "+response.status);
     const raw=await response.json();
+    timing?.mark("classifier_ai_ms",classifierStarted);
     try{
       const classification=parseClassificationResponse(raw);
       if(classification.multiple_documents_visible||forceNestedCheck){
@@ -1115,7 +1135,10 @@ async function classifyDocument(bytes,mime,forceNestedCheck=false){
            (forceNestedCheck||!classification.nested_documents.length||
              classification.status!=="confident"||classification.profile==="unknown")){
           try{
-            const focused=await clarifyNestedLayout(bytes,mime);
+            timing?.count("nested_geometry_calls");
+             const nestedStarted=(typeof performance==="undefined"?Date.now():performance.now());
+             const focused=await clarifyNestedLayout(bytes,mime);
+             timing?.mark("nested_geometry_ai_ms",nestedStarted);
             if(!classification.nested_documents.length)
               classification.nested_documents=focused.boxes;
             if(focused.boxes.length)classification.multiple_documents_visible=true;
@@ -1308,9 +1331,10 @@ function applyDateVisualReadings(fields,regions,requests,readings){
   }
   return updates;
 }
-async function visuallyRecheckDates(bytes,mime,fields,regions){
+async function visuallyRecheckDates(bytes,mime,fields,regions,timing=null){
   const requests=suspiciousDateFields(fields,regions);
   if(!requests.length)return [];
+  timing?.count("date_recheck_calls");
   const prompt="INDEPENDENT VISUAL DATE READ. Read only the printed DATE in each supplied field's image region. "+
     "Ignore the proposed value when reading digits; it may contain an OCR error. "+
     "Return the exact visible date, preserving separators and all digits. "+
@@ -1335,22 +1359,35 @@ async function visuallyRecheckDates(bytes,mime,fields,regions){
   const parsed=JSON.parse(message);
   return applyDateVisualReadings(fields,regions,requests,parsed.readings);
 }
-async function extract(req,principal){
-  if(!providerKey())return error("The AI engine is not configured on the server.",503);
+async function extract(req,principal,authMs=0){
+  const timing=extractionTimer(authMs);
+  const timedJson=(data,status=200)=>{
+    const trace=timing.snapshot();
+    // Safe for Supabase logs: timings and call counts only, no file/user data.
+    console.info("Billy extraction performance",JSON.stringify({
+      status,server_total_ms:trace.server_total_ms,stages_ms:trace.stages_ms,
+      calls:trace.calls
+    }));
+    return json({...data,processing_timing:trace},status);
+  };
+  const timedError=(detail,status)=>timedJson({detail},status);
+  if(!providerKey())return timedError("The AI engine is not configured on the server.",503);
   const contentType=req.headers.get("content-type")||"";
-  if(!contentType.startsWith("multipart/form-data"))return error("Upload a document using multipart form data.",400);
+  if(!contentType.startsWith("multipart/form-data"))return timedError("Upload a document using multipart form data.",400);
   // A 10 MiB file becomes larger when parsed. Refuse oversized bodies early.
   const declared=Number(req.headers.get("content-length")||0);
-  if(declared>MAX_BYTES+1024*1024)return error("Vision file must be 10 MiB or smaller.",413);
+  if(declared>MAX_BYTES+1024*1024)return timedError("Vision file must be 10 MiB or smaller.",413);
+  const readStarted=(typeof performance==="undefined"?Date.now():performance.now());
   const form=await req.formData(),file=form.get("file"),requestedType=form.get("document_type")||"auto";
-  if(!(file instanceof File))return error("Missing document.",400);
-  if(!["auto","invoice","fuel_release"].includes(requestedType))return error("Unsupported document type.",400);
-  if(!file.size||file.size>MAX_BYTES)return error("Vision file must be 10 MiB or smaller.",413);
+  if(!(file instanceof File))return timedError("Missing document.",400);
+  if(!["auto","invoice","fuel_release"].includes(requestedType))return timedError("Unsupported document type.",400);
+  if(!file.size||file.size>MAX_BYTES)return timedError("Vision file must be 10 MiB or smaller.",413);
   const bytes=new Uint8Array(await file.arrayBuffer());
-  let mime;try{mime=mimeOf(file.name,bytes);}catch(e){return error(e.message,400);}
+  let mime;try{mime=mimeOf(file.name,bytes);}catch(e){return timedError(e.message,400);}
+  timing.mark("file_read_ms",readStarted);
   // Nested extraction never authorizes approval or arbitrary document linking.
   const nestedPrimary=form.get("nested_primary")==="true";
-  if(form.has("nested_primary")&&!nestedPrimary)return error("Invalid nested extraction mode.",400);
+  if(form.has("nested_primary")&&!nestedPrimary)return timedError("Invalid nested extraction mode.",400);
   let excludedNested=[];
   if(nestedPrimary){
     try{
@@ -1360,51 +1397,58 @@ async function extract(req,principal){
       if(!Array.isArray(parsed)||!parsed.length||parsed.length>3)throw Error("Invalid attached regions.");
       excludedNested=parsed.map(item=>validDocumentBox(item));
       if(excludedNested.some(item=>!item))throw Error("Invalid attached region.");
-    }catch{return error("Invalid attached region coordinates.",400);}
+    }catch{return timedError("Invalid attached region coordinates.",400);}
   }
   const parentId=form.get("parent_document_id");
   if(parentId!==null&&(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(parentId)||nestedPrimary))
-    return error("Invalid parent record.",400);
+    return timedError("Invalid parent record.",400);
   if(parentId){
+    const started=(typeof performance==="undefined"?Date.now():performance.now());
     const parents=await database(principal,"GET","document_records",{
       select:"id,state,parent_document_id",id:"eq."+parentId,
       organization_id:"eq."+principal.organization_id,
       created_by:"eq."+principal.user_id,limit:"1"
     });
+    timing.mark("parent_check_ms",started);
     if(parents.length!==1||parents[0].state!=="approved"||parents[0].parent_document_id)
-      return error("Parent document must be approved and owned by your team account.",409);
+      return timedError("Parent document must be approved and owned by your team account.",409);
   }
   // Explicit overrides skip an extra classifier invocation.
+  const classificationStarted=(typeof performance==="undefined"?Date.now():performance.now());
   let classification;
   const override=form.get("profile_override");
   if(override!==null){
     try{classification=manualClassification(override,form.get("category_override")||"unknown");}
-    catch{return error("Invalid manual classification.",400);}
+    catch{return timedError("Invalid manual classification.",400);}
   }else if(requestedType!=="auto"){
     const profile=requestedType==="fuel_release"?"fuel_release":"generic_invoice";
     classification=manualClassification(profile,FORCED_CATEGORY[profile]||"unknown");
   }else{
     const forceNestedCheck=form.get("layout_overlay_hint")==="true"&&mime.startsWith("image/");
-    try{classification=await classifyDocument(bytes,mime,forceNestedCheck);}
+    try{classification=await classifyDocument(bytes,mime,forceNestedCheck,timing);}
     catch(e){
       console.error("Billy auto-detect",String(e).slice(0,140));
-      return error("Automatic classification failed. Retry or select a document profile manually.",502);
+      return timedError("Automatic classification failed. Retry or select a document profile manually.",502);
     }
+    timing.mark("classification_ms",classificationStarted);
     if(classification.status!=="confident"||classification.profile==="unknown"||
       (classification.expense_category==="unknown"&&!NON_EXPENSE_PROFILES.includes(classification.profile))||
       classification.multiple_documents_visible){
-      return json({classification_required:true,classification,
+      return timedJson({classification_required:true,classification,
         detail:classification.multiple_documents_visible?
           "Multiple physical documents detected. Review their boundaries before continuing.":
           "Classification uncertain. Choose the appropriate document profile to continue."});
     }
   }
+  if(override!==null||requestedType!=="auto")timing.mark("classification_ms",classificationStarted);
   if(nestedPrimary&&!(override!==null&&classification.profile!=="unknown"))
-    return error("Primary nested document requires an identified profile.",400);
+    return timedError("Primary nested document requires an identified profile.",400);
   const profile=classification.profile;
   const type=profile==="fuel_release"?"fuel_release":"invoice";
   // SHA-256 binds a subsequent recheck to this upload only; no duplicate lookup.
+  const hashStarted=(typeof performance==="undefined"?Date.now():performance.now());
   const hash=await sha256(bytes);
+  timing.mark("hash_ms",hashStarted);
   const payload={
     contents:[{role:"user",parts:[
       {text:INSTRUCTIONS+" Extraction profile: "+profile+". Expense category: "+
@@ -1422,15 +1466,19 @@ async function extract(req,principal){
       maxOutputTokens:16384},
     store:false
   };
+  timing.count("extraction_calls");
+  const extractionStarted=(typeof performance==="undefined"?Date.now():performance.now());
   const google=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+MODEL+":generateContent",{
     method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":providerKey()},
     body:JSON.stringify(payload),signal:AbortSignal.timeout(115000)
   });
   if(!google.ok){
     console.error("Gemini error status",google.status);
-    return error("The AI engine returned HTTP "+google.status+". Check provider billing, quota and model access.",502);
+    return timedError("The AI engine returned HTTP "+google.status+". Check provider billing, quota and model access.",502);
   }
   const response=await google.json();
+  timing.mark("extraction_ai_ms",extractionStarted);
+  const parsingStarted=(typeof performance==="undefined"?Date.now():performance.now());
   let fields,sourceDoc,regions,translation,identityHints=[];
   try{
     const message=(response.candidates?.[0]?.content?.parts||[]).filter(p=>!p.thought).map(p=>p.text||"").join("");
@@ -1444,24 +1492,45 @@ async function extract(req,principal){
     const translated=applyEnglishTranslations(sourceDoc,type,_language,_translations);
     fields=cleanDoc(translated.document,type);
     translation=translated.metadata;
+    timing.mark("parsing_ms",parsingStarted);
   }catch(e){
     console.error("Gemini invalid structured response",String(e).slice(0,180));
-    return error("The AI engine returned an invalid structured document. Try another scan.",502);
+    return timedError("The AI engine returned an invalid structured document. Try another scan.",502);
   }
-  // Resolve suspicious date glyphs at source rather than asking an operator
-  // to fix obvious printed digits. Never downgrade an unresolved warning.
-  let dateVisualCorrections=[];
-  try{dateVisualCorrections=await visuallyRecheckDates(bytes,mime,fields,regions);}
-  catch(e){console.warn("Billy date visual check unavailable",String(e.message).slice(0,100));}
-  const externalChecks=await autoVerifyEntities(fields,regions,identityHints);
+  // Visual date rereading and public entity checks examine independent
+  // fields. Running them concurrently preserves every safety check while
+  // reducing their combined wall time to approximately the slower call.
+  const verificationStarted=(typeof performance==="undefined"?Date.now():performance.now());
+  const [dateVisualCorrections,externalChecks]=await Promise.all([
+    (async()=>{
+      const started=(typeof performance==="undefined"?Date.now():performance.now());
+      try{return await visuallyRecheckDates(bytes,mime,fields,regions,timing);}
+      catch(e){
+        console.warn("Billy date visual check unavailable",String(e.message).slice(0,100));
+        return [];
+      }finally{timing.mark("date_recheck_ms",started);}
+    })(),
+    (async()=>{
+      const started=(typeof performance==="undefined"?Date.now():performance.now());
+      try{
+        const result=await autoVerifyEntities(fields,regions,identityHints);
+        timing.count("entity_lookup_calls",result.attempts);
+        return result;
+      }finally{timing.mark("entity_verification_ms",started);}
+    })()
+  ]);
+  timing.mark("verification_wall_ms",verificationStarted);
+  const validationStarted=(typeof performance==="undefined"?Date.now():performance.now());
   const warnings=validate(fields,type,regions,profile);
   const normalized=normalizeDocument(fields,type,profile);
+  timing.mark("validation_ms",validationStarted);
   const usage={
     input_tokens:response.usageMetadata?.promptTokenCount??null,
     output_tokens:response.usageMetadata?.candidatesTokenCount??null,
     total_tokens:response.usageMetadata?.totalTokenCount??null
   };
   const id=extractId();
+  const saveStarted=(typeof performance==="undefined"?Date.now():performance.now());
   await database(principal,"POST","document_records",{},{
     id,organization_id:principal.organization_id,created_by:principal.user_id,
     document_type:type,source_sha256:hash,state:"extracted",
@@ -1474,7 +1543,8 @@ async function extract(req,principal){
       ...(nestedPrimary?{nested_primary:true}:{})},
     model_name:MODEL,token_usage:usage
   });
-  return json({
+  timing.mark("db_write_ms",saveStarted);
+  return timedJson({
     schema_version:"0.7",engine:"Billy Vision",provider:"gemini",
     document_type:type,classification,model:MODEL,filename:safeFileName(file.name),
     parent_document_id:parentId||null,
@@ -2428,7 +2498,9 @@ Deno.serve(async req=>{
   if(!suffix)return error("Not found.",404);
   if(req.method!==(suffix==="/api/vision/document-map"||suffix==="/api/vision/extract"||suffix==="/api/vision/recheck"||suffix==="/api/vision/approve"||suffix==="/api/vision/organization"&&req.method==="POST"||suffix==="/api/vision/assistant"||suffix==="/api/vision/delete"||suffix==="/api/vision/original"&&req.method==="POST"?"POST":"GET"))return error("Method not allowed.",405);
   try{
+    const authStarted=(typeof performance==="undefined"?Date.now():performance.now());
     const principal=await trusted(req);
+    const authenticationMs=(typeof performance==="undefined"?Date.now():performance.now())-authStarted;
     if(!principal)return error("Sign in to an approved Billy team first.",401);
     if(suffix==="/api/vision/health")return json({
       status:"online",provider:"gemini",model:MODEL,configured:!!providerKey(),
@@ -2440,7 +2512,7 @@ Deno.serve(async req=>{
     if(suffix==="/api/vision/assistant")return await assistantAsk(req,principal);
     if(suffix==="/api/vision/assistant-source")return await assistantSource(req,principal);
     if(suffix==="/api/vision/document-map")return await mapPdfDocuments(req);
-    if(suffix==="/api/vision/extract")return await extract(req,principal);
+    if(suffix==="/api/vision/extract")return await extract(req,principal,authenticationMs);
     if(suffix==="/api/vision/recheck")return await recheck(req,principal);
     if(suffix==="/api/vision/approve")return await approve(req,principal);
     if(suffix==="/api/vision/delete")return await deleteRecord(req,principal);

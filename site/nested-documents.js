@@ -116,7 +116,7 @@
       if(typeof window.BillyApp?.openFile!=="function"){finishHandoff();return;}
       try{window.BillyApp.openFile(next);}
       catch(error){finishHandoff();throw error;}
-    },transition?1450:150);
+    },150); // No 1.45s idle wait: the mitosis keeps looping during real AI work.
   }
   window.addEventListener("billy:document-approved",advance);
   window.addEventListener("billy:original-archived",archived);

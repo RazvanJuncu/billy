@@ -48,7 +48,7 @@ test("Cross-document overlap is not created from adjacent rectangles",()=>{
   assert.equal(ctx.infer([parent,box(50,70,1000,980)]).length,0);
 });
 test("A visual overlay hint triggers a focused Gemini check and never silently ignores the child",()=>{
-  assert.match(edge,/async function classifyDocument\(bytes,mime,forceNestedCheck=false\)/);
+  assert.match(edge,/async function classifyDocument\(bytes,mime,forceNestedCheck=false,timing=null\)/);
   assert.match(edge,/forceNestedCheck\|\|!classification\.nested_documents\.length/);
   assert.match(edge,/classification\.nested_documents=focused\.boxes/);
   assert.match(edge,/if\(focused\.boxes\.length\)classification\.multiple_documents_visible=true/);

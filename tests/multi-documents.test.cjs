@@ -47,7 +47,7 @@ test("separation stays on-device with explicit human crop confirmation",()=>{
   assert.match(client,/Next separated document/);
   assert.match(client,/billy:document-approved/);
   assert.match(read("site/index.html"),/Full photo \/ multiple docs/);
-  assert.match(read("site/index.html"),/nested-documents\.js\?v=1\.3\.0/);
+  assert.match(read("site/index.html"),/nested-documents\.js\?v=1\.4\.0/);
   assert.match(read("site/sw.js"),/multi-documents\.css/);
 });
 

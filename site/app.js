@@ -323,6 +323,7 @@ function renderResult() {
 
 async function scanInvoice() {
   if (!state.file || state.busy) return;
+  const clickedAt=performance.now();
   if (!["auto","invoice","fuel_release"].includes($("documentType").value)) {
     showNotification("Choose a document to process.",true);
     return;
@@ -354,10 +355,14 @@ async function scanInvoice() {
     }
   }
   state.busy = true;
-  const processingStarted = Date.now();
+  const processingStarted = performance.now();
+  const preflightMs=processingStarted-clickedAt;
   let headersReady = processingStarted;
   let apiReturned = processingStarted;
   let jsonParsed = processingStarted;
+  let reviewReady = jsonParsed;
+  let serverTiming = null;
+  let outcome = "error";
   // An approved parent can hand off to a nested child with its own visible
   // reading state. Do not layer the generic orbit loader behind that overlay.
   const nestedHandoff=Boolean(window.BillyNested?.isHandoff?.(state.file));
@@ -378,13 +383,15 @@ async function scanInvoice() {
   window.BillyPdfSeparator?.prepare?.(form,currentFile);
   try {
     const headers = await window.BillyAccounts.sessionHeaders();
-    headersReady = Date.now();
+    headersReady = performance.now();
     const response = await fetch(state.api + "/api/vision/extract", { method: "POST", body: form, headers });
-    apiReturned = Date.now();
+    apiReturned = performance.now();
     const responseBody = await response.json();
-    jsonParsed = Date.now();
+    jsonParsed = performance.now();
+    serverTiming = responseBody?.processing_timing || null;
     if (!response.ok) throw new Error(responseBody.detail || ("HTTP " + response.status));
     if (responseBody.classification_required) {
+      outcome = "classification";
       if (state.file !== currentFile) return;
       state.lastClassification = responseBody.classification || null;
       if(responseBody.classification?.multiple_documents_visible){
@@ -428,23 +435,27 @@ async function scanInvoice() {
     state.tab = "document";
     renderResult();
     if (state.file !== currentFile) return;
-    const reviewReady = Date.now();
-    // Local diagnostics only: no document content, filenames or tokens are logged.
-    // The request duration includes upload, authentication, AI and database writes;
-    // it cannot attribute that duration to Gemini alone.
-    state.lastProcessingTiming = {
-      auth_ms: headersReady - processingStarted,
-      request_ms: apiReturned - headersReady,
-      parse_ms: jsonParsed - apiReturned,
-      review_ms: reviewReady - jsonParsed,
-      total_ms: reviewReady - processingStarted
-    };
-    console.info("BillyDPI extraction timing (ms)",state.lastProcessingTiming);
+    reviewReady = performance.now();
+    outcome = "extracted";
     window.dispatchEvent(new CustomEvent("billy:ocr-ready", {detail:{model:responseBody.model,classification:responseBody.classification||null}}));
     showNotification(""); // Review screen and colored fields already communicate the next action.
   } catch (error) {
     showNotification("Could not scan this document: " + (error.message || "Connection error"), true);
   } finally {
+    const finished=performance.now();
+    state.lastProcessingTiming = {
+      preflight_ms:Math.round(Math.max(0,preflightMs)),
+      auth_ms:Math.round(Math.max(0,headersReady-processingStarted)),
+      request_ms:Math.round(Math.max(0,apiReturned-headersReady)),
+      parse_ms:Math.round(Math.max(0,jsonParsed-apiReturned)),
+      review_ms:outcome==="extracted"?Math.round(Math.max(0,reviewReady-jsonParsed)):0,
+      total_ms:Math.round(Math.max(0,finished-clickedAt))
+    };
+    // Opt-in ?perf=1 renders an on-screen breakdown; regular UI remains minimal.
+    // No source document, filename, extracted text, or account identifier is kept.
+    window.BillyPerformance?.record?.({
+      outcome,client:state.lastProcessingTiming,server:serverTiming
+    });
     state.busy = false;
     if(!nestedHandoff)window.BillyLoader?.endWork("ai");
     updateScanButton();

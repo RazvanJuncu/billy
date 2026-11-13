@@ -5,7 +5,7 @@ const path=require("node:path");
 const vm=require("node:vm");
 const edge=fs.readFileSync(path.join(__dirname,"../supabase/functions/billy-vision/index.ts"),"utf8");
 const begin=edge.indexOf("const DATE_VISUAL_SCHEMA=");
-const end=edge.indexOf("async function extract(req,principal){",begin);
+const end=edge.indexOf("async function extract(req,principal,authMs=0){",begin);
 const canonical=edge.slice(edge.indexOf("function canonicalDate("),edge.indexOf("function canonicalRegistration(",edge.indexOf("function canonicalDate(")));
 assert.ok(begin>0&&end>begin);
 const context={Math,Number,Set,Map,JSON,Date,AbortSignal,
@@ -61,10 +61,10 @@ test("Independent model reread is bounded, image-grounded, and no unrelated fiel
   assert.equal(source.issue_date,"09.11.2026");assert.equal(source.grand_total,"367.20");
 });
 test("Extraction persists reconciled dates and auditable corrections, not guessed current year",()=>{
-  const i=edge.indexOf("let dateVisualCorrections=[];");
+  const i=edge.indexOf("const [dateVisualCorrections,externalChecks]=await Promise.all([");
   const j=edge.indexOf("const warnings=validate(fields,type,regions,profile);",i);
   assert.ok(i>0&&j>i);
-  assert.match(edge.slice(i,j),/visuallyRecheckDates\(bytes,mime,fields,regions\)/);
+  assert.match(edge.slice(i,j),/visuallyRecheckDates\(bytes,mime,fields,regions,timing\)/);
   assert.match(edge,/date_visual_corrections:dateVisualCorrections/);
   assert.doesNotMatch(edge.slice(begin,end),/new Date\(\)/);
 });
