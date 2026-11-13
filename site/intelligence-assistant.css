@@ -398,11 +398,11 @@ body[data-billy-screen="home"] .billy-preview-overlay{z-index:2100!important}
 @keyframes piggybank-bottom-stroll{
   0%{opacity:0;transform:translate(0,0) rotate(0deg) scale(.83)}
   5%{opacity:1;transform:translate(-4px,-16px) rotate(-9deg) scale(1)}
-  15%{opacity:1;transform:translate(-20px,24px) rotate(-2deg)}
-  25%{opacity:1;transform:translate(calc(var(--piggy-walk-distance)*.25),24px) rotate(-3deg)}
-  39%{opacity:1;transform:translate(calc(var(--piggy-walk-distance)*.7),24px) rotate(2deg)}
-  49%{opacity:1;transform:translate(var(--piggy-walk-distance),24px) rotate(0deg)}
-  57%{opacity:1;transform:translate(var(--piggy-walk-distance),24px) rotate(-5deg)}
+  15%{opacity:1;transform:translate(-20px,24px) rotate(-2deg) scaleX(-1)}
+  25%{opacity:1;transform:translate(calc(var(--piggy-walk-distance)*.25),24px) rotate(-3deg) scaleX(-1)}
+  39%{opacity:1;transform:translate(calc(var(--piggy-walk-distance)*.7),24px) rotate(2deg) scaleX(-1)}
+  49%{opacity:1;transform:translate(var(--piggy-walk-distance),24px) rotate(0deg) scaleX(-1)}
+  57%{opacity:1;transform:translate(var(--piggy-walk-distance),24px) rotate(-5deg) scaleX(1)}
   70%{opacity:1;transform:translate(calc(var(--piggy-walk-distance)*.7),24px) rotate(3deg)}
   84%{opacity:1;transform:translate(-32px,24px) rotate(2deg)}
   94%{opacity:1;transform:translate(-4px,-15px) rotate(10deg)}
