@@ -22,7 +22,7 @@ test("Every extraction reports privacy-safe timed phases including classificatio
   assert.match(server,/timing\.mark\("extraction_ai_ms",extractionStarted\)/);
   assert.match(server,/timing\.mark\("db_write_ms",saveStarted\)/);
   assert.match(server,/timing\?\.count\("classifier_calls"\)/);
-  assert.match(server,/timing\.mark\("nested_geometry_ai_ms",nestedStarted\)/);
+  assert.match(server,/timing\?\.mark\("nested_geometry_ai_ms",nestedStarted\)/);
   assert.match(server,/timing\?\.count\("date_recheck_calls"\)/);
   assert.match(server,/return timedJson\(\{classification_required:true,classification/);
   assert.match(server,/return timedJson\(\{\s*schema_version:"0\.7"/);
