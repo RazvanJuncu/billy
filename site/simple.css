@@ -1121,16 +1121,16 @@ body[data-billy-screen="uploaded"] #simpleUploaded .billy-hub-symbol{
 .billy-preview-nested-open{width:100%;text-align:left;border:1px solid #393d40!important;background:#272a2d!important;color:#eee!important;border-radius:9px!important;padding:11px 13px!important;cursor:pointer;font-size:13px!important}
 
 /* One shared surface for parent and physically attached evidence. */
-.billy-doc-family{display:flex;flex-direction:column;gap:0;padding:8px 10px 10px;border-radius:13px;background:#292c2f;border:1px solid #383c40;min-width:0}
+.billy-doc-family{display:flex;flex-direction:column;gap:0;padding:8px 10px 10px;border-radius:13px;background:#191b1d;border:0;min-width:0}
 .billy-doc-family-parent{display:flex;min-width:0}
 .billy-doc-family-parent>.simple-document-row,.billy-doc-family-parent>.simple-document-item{width:100%;min-width:0}
-.billy-doc-family .simple-document-item{background:#222528!important}
+.billy-doc-family .simple-document-item{background:transparent!important}
 .billy-doc-family-children{display:flex;flex-direction:column;gap:5px;margin-left:20px;padding-left:13px;border-left:1px solid #70757a}
 .billy-doc-family-child{display:flex;align-items:center;gap:8px;min-width:0;position:relative}
 .billy-doc-nested-connector{position:absolute;width:16px;height:16px;left:-14px;top:16px;border-left:0;border-bottom:1.5px solid #a1a8ae;border-bottom-left-radius:7px;pointer-events:none}
 .billy-doc-nested-connector::after{content:"";position:absolute;right:-1px;bottom:-3.3px;width:5px;height:5px;border-top:1.5px solid #a1a8ae;border-right:1.5px solid #a1a8ae;transform:rotate(45deg)}
 .billy-doc-family-child>.simple-document-row,.billy-doc-family-child>.simple-document-item{width:100%;min-width:0}
-.billy-doc-family-child .simple-document-item{font-size:12px!important;background:#242629!important}
+.billy-doc-family-child .simple-document-item{font-size:12px!important;background:transparent!important}
 .billy-doc-family-child .billy-service-icon{color:#e6e6e6!important}
 .billy-doc-family-missing{font-size:12px;color:#bfc3c7;padding:10px 8px}
 .billy-doc-family .billy-nested-child{padding-left:12px!important;border-left:0!important}
@@ -1171,8 +1171,8 @@ body[data-billy-screen="uploaded"] #simpleUploaded .billy-hub-symbol{
   .billy-nested-transition-visual{width:min(300px,100%)}
 }
 
-/* Quiet nested archive: one shared grey surface; never nested cards. */
-#simpleUploaded .billy-doc-family{background:#242629!important;border:0!important;border-radius:12px!important;padding:6px 10px!important;box-shadow:none!important;gap:0!important}
+/* Quiet nested archive: same #191b1d surface as standalone rows, with only nesting indentation. */
+#simpleUploaded .billy-doc-family{background:#191b1d!important;border:0!important;border-radius:12px!important;padding:6px 10px!important;box-shadow:none!important;gap:0!important}
 #simpleUploaded .billy-doc-family-parent,#simpleUploaded .billy-doc-family-child{min-width:0;width:100%;display:flex;align-items:center;background:transparent!important}
 #simpleUploaded .billy-doc-family .simple-document-row{width:100%;min-width:0;display:flex;align-items:center;gap:0!important;background:transparent!important}
 #simpleUploaded .billy-doc-family .simple-document-item{flex:1;min-width:0;width:100%;display:flex;align-items:center;gap:12px;padding:13px 12px!important;min-height:57px!important;border:0!important;border-radius:8px!important;background:transparent!important;box-shadow:none!important}
@@ -1190,16 +1190,22 @@ body[data-billy-screen="uploaded"] #simpleUploaded .billy-hub-symbol{
 #simpleUploaded .billy-doc-nested-connector::after{content:"";position:absolute;right:-1px;bottom:-3px;width:5px;height:5px;border-top:1px solid #81878b;border-right:1px solid #81878b;transform:rotate(45deg)}
 @media(max-width:720px){#simpleUploaded .billy-doc-family{padding:4px 5px!important}#simpleUploaded .billy-doc-family-children{padding-left:22px!important}#simpleUploaded .billy-doc-family .simple-document-status{font-size:10px!important}}
 
-/* Nested archive/preview polish - one surface, one branch, no inner field borders. */
-#simpleUploaded .billy-doc-family,
+/* Nested archive/preview polish: the family shell matches standalone
+   document rows. Nested descendants, including hover/focus, are transparent
+   rather than introducing another grey surface over the shell. */
+#simpleUploaded .billy-doc-family{
+  background:#191b1d!important;
+  border:0!important;
+  box-shadow:none!important;
+}
 #simpleUploaded .billy-doc-family-parent,
 #simpleUploaded .billy-doc-family-child,
 #simpleUploaded .billy-doc-family-children,
 #simpleUploaded .billy-doc-family .simple-document-row,
 #simpleUploaded .billy-doc-family .simple-document-item,
 #simpleUploaded .billy-doc-family .simple-document-item:hover,
-#simpleUploaded .billy-doc-family .simple-document-item:focus-visible {
-  background:#242629!important;
+#simpleUploaded .billy-doc-family .simple-document-item:focus-visible{
+  background:transparent!important;
   box-shadow:none!important;
 }
 #simpleUploaded .billy-doc-family .simple-document-item:focus-visible{
