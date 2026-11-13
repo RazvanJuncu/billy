@@ -9,8 +9,7 @@ const css=read("site/nested-mitosis.css");
 const html=read("site/nested-mitosis-preview.html");
 
 function environment(prefersReducedMotion=false){
-  const timers=new Map();
-  let next=0,now=0;
+  const frames=new Map();let id=0,now=0;
   class Element{
     constructor(tag){
       this.tag=tag;this.attributes={};this.children=[];this.style={values:{},
@@ -23,7 +22,7 @@ function environment(prefersReducedMotion=false){
       };
       this.offsetWidth=520;
     }
-    setAttribute(k,v){this.attributes[k]=v}
+    setAttribute(key,value){this.attributes[key]=String(value)}
     append(...nodes){this.children.push(...nodes)}
     replaceChildren(...nodes){this.children=nodes}
   }
@@ -31,148 +30,212 @@ function environment(prefersReducedMotion=false){
     matches:prefersReducedMotion,handlers:new Set(),
     addEventListener:(event,fn)=>{if(event==="change")mql.handlers.add(fn)},
     removeEventListener:(event,fn)=>{if(event==="change")mql.handlers.delete(fn)},
-    change:(value)=>{mql.matches=value;for(const handler of mql.handlers)handler()}
+    change(value){this.matches=value;for(const fn of this.handlers)fn()}
   };
-  const ctx={
-    document:{createElementNS:(_,tag)=>new Element(tag)},
-    window:{matchMedia:()=>mql},
-    setTimeout:(fn,delay)=>{const id=++next;timers.set(id,{fn,at:now+delay});return id},
-    clearTimeout:id=>timers.delete(id),Number,Boolean,Object,TypeError
+  const docListeners=new Map();
+  const document={
+    visibilityState:"visible",
+    createElementNS:(_,tag)=>new Element(tag),
+    addEventListener:(type,fn)=>{const handlers=docListeners.get(type)||[];handlers.push(fn);docListeners.set(type,handlers)},
+    removeEventListener:(type,fn)=>{docListeners.set(type,(docListeners.get(type)||[]).filter(f=>f!==fn))},
+    dispatch:(type)=>{for(const fn of docListeners.get(type)||[])fn()}
   };
+  const window={
+    matchMedia:()=>mql,
+    performance:{now:()=>now},
+    requestAnimationFrame:fn=>{const key=++id;frames.set(key,{fn,at:now+16});return key},
+    cancelAnimationFrame:key=>{frames.delete(key)}
+  };
+  const ctx={document,window,Number,Boolean,Object,TypeError,Math};
   vm.runInNewContext(js,ctx,{filename:"nested-mitosis.js"});
-  const advance=ms=>{
+  function advance(ms){
     const end=now+ms;
     while(true){
-      let soonest=null;
-      for(const [id,task] of timers)
-        if(task.at<=end&&(!soonest||task.at<soonest.at))soonest={...task,id};
-      if(!soonest)break;
-      timers.delete(soonest.id);now=soonest.at;soonest.fn();
+      let next=null;
+      for(const [key,task] of frames){
+        if(task.at<=end&&(!next||task.at<next.at))next={...task,key};
+      }
+      if(!next)break;
+      frames.delete(next.key);now=next.at;next.fn(now);
     }
     now=end;
+  }
+  return {
+    window,document,root:new Element("div"),mql,frames,advance,
+    now:()=>now,
+    create:tag=>new Element(tag)
   };
-  return {window:ctx.window,root:new Element("div"),advance,mql,timers};
 }
-test("Exactly two flat circles render, with an alpha-based organic bud but no icons",()=>{
-  const h=environment(),a=h.window.BillyMitosis.mount(h.root);
+function geometry(h,phase){return h.window.BillyMitosis.geometryAt(phase)}
+function radius(element){return Number(element.attributes.r)}
+function center(element){return Number(element.attributes.cx)}
+
+test("Two smaller, flat circles use a tightly scoped organic SVG filter",()=>{
+  const h=environment(),animation=h.window.BillyMitosis.mount(h.root);
   assert.equal(h.root.children.length,1);
   const svg=h.root.children[0];
   assert.equal(svg.tag,"svg");
   assert.equal(svg.attributes.viewBox,"0 0 510 224");
   assert.deepEqual(svg.children.map(x=>x.tag),["defs","g"]);
-  assert.deepEqual(svg.children[1].children.map(x=>x.tag),["g","g"]);
-  const [parent,child]=svg.children[1].children;
-  assert.equal(parent.children[0].tag,"circle");
-  assert.equal(child.children[0].tag,"circle");
-  assert.equal(parent.children[0].attributes.r,"56");
-  assert.equal(child.children[0].attributes.r,"56");
-  assert.equal(parent.children[0].attributes.cx,"255");
-  assert.equal(child.children[0].attributes.cx,"255");
+  const circles=svg.children[1].children;
+  assert.deepEqual(circles.map(x=>x.tag),["circle","circle"]);
+  assert.equal(radius(circles[0]),46,"Parent radius reduced from 56 to 46");
+  assert.equal(radius(circles[1]),0,"Child initially invisible by size");
+  assert.equal(center(circles[0]),255);
   assert.equal(h.root.attributes.role,"img");
-  assert.equal(svg.children[0].children[0].tag,"filter");
-  assert.deepEqual(svg.children[0].children[0].children.map(x=>x.tag),
-    ["feGaussianBlur","feColorMatrix"]);
-  assert.match(css,/\.billy-mitosis-cells\{fill:#f7f7f7\}/);
+  const filter=svg.children[0].children[0];
+  assert.equal(filter.tag,"filter");
+  assert.equal(filter.attributes.width,"205");
+  assert.equal(filter.attributes.height,"128");
+  assert.deepEqual(filter.children.map(x=>x.tag),["feGaussianBlur","feColorMatrix"]);
+  assert.equal(filter.children[0].attributes.stdDeviation,"2.7");
+  assert.match(css,/\.billy-mitosis-cells,/);
   assert.doesNotMatch(css,/linear-gradient|radial-gradient|box-shadow/);
-  assert.doesNotMatch(js,/create\("image"|create\("video"/);
-  a.destroy();
+  animation.destroy();
 });
-test("Children bud to the right, grow to parent size, while parent disappears",()=>{
-  assert.match(css,/@keyframes billy-mitosis-parent-cycle/);
-  assert.match(css,/@keyframes billy-mitosis-child-cycle/);
-  assert.match(css,/0%,13%\{opacity:1;transform:translateX\(0\) scale\(1\)\}/);
-  assert.match(css,/82%,100%\{opacity:0;transform:translateX\(-60px\) scale\(0\)\}/);
-  assert.match(css,/14%\{opacity:1;transform:translateX\(52px\) scale\(\.14\)\}/);
-  assert.match(css,/91%,100%\{opacity:1;transform:translateX\(0\) scale\(1\)\}/);
-  assert.match(css,/\.billy-mitosis\.is-complete \.billy-mitosis-parent/);
-  assert.match(css,/\.billy-mitosis\.is-complete \.billy-mitosis-child/);
+
+test("Continuous smooth geometry: smaller child buds to right as parent shrinks",()=>{
+  const h=environment();
+  const start=geometry(h,0),middle=geometry(h,.55),end=geometry(h,1);
+  assert.equal(start.parent.r,46);
+  assert.equal(start.parent.x,255);
+  assert.equal(start.child.r,0);
+  assert.ok(geometry(h,.24).child.r>0);
+  assert.ok(geometry(h,.24).child.x>255);
+  assert.ok(middle.parent.r<46&&middle.parent.r>0);
+  assert.ok(middle.child.r>0&&middle.child.r<46);
+  assert.ok(middle.child.x>255);
+  assert.equal(end.parent.r,0);
+  assert.equal(end.child.r,46);
+  assert.equal(end.child.x,start.parent.x,
+    "The visible full-size child takes exactly the parent's original center");
+  // A single analytic smoothstep is used for both circles, not independently
+  // eased CSS stages. At native-frame-sized steps no property can jerk.
+  const keys=["x","r"];
+  let last=geometry(h,0);
+  for(let i=1;i<=360;i++){
+    const current=geometry(h,i/360);
+    for(const role of ["parent","child"])
+      for(const key of keys)
+        assert.ok(Math.abs(current[role][key]-last[role][key])<1.4,
+          "Abrupt geometry change near phase "+i/360+" for "+role+"."+key);
+    last=current;
+  }
+  assert.doesNotMatch(css,/@keyframes|animation-iteration-count|cubic-bezier/);
+  assert.match(js,/window\.requestAnimationFrame\(frame\)/);
 });
-test("Infinite loop leaves the SVG playing without fading or resetting between generations",()=>{
-  const h=environment();let starts=0,completed=0;
-  const a=h.window.BillyMitosis.mount(h.root,{
-    duration:3500,loop:true,onStart:()=>starts++,onComplete:()=>completed++
+
+test("Loop stays active and one frame clock drives both circles without any blank reset",()=>{
+  const h=environment();
+  let starts=0,complete=0;
+  const animation=h.window.BillyMitosis.mount(h.root,{
+    duration:3500,loop:true,onStart:()=>starts++,onComplete:()=>complete++
   });
-  assert.equal(a.play(),true);
+  assert.equal(animation.play(),true);
   assert.equal(starts,1);
-  assert.equal(h.root.classList.contains("is-playing"),true);
   assert.equal(h.root.classList.contains("is-looping"),true);
-  h.advance(3500);
-  assert.equal(completed,1);
-  assert.equal(a.isPlaying(),true);
-  assert.equal(h.root.classList.contains("is-playing"),true);
+  h.advance(3600);
+  assert.equal(complete,1);
+  assert.equal(animation.isPlaying(),true);
   assert.equal(h.root.classList.contains("is-complete"),false);
-  assert.equal(h.root.classList.contains("is-resetting"),false);
-  assert.equal(h.timers.size,1);
-  h.advance(3500);
-  assert.equal(completed,2);
-  assert.equal(starts,1,"CSS loops without restarting JS or forcing reflow");
-  a.setLoop(false);
-  h.advance(3500);
-  assert.equal(completed,3);
-  assert.equal(a.isPlaying(),false);
+  assert.equal(h.frames.size,1);
+  h.advance(3600);
+  assert.equal(complete,2);
+  assert.equal(starts,1,"Loop does not restart DOM or CSS");
+  const svg=h.root.children[0],parent=svg.children[1].children[0],child=svg.children[1].children[1];
+  assert.ok(radius(parent)>=0&&radius(parent)<=46);
+  assert.ok(radius(child)>=0&&radius(child)<=46);
+  animation.setLoop(false);
+  h.advance(3600);
+  assert.equal(animation.isPlaying(),false);
   assert.equal(h.root.classList.contains("is-complete"),true);
-  assert.equal(h.timers.size,0);
-  a.destroy();
+  assert.equal(radius(parent),0);
+  assert.equal(radius(child),46);
+  assert.equal(center(child),255);
+  assert.equal(h.frames.size,0);
+  animation.destroy();
 });
-test("Replay, animation speed and loop toggle work after completion",()=>{
-  const h=environment();let starts=0;
-  const a=h.window.BillyMitosis.mount(h.root,{duration:3500,onStart:()=>starts++});
-  assert.equal(a.play(),true);
-  h.advance(3500);
-  assert.equal(a.isPlaying(),false);
-  assert.equal(h.root.classList.contains("is-complete"),true);
-  a.play();
-  assert.equal(starts,2);
-  a.setDuration(2000);
-  assert.equal(starts,3);
-  assert.equal(h.root.style.values["--billy-mitosis-duration"],"2000ms");
-  a.setLoop(true);
+
+test("Replay, duration and Loop are real browser controls",()=>{
+  const h=environment();let started=0,complete=0;
+  const animation=h.window.BillyMitosis.mount(h.root,{
+    duration:3500,onStart:()=>started++,onComplete:()=>complete++
+  });
+  animation.play();h.advance(3600);
+  assert.equal(animation.isPlaying(),false);
+  assert.equal(complete,1);
+  animation.play();
+  assert.equal(started,2);
+  animation.setDuration(2000);
+  assert.equal(started,3);
+  assert.equal(animation.isPlaying(),true);
+  animation.setLoop(true);
   assert.equal(h.root.classList.contains("is-looping"),true);
-  h.advance(2000);
-  assert.equal(a.isPlaying(),true);
-  a.destroy();
-  assert.equal(h.timers.size,0);
+  h.advance(2200);
+  assert.equal(animation.isPlaying(),true);
+  animation.destroy();
+  assert.equal(h.frames.size,0);
 });
-test("Reduced-motion mode shows only one full-size resting circle",()=>{
+
+test("Hidden browser tab pauses rather than jumping forward on return",()=>{
+  const h=environment();
+  const animation=h.window.BillyMitosis.mount(h.root,{loop:true});
+  animation.play();
+  h.advance(1120);
+  const circles=h.root.children[0].children[1].children;
+  const before=radius(circles[1]);
+  h.document.visibilityState="hidden";h.document.dispatch("visibilitychange");
+  assert.equal(h.frames.size,0);
+  h.advance(10000);
+  assert.equal(radius(circles[1]),before);
+  h.document.visibilityState="visible";h.document.dispatch("visibilitychange");
+  h.advance(16);
+  assert.ok(Math.abs(radius(circles[1])-before)<1,
+    "Resume should continue where the bubble was, not jump across 10s");
+  animation.destroy();
+  assert.equal(h.frames.size,0);
+});
+
+test("Reduced-motion option shows a single resting white circle",()=>{
   const h=environment(true);
-  const a=h.window.BillyMitosis.mount(h.root,{loop:true});
-  assert.equal(a.play(),false);
+  const animation=h.window.BillyMitosis.mount(h.root,{loop:true});
+  assert.equal(animation.play(),false);
   assert.equal(h.root.classList.contains("is-complete"),true);
-  assert.equal(h.timers.size,0);
-  assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);
-  assert.match(css,/\.billy-mitosis-parent\{opacity:0!important;transform:scale\(0\)!important\}/);
-  assert.match(css,/\.billy-mitosis-child\{opacity:1!important;transform:translateX\(0\) scale\(1\)!important\}/);
+  assert.equal(h.frames.size,0);
+  const circles=h.root.children[0].children[1].children;
+  assert.equal(radius(circles[0]),0);
+  assert.equal(radius(circles[1]),46);
   h.mql.change(false);
-  assert.equal(a.isPlaying(),true);
+  assert.equal(animation.isPlaying(),true);
   h.mql.change(true);
-  assert.equal(a.isPlaying(),false);
-  assert.equal(h.timers.size,0);
-  a.destroy();
+  assert.equal(animation.isPlaying(),false);
+  assert.equal(h.frames.size,0);
+  animation.destroy();
   assert.equal(h.mql.handlers.size,0);
 });
-test("Each instance has a unique SVG filter identifier",()=>{
+
+test("Separate instances have unique filter IDs",()=>{
   const h=environment();
   const a=h.window.BillyMitosis.mount(h.root);
-  const second=new h.root.constructor("div");
-  const b=h.window.BillyMitosis.mount(second);
-  const firstId=h.root.children[0].children[0].children[0].attributes.id;
-  const secondId=second.children[0].children[0].children[0].attributes.id;
-  assert.notEqual(firstId,secondId);
-  assert.equal(h.root.children[0].children[1].attributes.filter,"url(#"+firstId+")");
+  const other=h.create("div");
+  const b=h.window.BillyMitosis.mount(other);
+  const first=h.root.children[0].children[0].children[0].attributes.id;
+  const second=other.children[0].children[0].children[0].attributes.id;
+  assert.notEqual(first,second);
+  assert.equal(h.root.children[0].children[1].attributes.filter,"url(#"+first+")");
   a.destroy();b.destroy();
 });
-test("Live preview is a real reusable CSS/SVG animation with no GIF or video",()=>{
-  assert.match(html,/nested-mitosis\.css\?v=0\.2\.0/);
-  assert.match(html,/nested-mitosis\.js\?v=0\.2\.0/);
+
+test("Preview loads v0.3 native animation and reduced-size stage, not video",()=>{
+  assert.match(html,/nested-mitosis\.css\?v=0\.3\.0/);
+  assert.match(html,/nested-mitosis\.js\?v=0\.3\.0/);
+  assert.match(html,/width:min\(540px,100%\)/);
   assert.match(html,/window\.BillyMitosis\.mount\(root/);
-  assert.match(html,/id="mitosisPreview"/);
   assert.match(html,/id="replayButton"/);
   assert.match(html,/id="loopToggle" type="checkbox" checked/);
   assert.match(html,/id="speedSelect"/);
-  assert.match(html,/the child grows; the parent disappears/i);
   assert.match(html,/Does not alter the live document-processing flow/);
   assert.doesNotMatch(html,/<video|<canvas|<iframe|\.gif|\.mp4|\.webm/);
   assert.doesNotMatch(js,/fetch\(|localStorage|sessionStorage|eval\(/);
-  assert.doesNotMatch(js,/is-resetting|hold:|resetTimer|classList\.add\("is-resetting"\)/);
-  assert.doesNotMatch(css,/\.is-resetting|animation:.*fade|opacity:0;transition/);
+  assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);
 });
