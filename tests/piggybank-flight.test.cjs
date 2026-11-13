@@ -76,17 +76,17 @@ function harness({reduced=false,visible=true,screen="home"}={}){
     notify
   };
 }
-test("Piggybank makes a rare 3.1s flight after home-screen inactivity and lands",()=>{
+test("Piggybank flies after 45–60s idle, lands in 3.1s, and can repeat",()=>{
   const h=harness();
-  h.timers.advance(179999);assert.equal(h.flying(),false);
+  h.timers.advance(44999);assert.equal(h.flying(),false);
   h.timers.advance(1);assert.equal(h.flying(),true);
   h.timers.advance(3099);assert.equal(h.flying(),true);
   h.timers.advance(1);assert.equal(h.flying(),false);
-  h.timers.advance(180000);assert.equal(h.flying(),true);
+  h.timers.advance(45000);assert.equal(h.flying(),true);
 });
 test("Movement, clicking or keyboard activity cancels a flight immediately",()=>{
   for(const event of ["pointermove","pointerdown","keydown","scroll"]){
-    const h=harness();h.timers.advance(180000);
+    const h=harness();h.timers.advance(45000);
     assert.equal(h.flying(),true,event);
     h.document.dispatch(event);
     assert.equal(h.flying(),false,event);
@@ -112,38 +112,90 @@ test("Never flies while chat/HUD is open, away from home, or login/preview overl
 });
 test("Hides and cancels when tab becomes invisible; resumes with a fresh idle interval",()=>{
   const h=harness();
-  h.timers.advance(180000);assert.equal(h.flying(),true);
+  h.timers.advance(45000);assert.equal(h.flying(),true);
   h.document.visibilityState="hidden";h.document.dispatch("visibilitychange");
   assert.equal(h.flying(),false);
   assert.equal(h.timers.jobs.size,0);
   h.timers.advance(400000);assert.equal(h.flying(),false);
   h.document.visibilityState="visible";h.document.dispatch("visibilitychange");
-  h.timers.advance(180000);assert.equal(h.flying(),true);
+  h.timers.advance(45000);assert.equal(h.flying(),true);
 });
 test("Reduced motion disables flights entirely, including changing the setting mid-flight",()=>{
   const never=harness({reduced:true});
   never.timers.advance(900000);
   assert.equal(never.flying(),false);
-  const h=harness();h.timers.advance(180000);
+  const h=harness();h.timers.advance(45000);
   assert.equal(h.flying(),true);
   h.motion.change(true);
   assert.equal(h.flying(),false);
   assert.equal(h.timers.jobs.size,0);
   h.motion.change(false);
-  h.timers.advance(180000);
+  h.timers.advance(45000);
   assert.equal(h.flying(),true);
+});
+test("Idle window resets after real user activity rather than starting on page load",()=>{
+  const h=harness();
+  h.timers.advance(30000);
+  h.document.dispatch("pointermove");
+  h.timers.advance(44999);
+  assert.equal(h.flying(),false,"45 seconds of idle must elapse after last activity");
+  h.timers.advance(1);
+  assert.equal(h.flying(),true);
+});
+test("Opening chat triggers one 820 ms backflip without delaying the chat",()=>{
+  const h=harness();
+  h.nodes.billyAssistantPanel.hidden=false;
+  h.nodes.billyAssistantLaunch.setAttribute("aria-expanded","true");
+  const flipping=()=>h.nodes.billyAssistantDock.classList.contains("is-backflipping");
+  assert.equal(flipping(),true);
+  assert.equal(h.nodes.billyAssistantPanel.hidden,false);
+  h.notify();
+  h.timers.advance(819);
+  assert.equal(flipping(),true,"Extra mutations must not restart animation");
+  h.timers.advance(1);
+  assert.equal(flipping(),false);
+  h.nodes.billyAssistantPanel.hidden=true;
+  h.nodes.billyAssistantLaunch.setAttribute("aria-expanded","false");
+  h.nodes.billyAssistantPanel.hidden=false;
+  h.nodes.billyAssistantLaunch.setAttribute("aria-expanded","true");
+  assert.equal(flipping(),true,"A new open triggers a fresh backflip");
+});
+test("Opening chat mid-flight cancels wings then backflips; reduced motion skips both",()=>{
+  const h=harness();h.timers.advance(45000);
+  assert.equal(h.flying(),true);
+  h.nodes.billyAssistantPanel.hidden=false;
+  h.nodes.billyAssistantLaunch.setAttribute("aria-expanded","true");
+  assert.equal(h.flying(),false);
+  assert.equal(h.nodes.billyAssistantDock.classList.contains("is-backflipping"),true);
+  h.timers.advance(820);
+  assert.equal(h.nodes.billyAssistantDock.classList.contains("is-backflipping"),false);
+  const never=harness({reduced:true});
+  never.nodes.billyAssistantPanel.hidden=false;
+  never.nodes.billyAssistantLaunch.setAttribute("aria-expanded","true");
+  assert.equal(never.nodes.billyAssistantDock.classList.contains("is-backflipping"),false);
+});
+test("Backflip is cancelled when leaving Home or hiding the browser tab",()=>{
+  const h=harness();
+  h.nodes.billyAssistantPanel.hidden=false;
+  h.nodes.billyAssistantLaunch.setAttribute("aria-expanded","true");
+  assert.equal(h.nodes.billyAssistantDock.classList.contains("is-backflipping"),true);
+  h.body.dataset.billyScreen="uploaded";h.notify();
+  assert.equal(h.nodes.billyAssistantDock.classList.contains("is-backflipping"),false);
+  assert.equal(h.timers.jobs.size,0);
 });
 test("The sprite is decorative and leaves the launcher clickable",()=>{
   assert.match(html,/id="piggybankFlight" class="piggybank-flight" aria-hidden="true"/);
   assert.match(html,/class="piggybank-flight-wings"/);
   assert.match(html,/class="piggybank-flight-mark" src="\.\/piggybank-mark\.svg"/);
-  assert.match(html,/piggybank-flight\.js\?v=1\.0\.0/);
-  assert.match(html,/intelligence-assistant\.css\?v=0\.3\.1/);
+  assert.match(html,/piggybank-flight\.js\?v=1\.1\.0/);
+  assert.match(html,/intelligence-assistant\.css\?v=0\.3\.2/);
   assert.match(css,/\.piggybank-flight\{/);
   assert.match(css,/pointer-events:none/);
   assert.match(css,/@keyframes piggybank-short-flight/);
   assert.match(css,/@keyframes piggybank-left-flap/);
   assert.match(css,/@keyframes piggybank-right-flap/);
+  assert.match(css,/@keyframes piggybank-chat-backflip/);
+  assert.match(css,/\.billy-ai-dock\.is-backflipping \.billy-ai-orbit img/);
   assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);
   assert.match(css,/\.billy-ai-dock\.is-flying \.billy-ai-orbit img\{opacity:0\}/);
   assert.doesNotMatch(source,/fetch\(|localStorage|sessionStorage|innerHTML/);
