@@ -226,15 +226,19 @@ test("Separate instances have unique filter IDs",()=>{
   a.destroy();b.destroy();
 });
 
-test("Preview loads v0.3 native animation and reduced-size stage, not video",()=>{
+test("Preview shows only the exact title and the animation at 1.25× speed",()=>{
   assert.match(html,/nested-mitosis\.css\?v=0\.3\.0/);
   assert.match(html,/nested-mitosis\.js\?v=0\.3\.0/);
-  assert.match(html,/width:min\(540px,100%\)/);
-  assert.match(html,/window\.BillyMitosis\.mount\(root/);
-  assert.match(html,/id="replayButton"/);
-  assert.match(html,/id="loopToggle" type="checkbox" checked/);
-  assert.match(html,/id="speedSelect"/);
-  assert.match(html,/Does not alter the live document-processing flow/);
+  assert.match(html,/width:min\(470px,100%\)/);
+  assert.match(html,/<h1>Preparing nested document<\/h1>/);
+  assert.match(html,/id="mitosisPreview"/);
+  assert.match(html,/window\.BillyMitosis\.mount\(root,\{loop:true,duration:2800\}\)\.play\(\)/);
+  const body=html.split("<body>")[1].split("</body>")[0];
+  const visibleText=body.replace(/<script\b[^>]*>[\s\S]*?<\/script>/g,"")
+    .replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim();
+  assert.equal(visibleText,"Preparing nested document",
+    "No header, footer, subtitles, controls or extra text");
+  assert.doesNotMatch(html,/<button|<select|<input|<footer|<header/);
   assert.doesNotMatch(html,/<video|<canvas|<iframe|\.gif|\.mp4|\.webm/);
   assert.doesNotMatch(js,/fetch\(|localStorage|sessionStorage|eval\(/);
   assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);
