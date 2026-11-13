@@ -1154,10 +1154,19 @@ body[data-billy-screen="uploaded"] #simpleUploaded .billy-hub-symbol{
 .billy-nested-transition-path::after{content:"";position:absolute;right:0;top:-3px;width:7px;height:7px;border-top:1.5px solid #c2c6c9;border-right:1.5px solid #c2c6c9;transform:rotate(45deg)}
 .billy-nested-transition-card strong{display:block;font-size:18px;font-weight:680}
 .billy-nested-transition-card p{font-size:12px;color:#b7bdc1;margin:8px 0 0}
+/* The handoff glyph becomes a quiet live reading indicator after its initial
+   1.4s reveal. No generic orbit loader is shown on top of it. */
+.billy-nested-transition.is-reading .billy-nested-transition-child{
+  animation:billy-nested-reading 2.1s ease-in-out infinite;
+}
+@keyframes billy-nested-reading{
+  0%,100%{opacity:1;transform:translate(-97px,0) scale(2.2)}
+  50%{opacity:.84;transform:translate(-97px,0) scale(2.3)}
+}
 @keyframes billy-parent-exit{0%,42%{opacity:1;transform:scale(1)}72%,100%{opacity:0;transform:scale(.68)}}
 @keyframes billy-child-emerge{0%{opacity:0;transform:translate(-58px,0) scale(.45)}28%{opacity:1;transform:translate(0,0) scale(1)}65%{transform:translate(0,0) scale(1)}100%{opacity:1;transform:translate(-97px,0) scale(2.2)}}
 @keyframes billy-nested-path{0%{opacity:0;transform:scaleX(0)}18%,48%{opacity:1;transform:scaleX(1)}70%,100%{opacity:0;transform:scaleX(1)}}
-@media(prefers-reduced-motion:reduce){.billy-nested-transition-parent,.billy-nested-transition-child,.billy-nested-transition-path{animation:none!important}.billy-nested-transition-parent,.billy-nested-transition-path{opacity:0}.billy-nested-transition-child{left:50%;transform:translateX(-50%) scale(1.55)}}
+@media(prefers-reduced-motion:reduce){.billy-nested-transition-parent,.billy-nested-transition-child,.billy-nested-transition-path{animation:none!important}.billy-nested-transition-parent,.billy-nested-transition-path{opacity:0}.billy-nested-transition-child{left:50%;transform:translateX(-50%) scale(1.55)}.billy-nested-transition.is-reading .billy-nested-transition-child{animation:none!important}}
 
 /* Quiet nested archive: one shared grey surface; never nested cards. */
 #simpleUploaded .billy-doc-family{background:#242629!important;border:0!important;border-radius:12px!important;padding:6px 10px!important;box-shadow:none!important;gap:0!important}
