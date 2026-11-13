@@ -2,10 +2,22 @@
    Only the approved, server-linked child records are treated as nested. */
 (() => {
   "use strict";
-  let session=null,job=0;
+  let session=null,job=0,handoffVisible=false;
   const valid=b=>b&&["x1","x2","y1","y2"].every(k=>Number.isInteger(b[k])&&b[k]>=0&&b[k]<=1000)&&b.x2-b.x1>=80&&b.y2-b.y1>=80;
   function active(){return Boolean(session);}
-  function reset(){job++;session=null;}
+  function finishHandoff(){
+    if(!handoffVisible)return false;
+    handoffVisible=false;
+    window.BillyNestedTransition?.stop?.();
+    return true;
+  }
+  function isHandoff(file){
+    return Boolean(handoffVisible&&session&&session.stage==="child"&&session.current===file);
+  }
+  function reset(){
+    job++;session=null;
+    finishHandoff();
+  }
   function label(){
     if(!session)return "";
     return "Document "+(session.index+1)+" of "+(1+session.children.length);
@@ -94,13 +106,20 @@
     // parent was approved and the exact original has been safely archived.
     const label=snapshot.boxes?.[childIndex]?.label||"Attached document";
     const transition=window.BillyNestedTransition?.play?.(label)===true;
+    handoffVisible=transition;
     setTimeout(()=>{
-      window.BillyNestedTransition?.stop?.();
       if(job!==token||session!==snapshot)return;
-      window.BillyApp.openFile(next);
+      // The animated handoff finishes, but the nested reading surface stays
+      // open while Gemini extracts the child. The normal work spinner stays
+      // hidden for this one child, avoiding two consecutive loading screens.
+      if(transition)window.BillyNestedTransition?.reading?.();
+      if(typeof window.BillyApp?.openFile!=="function"){finishHandoff();return;}
+      try{window.BillyApp.openFile(next);}
+      catch(error){finishHandoff();throw error;}
     },transition?1450:150);
   }
   window.addEventListener("billy:document-approved",advance);
   window.addEventListener("billy:original-archived",archived);
-  window.BillyNested={start,prepare,fileLoaded,active,reset,decorateTitle};
+  window.BillyNested={start,prepare,fileLoaded,active,reset,decorateTitle,
+    isHandoff,finishHandoff};
 })();
