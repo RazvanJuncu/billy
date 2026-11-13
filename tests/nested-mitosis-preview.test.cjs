@@ -64,10 +64,10 @@ test("Exactly two flat circles render, with an alpha-based organic bud but no ic
   const [parent,child]=svg.children[1].children;
   assert.equal(parent.children[0].tag,"circle");
   assert.equal(child.children[0].tag,"circle");
-  assert.equal(parent.children[0].attributes.r,56);
-  assert.equal(child.children[0].attributes.r,56);
-  assert.equal(parent.children[0].attributes.cx,255);
-  assert.equal(child.children[0].attributes.cx,255);
+  assert.equal(parent.children[0].attributes.r,"56");
+  assert.equal(child.children[0].attributes.r,"56");
+  assert.equal(parent.children[0].attributes.cx,"255");
+  assert.equal(child.children[0].attributes.cx,"255");
   assert.equal(h.root.attributes.role,"img");
   assert.equal(svg.children[0].children[0].tag,"filter");
   assert.deepEqual(svg.children[0].children[0].children.map(x=>x.tag),
