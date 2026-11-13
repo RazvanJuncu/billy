@@ -9,8 +9,8 @@
   if(!dock||!sprite||!launch||!panel)return;
 
   const motion=window.matchMedia?.("(prefers-reduced-motion: reduce)");
-  const STROLL_MS=4300;
-  const BACKFLIP_MS=820;
+  const STROLL_MS=3600;
+  const BACKFLIP_MS=880;
   const IDLE_MS=45000;
   const MIN_GAP_MS=45000;
   const MAX_GAP_MS=60000;
