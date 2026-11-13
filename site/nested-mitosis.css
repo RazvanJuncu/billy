@@ -1,66 +1,32 @@
-/* BillyDPI nested mitosis v0.2 — seamless generational replacement.
-   The younger bubble buds off, inherits the center, then becomes the parent
-   of the next cycle. All geometry stays solid white, like the Billy logo. */
+/* BillyDPI nested mitosis v0.3 — smaller white bubbles, smooth frame clock.
+   Movement comes from one shared requestAnimationFrame timeline, NOT stacked
+   CSS keyframes that independently accelerate/decelerate at each step. */
 .billy-mitosis{
-  --billy-mitosis-duration:3500ms;
-  display:block;position:relative;width:100%;min-width:0;
-  background:transparent;overflow:hidden;contain:layout style;
+  display:block;
+  position:relative;
+  width:100%;
+  min-width:0;
+  overflow:hidden;
+  background:transparent;
+  contain:layout style;
 }
 .billy-mitosis-svg{
-  display:block;width:100%;height:auto;aspect-ratio:510 / 224;
-  overflow:visible;fill:#f7f7f7;shape-rendering:geometricPrecision;
+  display:block;
+  width:100%;
+  height:auto;
+  aspect-ratio:510 / 224;
+  overflow:visible;
+  shape-rendering:geometricPrecision;
+  fill:#f7f7f7;
 }
-.billy-mitosis-cells{fill:#f7f7f7}
-.billy-mitosis-parent,.billy-mitosis-child{
-  transform-box:view-box;
-  transform-origin:255px 112px;
-}
-.billy-mitosis-parent{opacity:1;transform:translateX(0) scale(1)}
-.billy-mitosis-child{opacity:0;transform:translateX(48px) scale(0)}
-.billy-mitosis.is-playing .billy-mitosis-parent{
-  animation:billy-mitosis-parent-cycle var(--billy-mitosis-duration)
-    cubic-bezier(.34,.02,.25,1) 1 both;
-}
-.billy-mitosis.is-playing .billy-mitosis-child{
-  animation:billy-mitosis-child-cycle var(--billy-mitosis-duration)
-    cubic-bezier(.33,.09,.22,1) 1 both;
-}
-.billy-mitosis.is-playing.is-looping .billy-mitosis-parent,
-.billy-mitosis.is-playing.is-looping .billy-mitosis-child{
-  animation-iteration-count:infinite;
-}
-/* First a little bud emerges from the right-hand edge.
-   Only after it separates does the parent shrink and fade away. */
-@keyframes billy-mitosis-parent-cycle{
-  0%,13%{opacity:1;transform:translateX(0) scale(1)}
-  27%{opacity:1;transform:translateX(-2px) scale(.99)}
-  42%{opacity:1;transform:translateX(-10px) scale(.83)}
-  58%{opacity:1;transform:translateX(-35px) scale(.50)}
-  72%{opacity:.85;transform:translateX(-53px) scale(.13)}
-  82%,100%{opacity:0;transform:translateX(-60px) scale(0)}
-}
-/* The child grows from a small right-hand bulge to the original 112px
-   diameter. It slides back into the exact starting center (255,112). */
-@keyframes billy-mitosis-child-cycle{
-  0%,7%{opacity:0;transform:translateX(47px) scale(.04)}
-  14%{opacity:1;transform:translateX(52px) scale(.14)}
-  27%{opacity:1;transform:translateX(66px) scale(.27)}
-  41%{opacity:1;transform:translateX(79px) scale(.44)}
-  53%{opacity:1;transform:translateX(77px) scale(.60)}
-  69%{opacity:1;transform:translateX(47px) scale(.86)}
-  83%{opacity:1;transform:translateX(12px) scale(.98)}
-  91%,100%{opacity:1;transform:translateX(0) scale(1)}
-}
-/* At the loop boundary the visible pixels are identical: old parent at
-   0% = newly grown child at 100%. No fade-out, redraw, or reset screen. */
-.billy-mitosis.is-complete .billy-mitosis-parent{
-  opacity:0;transform:translateX(-60px) scale(0)
-}
-.billy-mitosis.is-complete .billy-mitosis-child{
-  opacity:1;transform:translateX(0) scale(1)
+.billy-mitosis-cells,
+.billy-mitosis-parent,
+.billy-mitosis-child{
+  fill:#f7f7f7;
 }
 @media(prefers-reduced-motion:reduce){
-  .billy-mitosis,.billy-mitosis *{animation:none!important;transition:none!important}
-  .billy-mitosis-parent{opacity:0!important;transform:scale(0)!important}
-  .billy-mitosis-child{opacity:1!important;transform:translateX(0) scale(1)!important}
+  .billy-mitosis,.billy-mitosis *{
+    animation:none!important;
+    transition:none!important;
+  }
 }
