@@ -72,17 +72,24 @@ test("Nested archive and previews use one color, one line and borderless links",
   assert.doesNotMatch(preview,/"↳ Attached to "/);
   assert.match(preview,/documentLabel\(parent\)/);
 });
-test("After original archive, animated child emerges and scales into focus",()=>{
+test("After original archive, the approved mitosis replaces the old handoff UI",()=>{
+  const html=read("site/index.html");
+  const mitosis=read("site/nested-mitosis.js");
   assert.match(transition,/Preparing nested document/);
-  assert.match(transition,/billy-nested-transition-parent/);
-  assert.match(transition,/billy-nested-transition-child/);
-  assert.match(transition,/billy-nested-transition-path/);
-  assert.match(css,/@keyframes billy-child-emerge/);
-  assert.match(css,/prefers-reduced-motion:reduce/);
+  assert.match(transition,/BillyMitosis\.mount\(visual,\{loop:true,duration:2800\}\)/);
+  assert.match(transition,/motion\?\.destroy\?\.\(\)/);
+  assert.doesNotMatch(transition,/Reading nested document|billy-nested-transition-parent|billy-nested-transition-path|billy-nested-transition-child/);
+  assert.match(css,/\.billy-nested-transition-stage\{/);
+  assert.match(css,/\.billy-nested-transition-visual \.billy-mitosis\{/);
+  assert.doesNotMatch(css,/@keyframes billy-child-emerge|@keyframes billy-parent-exit|@keyframes billy-nested-path/);
+  assert.match(mitosis,/window\.BillyMitosis=\{mount,geometryAt\}/);
   const flow=read("site/nested-documents.js");
   assert.match(flow,/window\.BillyNestedTransition\?\.play\?\.\(label\)/);
-  assert.match(flow,/window\.BillyNestedTransition\?\.stop\?\.\(\)/);
   assert.match(flow,/transition\?1450:150/);
-  assert.match(read("site/index.html"),/nested-transition\.js\?v=1\.1\.0/);
-  assert.match(read("site/sw.js"),/nested-transition\.js/);
+  assert.match(flow,/window\.BillyNestedTransition\?\.reading\?\.\(\)/);
+  assert.match(html,/nested-mitosis\.js\?v=0\.3\.0/);
+  assert.match(html,/nested-mitosis\.css\?v=0\.3\.0/);
+  assert.match(html,/nested-transition\.js\?v=1\.2\.0/);
+  assert.match(read("site/sw.js"),/nested-mitosis\.js/);
+  assert.match(read("site/sw.js"),/nested-mitosis\.css/);
 });
