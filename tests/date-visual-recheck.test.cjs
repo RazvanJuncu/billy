@@ -61,7 +61,7 @@ test("Independent model reread is bounded, image-grounded, and no unrelated fiel
   assert.equal(source.issue_date,"09.11.2026");assert.equal(source.grand_total,"367.20");
 });
 test("Extraction persists reconciled dates and auditable corrections, not guessed current year",()=>{
-  const i=edge.indexOf("let dateVisualCorrections=[];");
+  const i=edge.indexOf("const [dateVisualCorrections,externalChecks]=await Promise.all([");
   const j=edge.indexOf("const warnings=validate(fields,type,regions,profile);",i);
   assert.ok(i>0&&j>i);
   assert.match(edge.slice(i,j),/visuallyRecheckDates\(bytes,mime,fields,regions,timing\)/);
