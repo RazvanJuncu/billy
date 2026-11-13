@@ -8,8 +8,8 @@
   <title>Nested mitosis · BillyDPI Motion Preview</title>
   <meta name="description" content="Live HTML, CSS and SVG preview for BillyDPI's nested document transition.">
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
-  <link rel="stylesheet" href="./nested-mitosis.css?v=0.1.0">
-  <script src="./nested-mitosis.js?v=0.1.0" defer></script>
+  <link rel="stylesheet" href="./nested-mitosis.css?v=0.2.0">
+  <script src="./nested-mitosis.js?v=0.2.0" defer></script>
   <style>
     :root{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;color-scheme:dark;
       background:#050607;color:#f2f2f2;font-synthesis:none}
@@ -73,9 +73,9 @@
     <section class="stage" aria-label="Nested mitosis animation preview">
       <p class="phase">NESTED DOCUMENTS</p>
       <h1 class="heading" id="phaseTitle">Preparing nested document</h1>
-      <p class="subline" id="phaseSubtitle">A document within a document.</p>
+      <p class="subline" id="phaseSubtitle">A new bubble replaces the previous one.</p>
       <div class="animation-shell">
-        <div id="mitosisPreview" aria-label="Nested document circles forming in sequence"></div>
+        <div id="mitosisPreview" aria-label="A new white circle buds from the right, grows, and replaces the original"></div>
       </div>
       <div class="controls" aria-label="Animation controls">
         <button id="replayButton" type="button" class="replay">Replay animation</button>
@@ -89,7 +89,7 @@
           <option value="1.25">1.25× speed</option>
         </select>
       </div>
-      <p class="info">Flat white circles. The first child grows out of the parent; the next grows out of that child. No video, GIF or image frames.</p>
+      <p class="info">One flat white circle buds from another. The child grows; the parent disappears. The child takes its place and the cycle repeats seamlessly.</p>
     </section>
   </main>
   <footer class="foot">Interactive visual prototype · Does not alter the live document-processing flow · <a href="./">Back to Billy</a></footer>
@@ -107,15 +107,7 @@
         return;
       }
       const motion=window.BillyMitosis.mount(root,{
-        loop:loop.checked,duration:3500,hold:1450,
-        onStart:()=>{
-          heading.textContent="Preparing nested document";
-          subtitle.textContent="A document within a document.";
-        },
-        onComplete:()=>{
-          heading.textContent="Reading nested document";
-          subtitle.textContent="Ready for extraction.";
-        }
+        loop:loop.checked,duration:3500
       });
       replay.addEventListener("click",()=>motion.play());
       loop.addEventListener("change",()=>motion.setLoop(loop.checked));
