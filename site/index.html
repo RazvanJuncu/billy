@@ -21,7 +21,7 @@
   <link rel="stylesheet" href="./accounts.css?v=0.7.0">
   <link rel="stylesheet" href="./document-type.css?v=0.6.0">
   <link rel="stylesheet" href="./simple.css?v=2.4.2">
-  <link rel="stylesheet" href="./intelligence-assistant.css?v=0.3.3">
+  <link rel="stylesheet" href="./intelligence-assistant.css?v=0.3.4">
   <link rel="stylesheet" href="./multi-documents.css?v=1.0.0">
   <link rel="stylesheet" href="./quickscan.css?v=1">
   <link rel="stylesheet" href="./preloader.css?v=1.2.0">
@@ -51,7 +51,7 @@
   <script src="./simple.js?v=2.2.0" defer></script>
   <script src="./piggybank-hud.js?v=1.0.0" defer></script>
   <script src="./intelligence-assistant.js?v=0.3.0" defer></script>
-  <script src="./piggybank-stroll.js?v=1.0.0" defer></script>
+  <script src="./piggybank-stroll.js?v=1.1.0" defer></script>
   <script src="./preloader.js?v=1.2.0" defer></script>
   <script>
     // All phones and tablets open the same Billy in one-button mode.
@@ -598,8 +598,10 @@
     <!-- Decorative duplicate: strolls along the bottom edge while
          the actual launcher remains in place and clickable. -->
     <span id="piggybankStroll" class="piggybank-stroll" aria-hidden="true">
-      <img class="piggybank-stroll-mark" src="./piggybank-mark.svg" alt=""
-        width="34" height="34" draggable="false" />
+      <span class="piggybank-stroll-step">
+        <img class="piggybank-stroll-mark" src="./piggybank-mark.svg" alt=""
+          width="34" height="34" draggable="false" />
+      </span>
     </span>
     <section id="billyAssistantPanel" class="billy-ai-panel" role="dialog"
       aria-label="Piggybank" hidden>
