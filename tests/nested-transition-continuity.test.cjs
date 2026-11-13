@@ -149,7 +149,7 @@ test("Generic orbit never replaces the active nested transition during extractio
   assert.match(css,/\.billy-nested-transition\{[^}]*background:#050607/);
   assert.match(html,/nested-mitosis\.css\?v=0\.3\.0/);
   assert.match(html,/nested-mitosis\.js\?v=0\.3\.0/);
-  assert.match(html,/nested-transition\.js\?v=1\.2\.0/);
+  assert.match(html,/nested-transition\.js\?v=1\.3\.0/);
   assert.ok(html.indexOf("nested-mitosis.js")<html.indexOf("nested-transition.js"),
     "Mitosis component must load before its production caller");
   assert.match(transitionCode,/window\.BillyMitosis\.mount\(visual,\{loop:true,duration:2800\}\)/);
