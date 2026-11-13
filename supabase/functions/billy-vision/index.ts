@@ -1379,12 +1379,14 @@ async function extract(req,principal,authMs=0){
   // A 10 MiB file becomes larger when parsed. Refuse oversized bodies early.
   const declared=Number(req.headers.get("content-length")||0);
   if(declared>MAX_BYTES+1024*1024)return timedError("Vision file must be 10 MiB or smaller.",413);
+  const readStarted=performance.now();
   const form=await req.formData(),file=form.get("file"),requestedType=form.get("document_type")||"auto";
   if(!(file instanceof File))return timedError("Missing document.",400);
   if(!["auto","invoice","fuel_release"].includes(requestedType))return timedError("Unsupported document type.",400);
   if(!file.size||file.size>MAX_BYTES)return timedError("Vision file must be 10 MiB or smaller.",413);
   const bytes=new Uint8Array(await file.arrayBuffer());
   let mime;try{mime=mimeOf(file.name,bytes);}catch(e){return timedError(e.message,400);}
+  timing.mark("file_read_ms",readStarted);
   // Nested extraction never authorizes approval or arbitrary document linking.
   const nestedPrimary=form.get("nested_primary")==="true";
   if(form.has("nested_primary")&&!nestedPrimary)return timedError("Invalid nested extraction mode.",400);
@@ -1403,15 +1405,18 @@ async function extract(req,principal,authMs=0){
   if(parentId!==null&&(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(parentId)||nestedPrimary))
     return timedError("Invalid parent record.",400);
   if(parentId){
+    const started=performance.now();
     const parents=await database(principal,"GET","document_records",{
       select:"id,state,parent_document_id",id:"eq."+parentId,
       organization_id:"eq."+principal.organization_id,
       created_by:"eq."+principal.user_id,limit:"1"
     });
+    timing.mark("parent_check_ms",started);
     if(parents.length!==1||parents[0].state!=="approved"||parents[0].parent_document_id)
       return timedError("Parent document must be approved and owned by your team account.",409);
   }
   // Explicit overrides skip an extra classifier invocation.
+  const classificationStarted=performance.now();
   let classification;
   const override=form.get("profile_override");
   if(override!==null){
@@ -1422,11 +1427,12 @@ async function extract(req,principal,authMs=0){
     classification=manualClassification(profile,FORCED_CATEGORY[profile]||"unknown");
   }else{
     const forceNestedCheck=form.get("layout_overlay_hint")==="true"&&mime.startsWith("image/");
-    try{classification=await classifyDocument(bytes,mime,forceNestedCheck);}
+    try{classification=await classifyDocument(bytes,mime,forceNestedCheck,timing);}
     catch(e){
       console.error("Billy auto-detect",String(e).slice(0,140));
       return timedError("Automatic classification failed. Retry or select a document profile manually.",502);
     }
+    timing.mark("classification_ms",classificationStarted);
     if(classification.status!=="confident"||classification.profile==="unknown"||
       (classification.expense_category==="unknown"&&!NON_EXPENSE_PROFILES.includes(classification.profile))||
       classification.multiple_documents_visible){
@@ -1436,12 +1442,15 @@ async function extract(req,principal,authMs=0){
           "Classification uncertain. Choose the appropriate document profile to continue."});
     }
   }
+  if(override!==null||requestedType!=="auto")timing.mark("classification_ms",classificationStarted);
   if(nestedPrimary&&!(override!==null&&classification.profile!=="unknown"))
     return timedError("Primary nested document requires an identified profile.",400);
   const profile=classification.profile;
   const type=profile==="fuel_release"?"fuel_release":"invoice";
   // SHA-256 binds a subsequent recheck to this upload only; no duplicate lookup.
+  const hashStarted=performance.now();
   const hash=await sha256(bytes);
+  timing.mark("hash_ms",hashStarted);
   const payload={
     contents:[{role:"user",parts:[
       {text:INSTRUCTIONS+" Extraction profile: "+profile+". Expense category: "+
@@ -1459,6 +1468,8 @@ async function extract(req,principal,authMs=0){
       maxOutputTokens:16384},
     store:false
   };
+  timing.count("extraction_calls");
+  const extractionStarted=performance.now();
   const google=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+MODEL+":generateContent",{
     method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":providerKey()},
     body:JSON.stringify(payload),signal:AbortSignal.timeout(115000)
@@ -1468,6 +1479,8 @@ async function extract(req,principal,authMs=0){
     return timedError("The AI engine returned HTTP "+google.status+". Check provider billing, quota and model access.",502);
   }
   const response=await google.json();
+  timing.mark("extraction_ai_ms",extractionStarted);
+  const parsingStarted=performance.now();
   let fields,sourceDoc,regions,translation,identityHints=[];
   try{
     const message=(response.candidates?.[0]?.content?.parts||[]).filter(p=>!p.thought).map(p=>p.text||"").join("");
@@ -1481,6 +1494,7 @@ async function extract(req,principal,authMs=0){
     const translated=applyEnglishTranslations(sourceDoc,type,_language,_translations);
     fields=cleanDoc(translated.document,type);
     translation=translated.metadata;
+    timing.mark("parsing_ms",parsingStarted);
   }catch(e){
     console.error("Gemini invalid structured response",String(e).slice(0,180));
     return timedError("The AI engine returned an invalid structured document. Try another scan.",502);
@@ -1491,14 +1505,17 @@ async function extract(req,principal,authMs=0){
   try{dateVisualCorrections=await visuallyRecheckDates(bytes,mime,fields,regions);}
   catch(e){console.warn("Billy date visual check unavailable",String(e.message).slice(0,100));}
   const externalChecks=await autoVerifyEntities(fields,regions,identityHints);
+  const validationStarted=performance.now();
   const warnings=validate(fields,type,regions,profile);
   const normalized=normalizeDocument(fields,type,profile);
+  timing.mark("validation_ms",validationStarted);
   const usage={
     input_tokens:response.usageMetadata?.promptTokenCount??null,
     output_tokens:response.usageMetadata?.candidatesTokenCount??null,
     total_tokens:response.usageMetadata?.totalTokenCount??null
   };
   const id=extractId();
+  const saveStarted=performance.now();
   await database(principal,"POST","document_records",{},{
     id,organization_id:principal.organization_id,created_by:principal.user_id,
     document_type:type,source_sha256:hash,state:"extracted",
@@ -1511,6 +1528,7 @@ async function extract(req,principal,authMs=0){
       ...(nestedPrimary?{nested_primary:true}:{})},
     model_name:MODEL,token_usage:usage
   });
+  timing.mark("db_write_ms",saveStarted);
   return timedJson({
     schema_version:"0.7",engine:"Billy Vision",provider:"gemini",
     document_type:type,classification,model:MODEL,filename:safeFileName(file.name),
