@@ -86,14 +86,15 @@ test("Finance HUD shows independently calculated per-currency totals and documen
   assert.match(rendered,/Skylegs is not connected/);
   assert.doesNotMatch(rendered,/€407\.93/,"EUR and USD must not be silently added");
 });
-test("Clicking an evidence source closes HUD and hands off to authorized preview",()=>{
+test("Clicking an evidence source opens private preview above the same HUD",()=>{
   const {ids,win,opened}=mount();
   win.PiggybankHUD.show(answer,"Expenses?");
   const btn=find(ids.piggybankHudContent,el=>el.tag==="button"&&
     el.textContent==="Open");
   assert.ok(btn,"Source preview button is present");
   btn.click();
-  assert.equal(win.PiggybankHUD.active(),false);
+  assert.equal(win.PiggybankHUD.active(),true,
+    "Keep report and scroll position when viewing an invoice");
   assert.deepEqual(opened,["source-1"]);
 });
 test("Backdrop and close controls dismiss HUD without destroying the chat",()=>{
