@@ -1,4 +1,4 @@
-/* Billy Intelligence Assistant: bilingual, document-grounded flight operations chat.
+/* Piggybank: bilingual, document-grounded finance and flight operations chat.
    In-memory conversation only. No samples, hardcoded financial figures or browser persistence. */
 (() => {
   "use strict";
@@ -27,6 +27,7 @@
   }
   function setOpen(next){
     open=Boolean(next);
+    if(!open)window.PiggybankHUD?.hide(false);
     panel.hidden=!open;
     launch.setAttribute("aria-expanded",String(open));
     if(open)input.focus();
@@ -211,6 +212,22 @@
     wrapper.append(footer);
     return wrapper;
   }
+  function renderHudNotice(result,question){
+    const lang=result.language==="ro"?"ro":"en";
+    const wrapper=make("div","billy-ai-hud-notice");
+    const message=lang==="ro"
+      ?"Am deschis analiza cheltuielilor pe HUD. Acolo ai totalurile, categoriile, furnizorii și documentele justificative."
+      :"I've opened the expenses on your HUD. You can see the totals, breakdowns and supporting documents there.";
+    wrapper.append(make("p","",message));
+    const reopen=make("button","piggybank-hud-chat-link",
+      lang==="ro"?"Vezi HUD-ul":"View HUD");
+    reopen.type="button";
+    reopen.addEventListener("click",()=>{
+      window.PiggybankHUD?.show(result,question);
+    });
+    wrapper.append(reopen);
+    return wrapper;
+  }
   async function ask(question){
     if(busy)return;
     const prompt=question.trim();
@@ -222,6 +239,7 @@
       return;
     }
     setOpen(true);
+    window.PiggybankHUD?.hide(false);
     panel.classList.add("has-thread");
     const welcome=feed.querySelector(".billy-ai-welcome");
     if(welcome)welcome.hidden=true;
@@ -239,9 +257,15 @@
         cache:"no-store"
       });
       const result=await response.json();
-      if(!response.ok)throw Error(result.detail||"Billy Intelligence is unavailable.");
+      if(!response.ok)throw Error(result.detail||"Piggybank is unavailable.");
       lastQuestion=prompt;
-      pending.replaceChildren(renderAnswer(result));
+      if(result.understood&&result.filter?.intent==="costs"&&
+        window.PiggybankHUD?.show(result,prompt)){
+        pending.replaceChildren(renderHudNotice(result,prompt));
+      }else{
+        window.PiggybankHUD?.hide(false);
+        pending.replaceChildren(renderAnswer(result));
+      }
     }catch(e){
       pending.replaceChildren(make("div","billy-ai-error",
         e.message||"Could not analyze the question. Please retry."));
@@ -256,19 +280,27 @@
     event.preventDefault();void ask(input.value);
   });
   document.addEventListener("keydown",event=>{
+    if(event.key==="Escape"&&window.PiggybankHUD?.active?.()){
+      window.PiggybankHUD.hide();
+      return;
+    }
     if(event.key==="Escape"&&open)setOpen(false);
   });
   // Do not leave the assistant open when Billy navigates to another workflow.
   new MutationObserver(()=>{
     if(open&&document.body.dataset.billyScreen!=="home"){
       open=false;panel.hidden=true;
+      window.PiggybankHUD?.hide(false);
       launch.setAttribute("aria-expanded","false");
     }
   }).observe(document.body,{attributes:true,attributeFilter:["data-billy-screen"]});
   document.addEventListener("pointerdown",event=>{
     if(open&&dock&&!dock.contains(event.target)&&
-       !event.target.closest?.(".billy-preview-overlay"))setOpen(false);
+       !event.target.closest?.(".billy-preview-overlay")&&
+       !event.target.closest?.(".piggybank-hud")&&
+       !event.target.closest?.(".piggybank-hud-backdrop"))setOpen(false);
   });
   window.addEventListener("billy:account-ready",()=>{status.textContent="";});
-  window.BillyIntelligenceAssistant={ask};
+  window.BillyIntelligenceAssistant={ask,openSource};
+  window.Piggybank={ask};
 })();
