@@ -16,7 +16,7 @@ function environment(){
   const mitosis={mounts:[],plays:0,destroys:0};
   class Element{
     constructor(tag){
-      this.tag=tag;this.children=[];this.attributes={};this.className="";
+      this.tag=tag;this.children=[];this.attributes={};this.className="";this.style={cssText:""};
       this.classList={
         values:new Set(),
         add:key=>this.classList.values.add(key),
@@ -99,6 +99,19 @@ test("Nested transition persists until the child has actually reached review",as
   assert.equal(ui.isActive(),true,"Never stop just because a fixed animation timer expired");
   const layer=h.document.body.children.at(-1);
   assert.equal(layer.classList.contains("is-reading"),true);
+  // Regression for a real screenshot where the SVG expanded to full
+  // viewport width and separated the title from the animation.
+  assert.match(layer.style.cssText,/display:flex/);
+  assert.match(layer.style.cssText,/align-items:center;justify-content:center/);
+  const stage=layer.children[0];
+  assert.match(stage.style.cssText,/flex-direction:column/);
+  assert.match(stage.style.cssText,/max-width:460px/);
+  const visual=stage.children.find(el=>el.className==="billy-nested-transition-visual");
+  assert.ok(visual);
+  assert.match(visual.style.cssText,/width:400px/);
+  assert.match(visual.style.cssText,/max-width:100%/);
+  assert.match(css,/\.billy-nested-transition-visual\{[^}]*width:min\(400px,100%\)/);
+  assert.match(css,/\.billy-nested-transition-visual \.billy-mitosis-svg\{/);
   const text=layer.children[0].children.find(el=>el.tag==="strong");
   assert.equal(text.textContent,"Preparing nested document");
   assert.equal(h.mitosis.mounts.length,1);
