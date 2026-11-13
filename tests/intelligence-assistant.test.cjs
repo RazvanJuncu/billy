@@ -107,8 +107,8 @@ test("Home-only animated bubble displays verified breakdown and allows opening s
   assert.match(html,/id="billyAssistantLaunch"/);
   assert.match(html,/id="billyAssistantPanel"/);
   assert.match(html,/id="billyAssistantForm"/);
-  assert.match(html,/intelligence-assistant\.js\?v=0\.2\.0/);
-  assert.match(html,/intelligence-assistant\.css\?v=0\.2\.0/);
+  assert.match(html,/intelligence-assistant\.js\?v=0\.3\.0/);
+  assert.match(html,/intelligence-assistant\.css\?v=0\.3\.0/);
   assert.match(css,/body\[data-billy-screen="home"\] \.billy-ai-dock/);
   assert.match(css,/prefers-reduced-motion:reduce/);
   assert.match(ui,/window\.BillyAccounts\.sessionHeaders\(\)/);
@@ -120,8 +120,8 @@ test("Home-only animated bubble displays verified breakdown and allows opening s
 });
 
 test("Billy assistant follows flat product UI, not a large stand-alone chat widget",()=>{
-  assert.match(html,/class="billy-ai-head-mark" src="\.\/billydpi-logo\.svg"/);
-  assert.match(html,/Operations, expenses, documents\./);
+  assert.match(html,/class="billy-ai-head-mark" src="\.\/piggybank-mark\.svg"/);
+  assert.match(html,/Ask about costs, flights, or documents\./);
   assert.doesNotMatch(html,/Answers use your team's approved documents\. Flight-level totals will need Skylegs/);
   assert.doesNotMatch(html,/Approved records · Operational insights/);
   assert.match(css,/height:min\(242px,calc\(100dvh - 108px\)\)/);
@@ -136,4 +136,36 @@ test("Billy assistant follows flat product UI, not a large stand-alone chat widg
   assert.match(ui,/panel\.classList\.add\("has-thread"\)/);
   assert.match(ui,/make\("details","billy-ai-disclosure"\)/);
   assert.match(ui,/welcome\.hidden=true/);
+});
+
+test("Piggybank identity and HUD use the official portal hierarchy",()=>{
+  const hud=read("site/piggybank-hud.js"),mark=read("site/piggybank-mark.svg");
+  assert.match(html,/aria-label="Open Piggybank"/);
+  assert.match(html,/<strong>Piggybank<\/strong>/);
+  assert.match(html,/id="piggybankHudBackdrop"/);
+  assert.match(html,/id="piggybankHud" class="piggybank-hud"/);
+  assert.match(html,/id="piggybankHudClose"/);
+  assert.match(html,/piggybank-hud\.js\?v=1\.0\.0/);
+  assert.match(mark,/<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg"/);
+  assert.match(mark,/<title id="piggyTitle">Piggybank<\/title>/);
+  assert.match(css,/\.piggybank-hud-backdrop\{/);
+  assert.match(css,/backdrop-filter:blur\(10px\)/);
+  assert.match(css,/\.billy-ai-dock\{z-index:1700\}/);
+  assert.match(css,/z-index:1650/);
+  assert.match(css,/\.piggybank-hud\{position:fixed/);
+  assert.match(css,/@media\(max-width:1050px\)/);
+  assert.match(css,/body\[data-billy-screen="home"\] \.billy-preview-overlay\{z-index:2100!important\}/);
+  assert.match(hud,/window\.PiggybankHUD=\{show,hide,active:/);
+  assert.match(hud,/group\.categories/);
+  assert.match(hud,/group\.vendors/);
+  assert.match(hud,/result\.documents/);
+  assert.match(hud,/result\.notes/);
+  assert.doesNotMatch(hud,/\.innerHTML\s*=|localStorage|sessionStorage/);
+  assert.match(ui,/result\.filter\?\.intent==="costs"/);
+  assert.match(ui,/renderHudNotice\(result,prompt\)/);
+  assert.match(ui,/window\.PiggybankHUD\?\.show\(result,prompt\)/);
+  assert.match(ui,/window\.PiggybankHUD\?\.hide\(false\)/);
+  assert.match(ui,/window\.BillyIntelligenceAssistant=\{ask,openSource\}/);
+  assert.match(ui,/window\.Piggybank=\{ask\}/);
+  assert.doesNotMatch(ui,/<script|\.innerHTML\s*=/);
 });
