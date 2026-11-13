@@ -358,7 +358,10 @@ async function scanInvoice() {
   let headersReady = processingStarted;
   let apiReturned = processingStarted;
   let jsonParsed = processingStarted;
-  window.BillyLoader?.startWork("ai","Processing document");
+  // An approved parent can hand off to a nested child with its own visible
+  // reading state. Do not layer the generic orbit loader behind that overlay.
+  const nestedHandoff=Boolean(window.BillyNested?.isHandoff?.(state.file));
+  if(!nestedHandoff)window.BillyLoader?.startWork("ai","Processing document");
   setStage(2);
   updateScanButton();
   showNotification("BillyDPI Vision is extracting structured data. Excel will not be modified.");
@@ -443,7 +446,7 @@ async function scanInvoice() {
     showNotification("Could not scan this document: " + (error.message || "Connection error"), true);
   } finally {
     state.busy = false;
-    window.BillyLoader?.endWork("ai");
+    if(!nestedHandoff)window.BillyLoader?.endWork("ai");
     updateScanButton();
     window.dispatchEvent(new CustomEvent("billy:process-complete"));
   }
