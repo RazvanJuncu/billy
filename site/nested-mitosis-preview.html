@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#050607">
+  <title>Nested mitosis · BillyDPI Motion Preview</title>
+  <meta name="description" content="Live HTML, CSS and SVG preview for BillyDPI's nested document transition.">
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <link rel="stylesheet" href="./nested-mitosis.css?v=0.1.0">
+  <script src="./nested-mitosis.js?v=0.1.0" defer></script>
+  <style>
+    :root{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;color-scheme:dark;
+      background:#050607;color:#f2f2f2;font-synthesis:none}
+    *{box-sizing:border-box}
+    html{min-height:100%;background:#050607}
+    body{min-height:100dvh;margin:0;background:#050607;display:flex;flex-direction:column}
+    button,select{font:inherit}
+    button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible{
+      outline:2px solid #f6f6f6;outline-offset:4px}
+    .topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:26px clamp(22px,5vw,64px)}
+    .brand{display:flex;align-items:center;gap:10px;color:#f5f5f5;text-decoration:none}
+    .brand img{width:32px;height:31px;display:block;object-fit:contain}
+    .brand span{font-size:16px;letter-spacing:-.045em;font-weight:720}
+    .preview-label{font-size:10px;font-weight:690;letter-spacing:.115em;color:#898b8d}
+    main{display:flex;flex:1;align-items:center;justify-content:center;
+      min-height:570px;padding:24px 24px 35px}
+    .stage{width:min(620px,100%);margin:auto;text-align:center;
+      display:flex;align-items:center;flex-direction:column;gap:0}
+    .phase{font-size:10px;letter-spacing:.105em;font-weight:700;color:#9fa1a3;margin:0 0 17px}
+    .heading{font-size:clamp(25px,4.6vw,37px);letter-spacing:-.052em;font-weight:690;
+      line-height:1.16;margin:0;min-height:44px}
+    .subline{font-size:13px;line-height:1.55;color:#999c9f;margin:11px 0 0}
+    .animation-shell{width:min(590px,100%);margin-top:37px}
+    .animation-shell .billy-mitosis{width:100%;max-width:590px;margin:0 auto}
+    .controls{display:flex;gap:9px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:31px}
+    .replay{min-height:40px;padding:9px 17px;background:#f0f0f0;border:0;color:#111214;
+      border-radius:9px;font-size:12px;font-weight:700;cursor:pointer}
+    .replay:hover{background:white}
+    .loop-control{display:flex;align-items:center;gap:8px;color:#b0b2b4;font-size:12px;
+      padding:8px 13px;cursor:pointer}
+    .loop-control input{width:15px;height:15px;accent-color:#f0f0f0}
+    .speed{background:#242629;color:#e9e9e9;border:0;border-radius:8px;
+      min-height:40px;padding:0 12px;font-size:12px;cursor:pointer}
+    .info{margin:25px 0 0;color:#74777a;font-size:11px;line-height:1.5;max-width:420px}
+    .foot{padding:0 24px 29px;text-align:center;color:#66696b;font-size:10px;line-height:1.5}
+    .foot a{color:#c0c2c4;text-decoration:none}
+    .foot a:hover{text-decoration:underline}
+    @media(max-width:620px){
+      .topbar{padding:21px 21px 10px}
+      .preview-label{font-size:9px;text-align:right;max-width:100px}
+      main{min-height:480px;padding:28px 18px 35px}
+      .phase{margin-bottom:13px}
+      .animation-shell{margin-top:23px}
+      .controls{margin-top:17px}
+      .info{margin-top:20px}
+    }
+    @media(prefers-reduced-motion:reduce){
+      .info::after{content:"  Reduced motion is enabled: static final state shown."}
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="Back to BillyDPI">
+      <img src="./billydpi-logo.svg" alt="" width="32" height="31">
+      <span>BillyDPI</span>
+    </a>
+    <span class="preview-label">NESTED / MOTION PREVIEW</span>
+  </header>
+  <main>
+    <section class="stage" aria-label="Nested mitosis animation preview">
+      <p class="phase">NESTED DOCUMENTS</p>
+      <h1 class="heading" id="phaseTitle">Preparing nested document</h1>
+      <p class="subline" id="phaseSubtitle">A document within a document.</p>
+      <div class="animation-shell">
+        <div id="mitosisPreview" aria-label="Nested document circles forming in sequence"></div>
+      </div>
+      <div class="controls" aria-label="Animation controls">
+        <button id="replayButton" type="button" class="replay">Replay animation</button>
+        <label class="loop-control">
+          <input id="loopToggle" type="checkbox" checked>
+          Loop
+        </label>
+        <select id="speedSelect" class="speed" aria-label="Animation speed">
+          <option value="0.75">0.75× speed</option>
+          <option value="1" selected>1× speed</option>
+          <option value="1.25">1.25× speed</option>
+        </select>
+      </div>
+      <p class="info">Flat white circles. The first child grows out of the parent; the next grows out of that child. No video, GIF or image frames.</p>
+    </section>
+  </main>
+  <footer class="foot">Interactive visual prototype · Does not alter the live document-processing flow · <a href="./">Back to Billy</a></footer>
+  <script>
+    document.addEventListener("DOMContentLoaded",()=>{
+      const root=document.getElementById("mitosisPreview");
+      const heading=document.getElementById("phaseTitle");
+      const subtitle=document.getElementById("phaseSubtitle");
+      const replay=document.getElementById("replayButton");
+      const loop=document.getElementById("loopToggle");
+      const speed=document.getElementById("speedSelect");
+      if(!window.BillyMitosis?.mount){
+        heading.textContent="Preview unavailable";
+        subtitle.textContent="Animation component failed to load.";
+        return;
+      }
+      const motion=window.BillyMitosis.mount(root,{
+        loop:loop.checked,duration:3500,hold:1450,
+        onStart:()=>{
+          heading.textContent="Preparing nested document";
+          subtitle.textContent="A document within a document.";
+        },
+        onComplete:()=>{
+          heading.textContent="Reading nested document";
+          subtitle.textContent="Ready for extraction.";
+        }
+      });
+      replay.addEventListener("click",()=>motion.play());
+      loop.addEventListener("change",()=>motion.setLoop(loop.checked));
+      speed.addEventListener("change",()=>motion.setDuration(3500/Number(speed.value)));
+      motion.play();
+    });
+  </script>
+</body>
+</html>
