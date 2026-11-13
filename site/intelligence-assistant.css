@@ -376,64 +376,51 @@ body[data-billy-screen="home"] .billy-preview-overlay{z-index:2100!important}
 .billy-ai-hud-notice{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
 .billy-ai-hud-notice p{font-size:12px;line-height:1.65;color:#e0e0e0;margin:0}
 
-/* Piggybank's occasional idle flight. A non-interactive decorative duplicate
-   leaves the button; the launcher stays in place and remains fully usable. */
-.piggybank-flight{
-  position:absolute;right:-22px;bottom:-4px;
-  width:98px;height:62px;pointer-events:none;
-  display:block;visibility:hidden;opacity:0;
-  z-index:1;transform-origin:50% 50%;
+/* Piggybank's occasional bottom-edge stroll: jump out of the circle,
+   toddle along the bottom of the viewport, turn around, and jump back in. */
+.piggybank-stroll{
+  position:absolute;left:10px;bottom:10px;
+  width:34px;height:34px;pointer-events:none;z-index:1;
+  visibility:hidden;opacity:0;
+  --piggy-walk-distance:-210px;
 }
-.piggybank-flight-wings{
-  position:absolute;inset:0;display:block;width:100%;height:100%;
-  fill:#cfd0d2;stroke:#f2f2f2;stroke-width:1.5;stroke-linejoin:round;
-  overflow:visible;filter:drop-shadow(0 4px 7px #0004);
+.piggybank-stroll-mark{
+  display:block;width:34px;height:34px;object-fit:contain;
+  filter:drop-shadow(0 3px 4px #0007);
 }
-.piggybank-wing{transform-box:fill-box}
-.piggybank-wing-left{transform-origin:100% 50%}
-.piggybank-wing-right{transform-origin:0% 50%}
-.piggybank-flight-mark{
-  position:absolute;top:13px;left:31px;display:block;
-  width:36px;height:36px;object-fit:contain;
-  filter:drop-shadow(0 5px 5px #0006);
+.billy-ai-dock.is-strolling .billy-ai-orbit img{opacity:0}
+.billy-ai-dock.is-strolling .piggybank-stroll{
+  visibility:visible;animation:piggybank-bottom-stroll 4.3s linear both;
 }
-.billy-ai-dock.is-flying .billy-ai-orbit img{opacity:0}
-.billy-ai-dock.is-flying .piggybank-flight{
-  visibility:visible;animation:piggybank-short-flight 3.1s ease-in-out both;
+.billy-ai-dock.is-strolling .piggybank-stroll-mark{
+  animation:piggybank-tiny-steps .32s ease-in-out infinite alternate;
 }
-.billy-ai-dock.is-flying .piggybank-wing-left{
-  animation:piggybank-left-flap .34s ease-in-out infinite alternate;
+@keyframes piggybank-bottom-stroll{
+  0%{opacity:0;transform:translate(0,0) rotate(0deg) scale(.83)}
+  5%{opacity:1;transform:translate(-4px,-16px) rotate(-9deg) scale(1)}
+  15%{opacity:1;transform:translate(-20px,24px) rotate(-2deg) scaleX(-1)}
+  25%{opacity:1;transform:translate(calc(var(--piggy-walk-distance)*.25),24px) rotate(-3deg) scaleX(-1)}
+  39%{opacity:1;transform:translate(calc(var(--piggy-walk-distance)*.7),24px) rotate(2deg) scaleX(-1)}
+  49%{opacity:1;transform:translate(var(--piggy-walk-distance),24px) rotate(0deg) scaleX(-1)}
+  57%{opacity:1;transform:translate(var(--piggy-walk-distance),24px) rotate(-5deg) scaleX(1)}
+  70%{opacity:1;transform:translate(calc(var(--piggy-walk-distance)*.7),24px) rotate(3deg)}
+  84%{opacity:1;transform:translate(-32px,24px) rotate(2deg)}
+  94%{opacity:1;transform:translate(-4px,-15px) rotate(10deg)}
+  100%{opacity:0;transform:translate(0,0) rotate(0deg) scale(.83)}
 }
-.billy-ai-dock.is-flying .piggybank-wing-right{
-  animation:piggybank-right-flap .34s ease-in-out infinite alternate;
-}
-@keyframes piggybank-short-flight{
-  0%{opacity:0;transform:translate(0,0) scale(.84) rotate(0deg)}
-  6%{opacity:1;transform:translate(-4px,-17px) scale(.98) rotate(-4deg)}
-  23%{opacity:1;transform:translate(calc(var(--piggy-flight-x, -142px)*.36),-58px) rotate(-11deg)}
-  49%{opacity:1;transform:translate(var(--piggy-flight-x, -142px),-116px) rotate(-6deg)}
-  67%{opacity:1;transform:translate(calc(var(--piggy-flight-x, -142px)*.76),-101px) rotate(8deg)}
-  85%{opacity:1;transform:translate(-38px,-38px) rotate(9deg)}
-  95%{opacity:1;transform:translate(-7px,-10px) scale(.95) rotate(0deg)}
-  100%{opacity:0;transform:translate(0,0) scale(.84) rotate(0deg)}
-}
-@keyframes piggybank-left-flap{
-  from{transform:rotate(-23deg) scaleY(.82)}
-  to{transform:rotate(18deg) scaleY(1.12)}
-}
-@keyframes piggybank-right-flap{
-  from{transform:rotate(23deg) scaleY(.82)}
-  to{transform:rotate(-18deg) scaleY(1.12)}
+@keyframes piggybank-tiny-steps{
+  from{transform:translateY(0) rotate(-4deg)}
+  to{transform:translateY(-2px) rotate(4deg)}
 }
 @media(max-width:640px){
-  .piggybank-flight{right:-24px;bottom:-6px;--piggy-flight-x:-102px}
+  .piggybank-stroll{--piggy-walk-distance:-120px}
 }
 @media(prefers-reduced-motion:reduce){
-  .piggybank-flight,.billy-ai-dock.is-flying .piggybank-flight,
-  .billy-ai-dock.is-flying .piggybank-wing{
+  .piggybank-stroll,.billy-ai-dock.is-strolling .piggybank-stroll,
+  .billy-ai-dock.is-strolling .piggybank-stroll-mark{
     animation:none!important;visibility:hidden!important;opacity:0!important;
   }
-  .billy-ai-dock.is-flying .billy-ai-orbit img{opacity:1!important}
+  .billy-ai-dock.is-strolling .billy-ai-orbit img{opacity:1!important}
 }
 
 /* Opening the Piggybank chat triggers one quick backwards somersault.

@@ -1,35 +1,34 @@
-/* Piggybank's idle flight + chat-opening backflip.
-   Decorative only: no AI calls, persistence, blocking input or UI controls. */
+/* Piggybank's tiny bottom-edge walk and chat-opening backflip.
+   Decorative only: no AI calls, storage, page interactions or pointer capture. */
 (() => {
   "use strict";
   const dock=document.getElementById("billyAssistantDock");
-  const sprite=document.getElementById("piggybankFlight");
+  const sprite=document.getElementById("piggybankStroll");
   const launch=document.getElementById("billyAssistantLaunch");
   const panel=document.getElementById("billyAssistantPanel");
   if(!dock||!sprite||!launch||!panel)return;
 
   const motion=window.matchMedia?.("(prefers-reduced-motion: reduce)");
-  const FLIGHT_MS=3100;
+  const STROLL_MS=4300;
   const BACKFLIP_MS=820;
   const IDLE_MS=45000;
   const MIN_GAP_MS=45000;
   const MAX_GAP_MS=60000;
   const RETRY_MS=8000;
-  let nextTimer=null,landingTimer=null,flipTimer=null;
-  let flying=false,lastActivity=Date.now(),lastScheduledAt=0;
+  let nextTimer=null,returnTimer=null,flipTimer=null;
+  let strolling=false,lastActivity=Date.now(),lastScheduledAt=0;
   let wasExpanded=launch.getAttribute("aria-expanded")==="true";
 
   const randomGap=()=>MIN_GAP_MS+
     Math.floor(Math.random()*(MAX_GAP_MS-MIN_GAP_MS));
-
-  function clearFlightTimer(){
+  function clearWalkTimer(){
     if(nextTimer!==null){clearTimeout(nextTimer);nextTimer=null;}
   }
-  function land(){
-    if(landingTimer!==null){clearTimeout(landingTimer);landingTimer=null;}
-    if(!flying)return;
-    flying=false;
-    dock.classList.remove("is-flying");
+  function returnHome(){
+    if(returnTimer!==null){clearTimeout(returnTimer);returnTimer=null;}
+    if(!strolling)return;
+    strolling=false;
+    dock.classList.remove("is-strolling");
   }
   function stopBackflip(){
     if(flipTimer!==null){clearTimeout(flipTimer);flipTimer=null;}
@@ -47,7 +46,7 @@
       launch.getAttribute("aria-expanded")!=="true" &&
       !window.PiggybankHUD?.active?.();
   }
-  function canFly(){
+  function canStroll(){
     return readyForIdle() &&
       !dock.classList.contains("is-backflipping") &&
       !dock.matches(":hover") &&
@@ -55,8 +54,8 @@
       Date.now()-lastActivity>=IDLE_MS;
   }
   function schedule(delay=randomGap()){
-    clearFlightTimer();
-    if(!readyForIdle()||flying)return;
+    clearWalkTimer();
+    if(!readyForIdle()||strolling)return;
     lastScheduledAt=Date.now();
     nextTimer=setTimeout(attempt,delay);
   }
@@ -64,25 +63,18 @@
     nextTimer=null;
     if(!readyForIdle())return;
     const idleFor=Date.now()-lastActivity;
-    if(idleFor<IDLE_MS){
-      schedule(IDLE_MS-idleFor+1000);
-      return;
-    }
-    if(!canFly()){
-      schedule(RETRY_MS);
-      return;
-    }
-    flying=true;
-    dock.classList.add("is-flying");
-    landingTimer=setTimeout(()=>{
-      land();
+    if(idleFor<IDLE_MS){schedule(IDLE_MS-idleFor+1000);return;}
+    if(!canStroll()){schedule(RETRY_MS);return;}
+    strolling=true;
+    dock.classList.add("is-strolling");
+    returnTimer=setTimeout(()=>{
+      returnHome();
       schedule();
-    },FLIGHT_MS);
+    },STROLL_MS);
   }
   function backflipOnOpen(){
     if(!homeIsAvailable())return;
-    // In particular, stop a flight before showing the opening backflip.
-    land();
+    returnHome();
     stopBackflip();
     dock.classList.add("is-backflipping");
     flipTimer=setTimeout(stopBackflip,BACKFLIP_MS);
@@ -90,29 +82,21 @@
   function onActivity(){
     const now=Date.now();
     lastActivity=now;
-    if(flying){
-      land();
-      schedule();
-      return;
-    }
-    // Pointermove may fire at 60+ Hz. Don't restart a long timer every frame.
+    if(strolling){returnHome();schedule();return;}
+    // Frequent pointermove events must not create a constantly restarting timer.
     if(now-lastScheduledAt>=1000&&readyForIdle())schedule();
   }
   function onStateChange(){
     const expanded=launch.getAttribute("aria-expanded")==="true";
     if(expanded&&!wasExpanded)backflipOnOpen();
     wasExpanded=expanded;
-
-    const available=readyForIdle();
-    if(!available){
-      land();
-      clearFlightTimer();
-    }else if(nextTimer===null&&!flying){
+    if(!readyForIdle()){
+      returnHome();
+      clearWalkTimer();
+    }else if(nextTimer===null&&!strolling){
       lastActivity=Date.now();
       schedule();
     }
-
-    // Do not leave an animation frozen in the air if the user leaves Home.
     if(!homeIsAvailable())stopBackflip();
   }
 
@@ -122,7 +106,6 @@
   document.addEventListener("scroll",onActivity,{capture:true,passive:true});
   document.addEventListener("visibilitychange",onStateChange);
   motion?.addEventListener?.("change",onStateChange);
-
   const observer=new MutationObserver(onStateChange);
   observer.observe(document.body,{
     attributes:true,attributeFilter:["data-billy-screen","class"]
