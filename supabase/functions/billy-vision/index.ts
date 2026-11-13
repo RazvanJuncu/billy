@@ -1094,17 +1094,17 @@ function parseClassificationResponse(raw){
 }
 // Timings are numbers only; no user/document identifiers or extracted values.
 function extractionTimer(authMs=0){
-  const started=performance.now();
+  const started=(typeof performance==="undefined"?Date.now():performance.now());
   const stages={authentication_ms:Math.round(Math.max(0,authMs))};
   const calls={};
   return {
     mark(name,began){
       if(!Number.isFinite(began))return;
-      stages[name]=(stages[name]||0)+Math.round(Math.max(0,performance.now()-began));
+      stages[name]=(stages[name]||0)+Math.round(Math.max(0,(typeof performance==="undefined"?Date.now():performance.now())-began));
     },
     count(name,value=1){calls[name]=(calls[name]||0)+value;},
     snapshot(){return {version:1,model:MODEL,
-      server_total_ms:Math.round(Math.max(0,authMs)+performance.now()-started),
+      server_total_ms:Math.round(Math.max(0,authMs)+(typeof performance==="undefined"?Date.now():performance.now())-started),
       stages_ms:{...stages},calls:{...calls}};
     }
   };
@@ -1120,7 +1120,7 @@ async function classifyDocument(bytes,mime,forceNestedCheck=false,timing=null){
     // Retry only malformed/unsupported responses, not HTTP errors.
     if(attempt)payload.generationConfig.maxOutputTokens=4096;
     timing?.count("classifier_calls");
-    const classifierStarted=performance.now();
+    const classifierStarted=(typeof performance==="undefined"?Date.now():performance.now());
     const response=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+MODEL+":generateContent",{
       method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":providerKey()},
       body:JSON.stringify(payload),signal:AbortSignal.timeout(65000)
@@ -1136,7 +1136,7 @@ async function classifyDocument(bytes,mime,forceNestedCheck=false,timing=null){
              classification.status!=="confident"||classification.profile==="unknown")){
           try{
             timing?.count("nested_geometry_calls");
-             const nestedStarted=performance.now();
+             const nestedStarted=(typeof performance==="undefined"?Date.now():performance.now());
              const focused=await clarifyNestedLayout(bytes,mime);
              timing?.mark("nested_geometry_ai_ms",nestedStarted);
             if(!classification.nested_documents.length)
@@ -1377,7 +1377,7 @@ async function extract(req,principal,authMs=0){
   // A 10 MiB file becomes larger when parsed. Refuse oversized bodies early.
   const declared=Number(req.headers.get("content-length")||0);
   if(declared>MAX_BYTES+1024*1024)return timedError("Vision file must be 10 MiB or smaller.",413);
-  const readStarted=performance.now();
+  const readStarted=(typeof performance==="undefined"?Date.now():performance.now());
   const form=await req.formData(),file=form.get("file"),requestedType=form.get("document_type")||"auto";
   if(!(file instanceof File))return timedError("Missing document.",400);
   if(!["auto","invoice","fuel_release"].includes(requestedType))return timedError("Unsupported document type.",400);
@@ -1403,7 +1403,7 @@ async function extract(req,principal,authMs=0){
   if(parentId!==null&&(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(parentId)||nestedPrimary))
     return timedError("Invalid parent record.",400);
   if(parentId){
-    const started=performance.now();
+    const started=(typeof performance==="undefined"?Date.now():performance.now());
     const parents=await database(principal,"GET","document_records",{
       select:"id,state,parent_document_id",id:"eq."+parentId,
       organization_id:"eq."+principal.organization_id,
@@ -1414,7 +1414,7 @@ async function extract(req,principal,authMs=0){
       return timedError("Parent document must be approved and owned by your team account.",409);
   }
   // Explicit overrides skip an extra classifier invocation.
-  const classificationStarted=performance.now();
+  const classificationStarted=(typeof performance==="undefined"?Date.now():performance.now());
   let classification;
   const override=form.get("profile_override");
   if(override!==null){
@@ -1446,7 +1446,7 @@ async function extract(req,principal,authMs=0){
   const profile=classification.profile;
   const type=profile==="fuel_release"?"fuel_release":"invoice";
   // SHA-256 binds a subsequent recheck to this upload only; no duplicate lookup.
-  const hashStarted=performance.now();
+  const hashStarted=(typeof performance==="undefined"?Date.now():performance.now());
   const hash=await sha256(bytes);
   timing.mark("hash_ms",hashStarted);
   const payload={
@@ -1467,7 +1467,7 @@ async function extract(req,principal,authMs=0){
     store:false
   };
   timing.count("extraction_calls");
-  const extractionStarted=performance.now();
+  const extractionStarted=(typeof performance==="undefined"?Date.now():performance.now());
   const google=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+MODEL+":generateContent",{
     method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":providerKey()},
     body:JSON.stringify(payload),signal:AbortSignal.timeout(115000)
@@ -1478,7 +1478,7 @@ async function extract(req,principal,authMs=0){
   }
   const response=await google.json();
   timing.mark("extraction_ai_ms",extractionStarted);
-  const parsingStarted=performance.now();
+  const parsingStarted=(typeof performance==="undefined"?Date.now():performance.now());
   let fields,sourceDoc,regions,translation,identityHints=[];
   try{
     const message=(response.candidates?.[0]?.content?.parts||[]).filter(p=>!p.thought).map(p=>p.text||"").join("");
@@ -1500,10 +1500,10 @@ async function extract(req,principal,authMs=0){
   // Visual date rereading and public entity checks examine independent
   // fields. Running them concurrently preserves every safety check while
   // reducing their combined wall time to approximately the slower call.
-  const verificationStarted=performance.now();
+  const verificationStarted=(typeof performance==="undefined"?Date.now():performance.now());
   const [dateVisualCorrections,externalChecks]=await Promise.all([
     (async()=>{
-      const started=performance.now();
+      const started=(typeof performance==="undefined"?Date.now():performance.now());
       try{return await visuallyRecheckDates(bytes,mime,fields,regions,timing);}
       catch(e){
         console.warn("Billy date visual check unavailable",String(e.message).slice(0,100));
@@ -1511,7 +1511,7 @@ async function extract(req,principal,authMs=0){
       }finally{timing.mark("date_recheck_ms",started);}
     })(),
     (async()=>{
-      const started=performance.now();
+      const started=(typeof performance==="undefined"?Date.now():performance.now());
       try{
         const result=await autoVerifyEntities(fields,regions,identityHints);
         timing.count("entity_lookup_calls",result.attempts);
@@ -1520,7 +1520,7 @@ async function extract(req,principal,authMs=0){
     })()
   ]);
   timing.mark("verification_wall_ms",verificationStarted);
-  const validationStarted=performance.now();
+  const validationStarted=(typeof performance==="undefined"?Date.now():performance.now());
   const warnings=validate(fields,type,regions,profile);
   const normalized=normalizeDocument(fields,type,profile);
   timing.mark("validation_ms",validationStarted);
@@ -1530,7 +1530,7 @@ async function extract(req,principal,authMs=0){
     total_tokens:response.usageMetadata?.totalTokenCount??null
   };
   const id=extractId();
-  const saveStarted=performance.now();
+  const saveStarted=(typeof performance==="undefined"?Date.now():performance.now());
   await database(principal,"POST","document_records",{},{
     id,organization_id:principal.organization_id,created_by:principal.user_id,
     document_type:type,source_sha256:hash,state:"extracted",
@@ -2498,9 +2498,9 @@ Deno.serve(async req=>{
   if(!suffix)return error("Not found.",404);
   if(req.method!==(suffix==="/api/vision/document-map"||suffix==="/api/vision/extract"||suffix==="/api/vision/recheck"||suffix==="/api/vision/approve"||suffix==="/api/vision/organization"&&req.method==="POST"||suffix==="/api/vision/assistant"||suffix==="/api/vision/delete"||suffix==="/api/vision/original"&&req.method==="POST"?"POST":"GET"))return error("Method not allowed.",405);
   try{
-    const authStarted=performance.now();
+    const authStarted=(typeof performance==="undefined"?Date.now():performance.now());
     const principal=await trusted(req);
-    const authenticationMs=performance.now()-authStarted;
+    const authenticationMs=(typeof performance==="undefined"?Date.now():performance.now())-authStarted;
     if(!principal)return error("Sign in to an approved Billy team first.",401);
     if(suffix==="/api/vision/health")return json({
       status:"online",provider:"gemini",model:MODEL,configured:!!providerKey(),
