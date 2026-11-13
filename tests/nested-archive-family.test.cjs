@@ -51,12 +51,17 @@ test("Backend supplies only referenced parents when paginated child appears with
   assert.match(simple,/const extra=Array\.isArray\(result\.parent_records\)/);
   assert.match(simple,/record\.nested_parent=byId\.get\(record\.parent_document_id\)/);
 });
-test("Shared grey family container and receipt glyph preserve distinct source semantics",()=>{
+test("Nested family shell matches standalone archive rows and preserves receipt semantics",()=>{
   assert.match(index,/Receipt:\[/);
   assert.match(index,/serviceIcon\(node\.__billyParentId\?"Receipt":node\.__billyDocument\.service\)/);
   assert.match(index,/billy-doc-family-children/);
   assert.match(index,/billy-doc-nested-connector/);
-  assert.match(css,/\.billy-doc-family\{[^}]*background:#292c2f/);
+  assert.match(css,/\.billy-doc-family\{[^}]*background:#191b1d/);
+  assert.match(css,/#simpleUploaded \.billy-doc-family\{[^}]*background:#191b1d!important/);
+  assert.match(css,/body\[data-billy-screen="uploaded"\] \.simple-document-item\{[^}]*background:#191b1d!important/);
+  assert.match(css,/#simpleUploaded \.billy-doc-family-parent,[\s\S]*?#simpleUploaded \.billy-doc-family \.simple-document-item:focus-visible\{\s*background:transparent!important/);
+  assert.doesNotMatch(css,/#simpleUploaded \.billy-doc-family\{[^}]*background:#242629/);
+  assert.doesNotMatch(css,/#simpleUploaded \.billy-doc-family \.simple-document-item:hover\{[^}]*background:#303337/);
   assert.match(css,/\.billy-doc-family-children\{/);
   assert.match(css,/\.billy-doc-nested-connector::after/);
   assert.match(read("site/document-preview.js"),/openParent\.addEventListener\("click",\(\)=>open\(parent\)\)/);
