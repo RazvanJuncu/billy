@@ -1092,7 +1092,26 @@ function parseClassificationResponse(raw){
     source:"gemini",classifier_model:MODEL
   };
 }
-async function classifyDocument(bytes,mime,forceNestedCheck=false){
+// Timings are numbers only; no user/document identifiers or extracted values.
+function extractionTimer(authMs:number=0){
+  const started=performance.now();
+  const stages:Record<string,number>={authentication_ms:Math.round(Math.max(0,authMs))};
+  const calls:Record<string,number>={};
+  return {
+    mark(name:string,began:number){
+      if(!Number.isFinite(began))return;
+      stages[name]=(stages[name]||0)+Math.round(Math.max(0,performance.now()-began));
+    },
+    count(name:string,value=1){calls[name]=(calls[name]||0)+value;},
+    snapshot(){return {version:1,model:MODEL,
+      server_total_ms:Math.round(Math.max(0,authMs)+performance.now()-started),
+      stages_ms:{...stages},calls:{...calls}};
+    }
+  };
+}
+type ExtractionTimer=ReturnType<typeof extractionTimer>;
+
+async function classifyDocument(bytes,mime,forceNestedCheck=false,timing?:ExtractionTimer){
   const payload={
     contents:[{role:"user",parts:[{text:CLASSIFIER_PROMPT},
       {inline_data:{mime_type:mime,data:b64(bytes)}}]}],
@@ -1102,12 +1121,15 @@ async function classifyDocument(bytes,mime,forceNestedCheck=false){
   for(let attempt=0;attempt<2;attempt++){
     // Retry only malformed/unsupported responses, not HTTP errors.
     if(attempt)payload.generationConfig.maxOutputTokens=4096;
+    timing?.count("classifier_calls");
+    const classifierStarted=performance.now();
     const response=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+MODEL+":generateContent",{
       method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":providerKey()},
       body:JSON.stringify(payload),signal:AbortSignal.timeout(65000)
     });
     if(!response.ok)throw Error("Classifier returned HTTP "+response.status);
     const raw=await response.json();
+    timing?.mark("classifier_ai_ms",classifierStarted);
     try{
       const classification=parseClassificationResponse(raw);
       if(classification.multiple_documents_visible||forceNestedCheck){
@@ -1115,7 +1137,10 @@ async function classifyDocument(bytes,mime,forceNestedCheck=false){
            (forceNestedCheck||!classification.nested_documents.length||
              classification.status!=="confident"||classification.profile==="unknown")){
           try{
-            const focused=await clarifyNestedLayout(bytes,mime);
+            timing?.count("nested_geometry_calls");
+             const nestedStarted=performance.now();
+             const focused=await clarifyNestedLayout(bytes,mime);
+             timing?.mark("nested_geometry_ai_ms",nestedStarted);
             if(!classification.nested_documents.length)
               classification.nested_documents=focused.boxes;
             if(focused.boxes.length)classification.multiple_documents_visible=true;
@@ -1308,9 +1333,10 @@ function applyDateVisualReadings(fields,regions,requests,readings){
   }
   return updates;
 }
-async function visuallyRecheckDates(bytes,mime,fields,regions){
+async function visuallyRecheckDates(bytes,mime,fields,regions,timing?:ExtractionTimer){
   const requests=suspiciousDateFields(fields,regions);
   if(!requests.length)return [];
+  timing?.count("date_recheck_calls");
   const prompt="INDEPENDENT VISUAL DATE READ. Read only the printed DATE in each supplied field's image region. "+
     "Ignore the proposed value when reading digits; it may contain an OCR error. "+
     "Return the exact visible date, preserving separators and all digits. "+
