@@ -21,7 +21,7 @@
   <link rel="stylesheet" href="./accounts.css?v=0.7.0">
   <link rel="stylesheet" href="./document-type.css?v=0.6.0">
   <link rel="stylesheet" href="./simple.css?v=2.4.2">
-  <link rel="stylesheet" href="./intelligence-assistant.css?v=0.2.0">
+  <link rel="stylesheet" href="./intelligence-assistant.css?v=0.3.0">
   <link rel="stylesheet" href="./multi-documents.css?v=1.0.0">
   <link rel="stylesheet" href="./quickscan.css?v=1">
   <link rel="stylesheet" href="./preloader.css?v=1.2.0">
@@ -49,7 +49,7 @@
   <script src="./original-archive.js?v=1.1.0" defer></script>
   <script src="./document-preview.js?v=1.4.0" defer></script>
   <script src="./simple.js?v=2.2.0" defer></script>
-  <script src="./intelligence-assistant.js?v=0.2.0" defer></script>
+  <script src="./intelligence-assistant.js?v=0.3.0" defer></script>
   <script src="./preloader.js?v=1.2.0" defer></script>
   <script>
     // All phones and tablets open the same Billy in one-button mode.
@@ -569,33 +569,49 @@
     <p id="scanMessage" class="scan-message" role="status" aria-live="polite"></p>
   </div>
 </div>
-  <aside class="billy-ai-dock" id="billyAssistantDock" aria-label="Billy Intelligence">
+
+  <div id="piggybankHudBackdrop" class="piggybank-hud-backdrop" aria-hidden="true" hidden></div>
+  <section id="piggybankHud" class="piggybank-hud" role="region"
+    aria-labelledby="piggybankHudTitle" hidden>
+    <header class="piggybank-hud-head">
+      <div class="piggybank-hud-heading">
+        <span class="piggybank-hud-kicker">PIGGYBANK / FINANCIAL HUD</span>
+        <h2 id="piggybankHudTitle">Expenses</h2>
+      </div>
+      <button id="piggybankHudClose" type="button" class="piggybank-hud-close"
+        aria-label="Close financial HUD">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </header>
+    <div id="piggybankHudContent" class="piggybank-hud-content"></div>
+  </section>
+  <aside class="billy-ai-dock" id="billyAssistantDock" aria-label="Piggybank">
     <button id="billyAssistantLaunch" class="billy-ai-launch" type="button"
-      aria-label="Ask Billy" aria-expanded="false" aria-controls="billyAssistantPanel">
+      aria-label="Open Piggybank" aria-expanded="false" aria-controls="billyAssistantPanel">
       <span class="billy-ai-orbit" aria-hidden="true">
-        <img src="./billydpi-logo.svg" alt="" width="28" height="28" />
+        <img src="./piggybank-mark.svg" alt="" width="28" height="28" />
       </span>
-      <span class="billy-ai-launch-caption">Ask Billy</span>
+      <span class="billy-ai-launch-caption">Piggybank</span>
     </button>
     <section id="billyAssistantPanel" class="billy-ai-panel" role="dialog"
-      aria-label="Billy Intelligence" hidden>
+      aria-label="Piggybank" hidden>
       <header class="billy-ai-head">
-        <img class="billy-ai-head-mark" src="./billydpi-logo.svg" width="24" height="24" alt="" />
-        <strong>Billy Intelligence</strong>
+        <img class="billy-ai-head-mark" src="./piggybank-mark.svg" width="24" height="24" alt="" />
+        <strong>Piggybank</strong>
         <button id="billyAssistantClose" class="billy-ai-close" type="button" aria-label="Close assistant">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
         </button>
       </header>
       <div class="billy-ai-feed" id="billyAssistantFeed" role="log" aria-live="polite" aria-relevant="additions">
         <div class="billy-ai-welcome">
-          <strong>Ask Billy.</strong>
-          <span>Operations, expenses, documents.</span>
+          <strong>Ask Piggybank.</strong>
+          <span>Ask about costs, flights, or documents.</span>
         </div>
       </div>
       <form class="billy-ai-form" id="billyAssistantForm">
         <input id="billyAssistantInput" class="billy-ai-input" type="text"
           autocomplete="off" maxlength="400"
-          aria-label="Ask Billy in Romanian or English" placeholder="Ask anything…" />
+          aria-label="Ask Piggybank in Romanian or English" placeholder="Ask anything…" />
         <button id="billyAssistantSend" class="billy-ai-send" type="submit" aria-label="Send question">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>
         </button>
