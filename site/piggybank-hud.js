@@ -59,7 +59,8 @@
     open.setAttribute("aria-label",(lang==="ro"?"Deschide documentul ":"Open document ")+
       (item.vendor||"")+" "+(item.reference||""));
     open.addEventListener("click",()=>{
-      hide(false);
+      // Private document preview is layered above the HUD. When it closes,
+      // the operator returns to the same financial breakdown and scroll.
       if(window.BillyIntelligenceAssistant?.openSource){
         void window.BillyIntelligenceAssistant.openSource(item.id,open);
       }
