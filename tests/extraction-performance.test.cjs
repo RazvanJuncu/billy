@@ -12,7 +12,7 @@ const sw=read("site/sw.js");
 const nested=read("site/nested-documents.js");
 
 test("Every extraction reports privacy-safe timed phases including classification-only returns",()=>{
-  assert.match(server,/function extractionTimer\(authMs:number=0\)/);
+  assert.match(server,/function extractionTimer\(authMs=0\)/);
   assert.match(server,/processing_timing:trace/);
   assert.match(server,/server_total_ms:/);
   assert.match(server,/const authenticationMs=performance\.now\(\)-authStarted/);
