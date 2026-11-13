@@ -89,7 +89,7 @@ test("After original archive, the approved mitosis replaces the old handoff UI",
   assert.match(flow,/window\.BillyNestedTransition\?\.reading\?\.\(\)/);
   assert.match(html,/nested-mitosis\.js\?v=0\.3\.0/);
   assert.match(html,/nested-mitosis\.css\?v=0\.3\.0/);
-  assert.match(html,/nested-transition\.js\?v=1\.2\.0/);
+  assert.match(html,/nested-transition\.js\?v=1\.3\.0/);
   assert.match(read("site/sw.js"),/nested-mitosis\.js/);
   assert.match(read("site/sw.js"),/nested-mitosis\.css/);
 });
