@@ -168,7 +168,7 @@ test("Generic orbit never replaces the active nested transition during extractio
   assert.match(transitionCode,/window\.BillyMitosis\.mount\(visual,\{loop:true,duration:2800\}\)/);
   assert.doesNotMatch(transitionCode,/Reading nested document/);
   assert.doesNotMatch(transitionCode,/billy-nested-transition-child|billy-nested-transition-path/);
-  assert.match(html,/nested-documents\.js\?v=1\.3\.0/);
+  assert.match(html,/nested-documents\.js\?v=1\.4\.0/);
 });
 
 test("Nested handoff remains visible during processing rather than stopping after an arbitrary timer",()=>{
