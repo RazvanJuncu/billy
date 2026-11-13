@@ -1093,25 +1093,23 @@ function parseClassificationResponse(raw){
   };
 }
 // Timings are numbers only; no user/document identifiers or extracted values.
-function extractionTimer(authMs:number=0){
+function extractionTimer(authMs=0){
   const started=performance.now();
-  const stages:Record<string,number>={authentication_ms:Math.round(Math.max(0,authMs))};
-  const calls:Record<string,number>={};
+  const stages={authentication_ms:Math.round(Math.max(0,authMs))};
+  const calls={};
   return {
-    mark(name:string,began:number){
+    mark(name,began){
       if(!Number.isFinite(began))return;
       stages[name]=(stages[name]||0)+Math.round(Math.max(0,performance.now()-began));
     },
-    count(name:string,value=1){calls[name]=(calls[name]||0)+value;},
+    count(name,value=1){calls[name]=(calls[name]||0)+value;},
     snapshot(){return {version:1,model:MODEL,
       server_total_ms:Math.round(Math.max(0,authMs)+performance.now()-started),
       stages_ms:{...stages},calls:{...calls}};
     }
   };
 }
-type ExtractionTimer=ReturnType<typeof extractionTimer>;
-
-async function classifyDocument(bytes,mime,forceNestedCheck=false,timing?:ExtractionTimer){
+async function classifyDocument(bytes,mime,forceNestedCheck=false,timing=null){
   const payload={
     contents:[{role:"user",parts:[{text:CLASSIFIER_PROMPT},
       {inline_data:{mime_type:mime,data:b64(bytes)}}]}],
@@ -1333,7 +1331,7 @@ function applyDateVisualReadings(fields,regions,requests,readings){
   }
   return updates;
 }
-async function visuallyRecheckDates(bytes,mime,fields,regions,timing?:ExtractionTimer){
+async function visuallyRecheckDates(bytes,mime,fields,regions,timing=null){
   const requests=suspiciousDateFields(fields,regions);
   if(!requests.length)return [];
   timing?.count("date_recheck_calls");
@@ -1363,7 +1361,7 @@ async function visuallyRecheckDates(bytes,mime,fields,regions,timing?:Extraction
 }
 async function extract(req,principal,authMs=0){
   const timing=extractionTimer(authMs);
-  const timedJson=(data:Record<string,unknown>,status=200)=>{
+  const timedJson=(data,status=200)=>{
     const trace=timing.snapshot();
     // Safe for Supabase logs: timings and call counts only, no file/user data.
     console.info("Billy extraction performance",JSON.stringify({
@@ -1372,7 +1370,7 @@ async function extract(req,principal,authMs=0){
     }));
     return json({...data,processing_timing:trace},status);
   };
-  const timedError=(detail:string,status:number)=>timedJson({detail},status);
+  const timedError=(detail,status)=>timedJson({detail},status);
   if(!providerKey())return timedError("The AI engine is not configured on the server.",503);
   const contentType=req.headers.get("content-type")||"";
   if(!contentType.startsWith("multipart/form-data"))return timedError("Upload a document using multipart form data.",400);
