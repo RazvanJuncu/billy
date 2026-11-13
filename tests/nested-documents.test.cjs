@@ -88,12 +88,13 @@ test("Nest status and archived hierarchy remain visible without box selection",(
   assert.match(app,/await window\.BillyNested\.start\(currentFile,responseBody\.classification\)/);
   assert.doesNotMatch(app,/BillyMultiDocs\.open/);
   assert.match(simple,/window\.BillyNested\?\.decorateTitle\(next,\$\("simpleFlowTitle"\)\)/);
-  assert.match(simple,/maybeStartProcessing\(\);\s*\}\s*\}\);/);
+  assert.match(simple,/window\.addEventListener\("billy:process-complete"/);
+  assert.match(simple,/window\.BillyNested\?\.finishHandoff\?\.\(\)/);
   assert.match(simple,/record\.nested_children=family\.filter/);
     const index=read("site/documents-index.js");
   assert.match(index,/billy-doc-nested-connector/);
   assert.match(preview,/Attached documents/);
   assert.match(storage,/billy:original-archived/);
-  assert.match(html,/nested-documents\.js\?v=1\.2\.0/);
+  assert.match(html,/nested-documents\.js\?v=1\.3\.0/);
   assert.doesNotMatch(html,/multi-documents\.js\?v=/);
 });
