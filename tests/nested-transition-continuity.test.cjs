@@ -89,7 +89,7 @@ test("Nested transition persists until the child has actually reached review",as
   assert.equal(ui.isActive(),true,"The handoff must start only after original archive");
   assert.equal(h.document.body.classList.contains("billy-nested-transition-open"),true);
   assert.equal(h.timers.length,1);
-  assert.equal(h.timers[0].ms,1450,"Wait for the one-time visual animation");
+  assert.equal(h.timers[0].ms,150,"Nested child should not wait 1.45s before AI processing");
   const nextFile=h.window.BillyNested.isHandoff(h.file);
   assert.equal(nextFile,false,"The source/parent is not a child handoff");
   h.timers.shift().fn();
@@ -171,7 +171,7 @@ test("Generic orbit never replaces the active nested transition during extractio
   assert.match(html,/nested-documents\.js\?v=1\.3\.0/);
 });
 
-test("Nested transition no longer stops itself unconditionally on a 1450ms timer",()=>{
+test("Nested handoff remains visible during processing rather than stopping after an arbitrary timer",()=>{
   assert.doesNotMatch(nestedCode,
     /setTimeout\(\(\)=>\{\s*window\.BillyNestedTransition\?\.stop\?\.\(\)/);
   assert.match(nestedCode,/if\(transition\)window\.BillyNestedTransition\?\.reading\?\.\(\)/);
