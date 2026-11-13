@@ -76,7 +76,7 @@ function harness({reduced=false,visible=true,screen="home"}={}){
     notify
   };
 }
-test("Piggybank flies after 45–60s idle, lands in 3.1s, and can repeat",()=>{
+test("Piggybank walks after 45–60s idle, returns in 4.3s, and can repeat",()=>{
   const h=harness();
   h.timers.advance(44999);assert.equal(h.strolling(),false);
   h.timers.advance(1);assert.equal(h.strolling(),true);
@@ -93,7 +93,7 @@ test("Movement, clicking or keyboard activity cancels a stroll immediately",()=>
     h.timers.advance(4300);assert.equal(h.strolling(),false,event);
   }
 });
-test("Never flies while chat/HUD is open, away from home, or login/preview overlays exist",()=>{
+test("Never walks while chat/HUD is open, away from home, or login/preview overlays exist",()=>{
   const variations=[
     h=>{h.nodes.billyAssistantLaunch.attrs["aria-expanded"]="true"},
     h=>{h.nodes.billyAssistantPanel.hidden=false},
@@ -160,7 +160,7 @@ test("Opening chat triggers one 820 ms backflip without delaying the chat",()=>{
   h.nodes.billyAssistantLaunch.setAttribute("aria-expanded","true");
   assert.equal(flipping(),true,"A new open triggers a fresh backflip");
 });
-test("Opening chat mid-stroll cancels wings then backflips; reduced motion skips both",()=>{
+test("Opening chat mid-stroll cancels the walk then backflips; reduced motion skips both",()=>{
   const h=harness();h.timers.advance(45000);
   assert.equal(h.strolling(),true);
   h.nodes.billyAssistantPanel.hidden=false;
