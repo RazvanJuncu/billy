@@ -370,3 +370,8 @@ body.auth-locked .billy-ai-dock{display:none!important}
 @media(prefers-reduced-motion:reduce){
   .piggybank-hud{animation:none!important}
 }
+
+/* Source document preview must remain above both Piggybank windows. */
+body[data-billy-screen="home"] .billy-preview-overlay{z-index:2100!important}
+.billy-ai-hud-notice{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+.billy-ai-hud-notice p{font-size:12px;line-height:1.65;color:#e0e0e0;margin:0}
