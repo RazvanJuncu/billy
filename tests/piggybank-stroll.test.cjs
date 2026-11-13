@@ -80,7 +80,7 @@ test("Piggybank walks after 45–60s idle, returns in 4.3s, and can repeat",()=>
   const h=harness();
   h.timers.advance(44999);assert.equal(h.strolling(),false);
   h.timers.advance(1);assert.equal(h.strolling(),true);
-  h.timers.advance(4299);assert.equal(h.strolling(),true);
+  h.timers.advance(3599);assert.equal(h.strolling(),true);
   h.timers.advance(1);assert.equal(h.strolling(),false);
   h.timers.advance(45000);assert.equal(h.strolling(),true);
 });
@@ -90,7 +90,7 @@ test("Movement, clicking or keyboard activity cancels a stroll immediately",()=>
     assert.equal(h.strolling(),true,event);
     h.document.dispatch(event);
     assert.equal(h.strolling(),false,event);
-    h.timers.advance(4300);assert.equal(h.strolling(),false,event);
+    h.timers.advance(3600);assert.equal(h.strolling(),false,event);
   }
 });
 test("Never walks while chat/HUD is open, away from home, or login/preview overlays exist",()=>{
@@ -142,7 +142,7 @@ test("Idle window resets after real user activity rather than starting on page l
   h.timers.advance(1);
   assert.equal(h.strolling(),true);
 });
-test("Opening chat triggers one 820 ms backflip without delaying the chat",()=>{
+test("Opening chat triggers one 880 ms backflip without delaying the chat",()=>{
   const h=harness();
   h.nodes.billyAssistantPanel.hidden=false;
   h.nodes.billyAssistantLaunch.setAttribute("aria-expanded","true");
@@ -150,7 +150,7 @@ test("Opening chat triggers one 820 ms backflip without delaying the chat",()=>{
   assert.equal(flipping(),true);
   assert.equal(h.nodes.billyAssistantPanel.hidden,false);
   h.notify();
-  h.timers.advance(819);
+  h.timers.advance(879);
   assert.equal(flipping(),true,"Extra mutations must not restart animation");
   h.timers.advance(1);
   assert.equal(flipping(),false);
@@ -167,7 +167,7 @@ test("Opening chat mid-stroll cancels the walk then backflips; reduced motion sk
   h.nodes.billyAssistantLaunch.setAttribute("aria-expanded","true");
   assert.equal(h.strolling(),false);
   assert.equal(h.nodes.billyAssistantDock.classList.contains("is-backflipping"),true);
-  h.timers.advance(820);
+  h.timers.advance(880);
   assert.equal(h.nodes.billyAssistantDock.classList.contains("is-backflipping"),false);
   const never=harness({reduced:true});
   never.nodes.billyAssistantPanel.hidden=false;
@@ -186,8 +186,8 @@ test("Backflip is cancelled when leaving Home or hiding the browser tab",()=>{
 test("The sprite is decorative and leaves the launcher clickable",()=>{
   assert.match(html,/id="piggybankStroll" class="piggybank-stroll" aria-hidden="true"/);
   assert.match(html,/class="piggybank-stroll-mark" src="\.\/piggybank-mark\.svg"/);
-  assert.match(html,/piggybank-stroll\.js\?v=1\.0\.0/);
-  assert.match(html,/intelligence-assistant\.css\?v=0\.3\.3/);
+  assert.match(html,/piggybank-stroll\.js\?v=1\.1\.0/);
+  assert.match(html,/intelligence-assistant\.css\?v=0\.3\.4/);
   assert.match(css,/\.piggybank-stroll\{/);
   assert.match(css,/pointer-events:none/);
   assert.match(css,/@keyframes piggybank-bottom-stroll/);
@@ -199,4 +199,23 @@ test("The sprite is decorative and leaves the launcher clickable",()=>{
   assert.doesNotMatch(source,/fetch\(|localStorage|sessionStorage|innerHTML/);
   assert.doesNotMatch(html,/piggybank-wing|piggybank-flight/);
   assert.doesNotMatch(css,/piggybank-wing|piggybank-flight|piggybank-left-flap/);
+});
+
+test("Walk turn is an instant sprite switch, not a paper-thin transform",()=>{
+  assert.match(html,/class="piggybank-stroll-step"/);
+  assert.match(css,/piggybank-stroll-mark\{\s*animation:piggybank-instant-turn 3\.6s steps\(1,end\)/);
+  assert.match(css,/@keyframes piggybank-instant-turn\{\s*0%,49\.99%\{transform:scaleX\(-1\)\}\s*50%,100%\{transform:scaleX\(1\)\}/);
+  const pathBlock=css.slice(css.indexOf("@keyframes piggybank-bottom-stroll{"),
+    css.indexOf("@keyframes piggybank-instant-turn{"));
+  assert.doesNotMatch(pathBlock,/scaleX\(/);
+  assert.match(pathBlock,/8%\{opacity:1;transform:translate\(-16px,24px\)/);
+  assert.match(pathBlock,/96%\{opacity:1;transform:translate\(-2px,-12px\)/);
+});
+test("Backflip combines a single spin with a separate smooth jump arc",()=>{
+  assert.match(css,/@keyframes piggybank-chat-hop\{/);
+  assert.match(css,/45%\{transform:translateY\(-27px\) scale\(1\.07\)\}/);
+  assert.match(css,/@keyframes piggybank-chat-backflip\{\s*from\{transform:rotate\(0deg\)\}\s*to\{transform:rotate\(-360deg\)\}/);
+  assert.match(css,/animation:piggybank-chat-hop 880ms ease-in-out both!important/);
+  assert.match(css,/animation:piggybank-chat-backflip 880ms cubic-bezier/);
+  assert.doesNotMatch(css,/@keyframes piggybank-chat-backflip\{[^}]*18%/);
 });
