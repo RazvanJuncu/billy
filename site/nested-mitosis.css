@@ -1,0 +1,53 @@
+/* BillyDPI nested mitosis v0.1 — flat white geometry only.
+   This stylesheet is shared by the actual browser preview and future loader. */
+.billy-mitosis{
+  --billy-mitosis-duration:3500ms;
+  display:block;position:relative;width:100%;min-width:0;
+  background:transparent;overflow:hidden;contain:layout style;
+}
+.billy-mitosis-svg{
+  display:block;width:100%;height:auto;aspect-ratio:510 / 224;
+  overflow:visible;fill:#f7f7f7;
+  shape-rendering:geometricPrecision;
+}
+.billy-mitosis-parent{fill:#f7f7f7}
+.billy-mitosis-first,.billy-mitosis-second{
+  fill:#f7f7f7;opacity:0;
+  transform-box:view-box;
+  transform-origin:150px 112px;
+}
+.billy-mitosis.is-playing .billy-mitosis-first{
+  animation:billy-mitosis-bud-one var(--billy-mitosis-duration)
+    cubic-bezier(.24,.62,.24,1) both;
+}
+.billy-mitosis.is-playing .billy-mitosis-second{
+  animation:billy-mitosis-bud-two var(--billy-mitosis-duration)
+    cubic-bezier(.24,.62,.24,1) both;
+}
+/* First child: small bud from inside the parent, enlarges as it leaves. */
+@keyframes billy-mitosis-bud-one{
+  0%,5%{opacity:0;transform:translate(20px,0) scale(.12)}
+  12%{opacity:1;transform:translate(51px,-3px) scale(.40)}
+  26%{opacity:1;transform:translate(82px,-2px) scale(.74)}
+  40%,100%{opacity:1;transform:translate(117px,0) scale(1)}
+}
+/* Grandchild only appears once the first bubble is established. */
+@keyframes billy-mitosis-bud-two{
+  0%,44%{opacity:0;transform:translate(117px,0) scale(.16)}
+  52%{opacity:1;transform:translate(142px,-3px) scale(.35)}
+  66%{opacity:1;transform:translate(170px,-2px) scale(.70)}
+  81%,100%{opacity:1;transform:translate(194px,0) scale(1)}
+}
+.billy-mitosis.is-complete .billy-mitosis-first{
+  opacity:1;transform:translate(117px,0) scale(1)
+}
+.billy-mitosis.is-complete .billy-mitosis-second{
+  opacity:1;transform:translate(194px,0) scale(1)
+}
+.billy-mitosis.is-resetting{opacity:0;transition:opacity 220ms ease}
+.billy-mitosis:not(.is-resetting){opacity:1;transition:opacity 180ms ease}
+@media(prefers-reduced-motion:reduce){
+  .billy-mitosis,.billy-mitosis *{animation:none!important;transition:none!important}
+  .billy-mitosis-first{opacity:1;transform:translate(117px,0) scale(1)}
+  .billy-mitosis-second{opacity:1;transform:translate(194px,0) scale(1)}
+}
