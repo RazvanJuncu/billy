@@ -2822,7 +2822,7 @@ async function assistantSource(req,principal){
   const id=new URL(req.url).searchParams.get("record_id");
   if(!UUID_FORMAT.test(id||""))return error("Invalid source document.",400);
   const records=await database(principal,"GET","document_records",{
-    select:"id,document_type,state,created_at,approved_at,extracted_data,reviewed_data,review_metadata,regions_data,validation_warnings,translation_metadata,parent_document_id,original_storage_key,original_mime",
+    select:"id,created_by,document_type,state,created_at,approved_at,extracted_data,reviewed_data,review_metadata,regions_data,validation_warnings,translation_metadata,parent_document_id,original_storage_key,original_mime",
     organization_id:"eq."+principal.organization_id,id:"eq."+id,state:"eq.approved",limit:"1"
   });
   const record=records[0];
