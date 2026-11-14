@@ -114,3 +114,124 @@ html[data-billy-mobile="1"] body.billy-functions-revealed .simple-home .simple-q
 .billy-preview-financial-action:hover{background:#393d40!important}
 .billy-preview-financial-action:disabled{opacity:.5;cursor:wait}
 .billy-preview-financial-unavailable{font-size:11px;color:#acb2b6}
+
+/* Financial Operations P1.1 / P1.2. Focus on actionable records, not decorative KPI tiles. */
+.billy-financial-section{
+  background:#1b1d1f;border-radius:16px;padding:22px 25px;
+  display:flex;flex-direction:column;gap:16px;min-width:0;
+}
+.billy-financial-section[hidden]{display:none!important}
+.billy-financial-section-head{
+  display:flex;align-items:baseline;justify-content:space-between;
+  gap:12px;flex-wrap:wrap;
+}
+.billy-financial-section-head h2{font-size:17px;font-weight:660;color:#f5f5f5;margin:0}
+.billy-financial-section-head h2 span{
+  display:inline-flex;min-width:22px;min-height:22px;align-items:center;
+  justify-content:center;margin-left:6px;padding:1px 7px;
+  border-radius:7px;background:#34373a;font-size:12px;color:#e4e7e9;
+}
+.billy-financial-section-sub{font-size:11px;color:#9a9fa2}
+.billy-financial-attention-list,.billy-financial-ledger{
+  display:flex;flex-direction:column;gap:5px;min-width:0;
+}
+.billy-financial-attention-item,.billy-financial-expense-row{
+  display:grid;align-items:center;gap:14px;padding:13px 14px;
+  background:#282b2d;border-radius:9px;min-width:0;
+}
+.billy-financial-attention-item{grid-template-columns:minmax(0,1fr) auto}
+.billy-financial-expense-row{
+  grid-template-columns:minmax(0,1.4fr) minmax(110px,.65fr) auto;
+}
+.billy-financial-attention-copy,.billy-financial-expense-identity,
+.billy-financial-expense-amount{
+  display:flex;flex-direction:column;gap:4px;min-width:0;
+}
+.billy-financial-attention-copy strong,.billy-financial-expense-identity strong,
+.billy-financial-expense-amount strong{
+  font-size:12px;font-weight:660;line-height:1.4;
+  color:#f2f2f2;overflow-wrap:anywhere;
+}
+.billy-financial-attention-copy small,.billy-financial-expense-identity small,
+.billy-financial-expense-amount small{
+  font-size:10px;color:#a8adb0;line-height:1.5;
+  overflow-wrap:anywhere;
+}
+.billy-financial-expense-amount{text-align:right;align-items:flex-end}
+.billy-financial-expense-amount strong{font-variant-numeric:tabular-nums}
+.billy-financial-expense-amount .billy-financial-issue-text{color:#c9c3bf}
+.billy-financial-row-actions{display:flex;gap:7px;justify-content:flex-end;align-items:center;flex-wrap:wrap}
+.billy-financial-subtle{
+  border:0!important;background:#373b3e!important;color:#e4e6e8!important;
+  border-radius:7px!important;min-height:32px;
+  padding:7px 10px!important;font-size:11px!important;cursor:pointer;
+  transition:background .15s ease;
+}
+.billy-financial-subtle:hover,.billy-financial-subtle:focus-visible{background:#484d50!important}
+.billy-financial-subtle:disabled{opacity:.55;cursor:default}
+.billy-financial-filters{
+  display:grid;grid-template-columns:minmax(160px,1.6fr) repeat(3,minmax(110px,1fr));
+  gap:8px;min-width:0;
+}
+.billy-financial-filters input,.billy-financial-filters select{
+  width:100%;min-width:0;min-height:39px;
+  border:0!important;outline-offset:2px;border-radius:8px!important;
+  background:#2b2d30!important;color:#e5e7e9!important;
+  padding:9px 10px!important;font-size:11px!important;font-family:inherit;
+}
+.billy-financial-filters input::placeholder{color:#8e959a}
+.billy-financial-review-editor[hidden]{display:none!important}
+.billy-financial-review-editor{
+  padding:18px;background:#24272a;border-radius:10px;
+  display:flex;flex-direction:column;gap:11px;
+}
+.billy-financial-review-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.billy-financial-review-head strong{font-size:13px}
+.billy-financial-review-close{
+  border:0!important;background:#36393c!important;color:#c3c8cc!important;
+  width:28px;height:28px;border-radius:8px!important;cursor:pointer;font-size:17px!important;
+}
+.billy-financial-review-editor>p{margin:0;color:#a9afb4;font-size:11px;line-height:1.6}
+.billy-financial-review-form{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;
+}
+.billy-financial-review-field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.billy-financial-review-field span{font-size:11px;color:#bdc2c6}
+.billy-financial-review-field input{
+  width:100%;min-width:0;min-height:39px;padding:10px;
+  background:#35393c!important;color:#f2f2f2!important;
+  border:1px solid #4b5054!important;border-radius:8px!important;
+  font-size:12px!important;
+}
+.billy-financial-review-actions{
+  grid-column:1/-1;display:flex;gap:8px;align-items:center;
+  justify-content:flex-end;flex-wrap:wrap;
+}
+.billy-financial-save{
+  border:0!important;background:#e7e7e7!important;color:#151719!important;
+  border-radius:8px!important;padding:9px 13px!important;min-height:37px;
+  font-size:11px!important;font-weight:690!important;cursor:pointer;
+}
+.billy-financial-save:disabled{opacity:.55;cursor:default}
+.billy-financial-review-feedback{
+  grid-column:1/-1;min-height:16px;margin:0;
+  font-size:11px;color:#d5b9a8;
+}
+.billy-financial-coverage{font-size:11px;color:#aab0b4;line-height:1.5;margin:0}
+.billy-financial-coverage[hidden]{display:none!important}
+@media(max-width:770px){
+  .billy-financial-filters{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .billy-financial-filters input{grid-column:1/-1}
+  .billy-financial-expense-row{grid-template-columns:minmax(0,1fr) auto}
+  .billy-financial-expense-amount{grid-column:2}
+  .billy-financial-expense-row .billy-financial-row-actions{grid-column:1/-1;justify-content:flex-end}
+}
+@media(max-width:560px){
+  .billy-financial-section{padding:15px 13px;gap:12px;border-radius:12px}
+  .billy-financial-section-head h2{font-size:15px}
+  .billy-financial-section-sub{font-size:10px}
+  .billy-financial-attention-item,.billy-financial-expense-row{padding:12px 10px;gap:8px}
+  .billy-financial-review-form{grid-template-columns:1fr}
+  .billy-financial-review-field,.billy-financial-review-actions,.billy-financial-review-feedback{grid-column:1}
+  .billy-financial-filters{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
