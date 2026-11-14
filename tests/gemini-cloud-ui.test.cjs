@@ -92,7 +92,7 @@ function mockBackend(opts={}) {
     if(url.pathname.endsWith("/billy_financial_links")){
       if(init.method==="POST"){
         const item={...JSON.parse(init.body),
-          id:"33333333-3333-4333-8333-333333333333",
+          id:"33333333-3333-4333-8333-"+String(financialLinks.length+1).padStart(12,"0"),
           created_at:"2026-11-14T00:00:00Z"};
         financialLinks.push(item);
         return new Response(JSON.stringify([item]),{status:201});
@@ -228,7 +228,16 @@ test("Authenticated Financial P0 links one approved nested POS and allows audite
   assert.equal(unlink.status,200,await unlink.text());
   assert.equal(financialLinks[0].state,"revoked");
   const empty=await handler(call("/api/vision/financial?record_id="+parentId));
-  assert.equal((await empty.json()).links.length,0);
+  assert.equal(empty.status,200);
+  const suggested=await empty.json();
+  assert.equal(suggested.links.length,0);
+  assert.equal(suggested.suggested_link.payment_document_id,childId);
+  const relink=await handler(call("/api/vision/financial-link","POST",{
+    headers:{...authHeaders,"Content-Type":"application/json"},
+    body:JSON.stringify({expense_document_id:parentId,payment_document_id:childId})
+  }));
+  assert.equal(relink.status,200,await relink.text());
+  assert.equal(financialLinks.filter(x=>x.state==="active").length,1);
 });
 test("Gemini is server-side; PWA uses Supabase HTTPS and public key only",()=>{
   assert.match(config,/apiUrl: "https:\/\/ookafdnvavohfopxfxpf\.supabase\.co\/functions\/v1\/billy-vision"/);
