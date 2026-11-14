@@ -2445,6 +2445,140 @@ async function financialUnlink(req,principal){
   if(updated.length!==1)return error("Financial link has already changed.",409);
   return json({unlinked:true,link_id:link.id});
 }
+
+// Read-only exact-source duplicate families. These are VIRTUAL archive flags,
+// not mutations of the approved document, its nested children or payment links.
+// Safety: two independent papers from one photo can share SHA; conflicts in
+// their reference, vendor, amount, date or registration prevent auto-flagging.
+function duplicateIdentityText(raw){
+  return String(raw||"").normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g,"").toLocaleUpperCase("ro-RO")
+    .replace(/[^A-Z0-9]+/g," ").trim().replace(/\s+/g," ");
+}
+function duplicateIdentity(record){
+  const document=record.reviewed_data||record.extracted_data||{};
+  const norm=record.review_metadata?.normalization?.approved?.values||{};
+  const profile=String(record.review_metadata?.classification?.profile||
+    record.document_type||"").trim().toLowerCase();
+  const sha=String(record.source_sha256||"").toLowerCase();
+  if(record.parent_document_id||!/^[0-9a-f]{64}$/.test(sha)||!profile)return null;
+  const reference=duplicateIdentityText(
+    document.invoice_number||document.release_number||document.receipt_number||
+    document.transaction_reference||document.document_reference||"");
+  const vendor=duplicateIdentityText(
+    document.supplier_name||document.property_name||document.operator_name||"");
+  const canonical=norm.grand_total;
+  const currency=String(norm.currency||document.currency||"").trim().toUpperCase();
+  const amount=typeof canonical==="number"&&Number.isFinite(canonical)&&
+    canonical>=0&&/^[A-Z]{3}$/.test(currency)?
+      currency+":"+Math.round(canonical*100):"";
+  const date=String(norm.service_date||norm.issue_date||
+    document.service_date||document.issue_date||"").trim().slice(0,10);
+  const aircraft=duplicateIdentityText(norm.aircraft_registration||
+    document.aircraft_registration||"");
+  return {sha,profile,reference,vendor,amount,
+    date:/^\d{4}-\d{2}-\d{2}$/.test(date)?date:"",aircraft};
+}
+function duplicateGroups(records,childCounts=new Map(),linkedIds=new Set(),missingFields=()=>[]){
+  const roots=new Map();
+  for(const record of records){
+    if(!record?.id||record.parent_document_id)continue;
+    roots.set(record.id,record);
+  }
+  const buckets=new Map();
+  for(const record of roots.values()){
+    const identity=duplicateIdentity(record);
+    if(!identity)continue;
+    const key=identity.sha+":"+identity.profile;
+    if(!buckets.has(key))buckets.set(key,[]);
+    buckets.get(key).push({record,identity});
+  }
+  const decisions=new Map();
+  const completeFields=record=>{
+    const doc=record.reviewed_data||record.extracted_data||{};
+    const norm=record.review_metadata?.normalization?.approved?.values||{};
+    const count=object=>Object.values(object).filter(value=>
+      (typeof value==="string"&&value.trim())||
+      (typeof value==="number"&&Number.isFinite(value))||
+      (Array.isArray(value)&&value.length)).length;
+    return count(doc)+count(norm);
+  };
+  const quality=record=>{
+    const missing=record.state==="approved"?missingFields(record):[];
+    const complete=missing.length===0;
+    return [
+      record.state==="approved"?1:0,complete?1:0,
+      -(missing.length||0),
+      Boolean(record.original_storage_key)?1:0,
+      linkedIds.has(record.id)?1:0,
+      childCounts.get(record.id)||0,
+      completeFields(record)
+    ];
+  };
+  const better=(a,b)=>{
+    const x=quality(a),y=quality(b);
+    for(let k=0;k<x.length;k++)if(x[k]!==y[k])return x[k]>y[k]?-1:1;
+    const oldest=String(a.created_at||"").localeCompare(String(b.created_at||""));
+    return oldest||String(a.id).localeCompare(String(b.id));
+  };
+  for(const entries of buckets.values()){
+    if(entries.length<2)continue;
+    // Do NOT merge if the same photo appears to contain different documents.
+    // An absent OCR field is not positive evidence of a match.
+    if(["reference","vendor","amount","date","aircraft"].some(field=>
+      new Set(entries.map(x=>x.identity[field]).filter(Boolean)).size>1))continue;
+    const sorted=entries.map(x=>x.record).sort(better);
+    const primary=sorted[0];
+    decisions.set(primary.id,{is_duplicate:false,duplicate_of:null,
+      duplicate_family_id:primary.id,duplicate_family_size:sorted.length});
+    for(const copy of sorted.slice(1)){
+      decisions.set(copy.id,{is_duplicate:true,duplicate_of:primary.id,
+        duplicate_family_id:primary.id,duplicate_family_size:sorted.length,
+        duplicate_original_state:primary.state});
+    }
+  }
+  return decisions;
+}
+async function duplicateAnnotations(principal,records,directory){
+  const roots=records.filter(record=>!record.parent_document_id);
+  const hashes=[...new Set(roots.map(r=>String(r.source_sha256||"").toLowerCase())
+    .filter(hash=>/^[0-9a-f]{64}$/.test(hash)))];
+  if(!hashes.length)return new Map();
+  // Only retrieve candidates sharing an original with this archive page, not
+  // a full ledger dump. Global canonical choice still spans all archive pages.
+  const candidates=await database(principal,"GET","document_records",{
+    select:"id,state,created_at,approved_at,source_sha256,parent_document_id,document_type,reviewed_data,extracted_data,review_metadata,original_storage_key",
+    organization_id:"eq."+principal.organization_id,
+    source_sha256:"in.("+hashes.join(",")+")",parent_document_id:"is.null",
+    order:"created_at.asc",limit:"501"
+  });
+  // A truncated scan must NOT invent a canonical original. Retry when the
+  // duplicate index is indexed/paginated; keep all documents unflagged meanwhile.
+  if(candidates.length>=501)return new Map();
+  const counts=new Map(),linked=new Set();
+  const ids=candidates.map(x=>x.id);
+  if(ids.length>1){
+    try{
+      const children=await database(principal,"GET","document_records",{
+        select:"parent_document_id",organization_id:"eq."+principal.organization_id,
+        parent_document_id:"in.("+ids.join(",")+")",limit:"501"
+      });
+      if(children.length<501)for(const child of children){
+        counts.set(child.parent_document_id,(counts.get(child.parent_document_id)||0)+1);
+      }
+    }catch{/* Availability of nested counts must not block archive access. */}
+    try{
+      const paymentLinks=await database(principal,"GET","billy_financial_links",{
+        select:"expense_document_id",organization_id:"eq."+principal.organization_id,
+        state:"eq.active",expense_document_id:"in.("+ids.join(",")+")",limit:"501"
+      });
+      if(paymentLinks.length<501)for(const link of paymentLinks)
+        linked.add(link.expense_document_id);
+    }catch{/* Financial linkage is a ranking tie-break, not a prerequisite. */}
+  }
+  return duplicateGroups(candidates,counts,linked,
+    record=>organizationMissing(record,directory));
+}
 async function listRecords(principal,req) {
   const directory=await vendorDirectory(principal);
   const raw=new URL(req.url).searchParams.get("offset")||"0";
@@ -2465,10 +2599,16 @@ async function listRecords(principal,req) {
     select:"id,created_by,document_type,state,created_at,approved_at,model_name,source_sha256,extracted_data,reviewed_data,review_metadata,regions_data,validation_warnings,translation_metadata,original_storage_key,original_mime,original_bytes,original_saved_at,parent_document_id,relationship_type",
     organization_id:"eq."+principal.organization_id,id:"in.("+missing.join(",")+")",limit:"50"
   }):[];
+  // Read-only, stable across pagination and browser reloads. On an index
+  // failure simply show the archive normally; never hide or rewrite a record.
+  let duplicateById=new Map();
+  try{duplicateById=await duplicateAnnotations(principal,[...page,...parents],directory);}
+  catch(e){console.warn("Duplicate hints unavailable; archive remains readable.");}
   const visible=record=>{
     const effective=withResolvedAirport(withResolvedVendor(record,directory));
     const {original_storage_key,...rest}=effective;
     return {...rest,has_original:Boolean(original_storage_key),
+      ...(duplicateById.get(record.id)||{}),
       organization_missing_fields:organizationMissing(record,directory),
       original_validation_warnings:validate(record.extracted_data||{},record.document_type,
         record.regions_data||[],record.review_metadata?.classification?.profile)};
