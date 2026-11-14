@@ -5,8 +5,8 @@
   "use strict";
   const $ = id => document.getElementById(id);
   const body = document.body;
-  const screens = ["home", "new", "uploaded", "edit", "type", "process", "review", "upload"];
-  const names = {new:"New Document",uploaded:"Uploaded Documents",edit:"Edit Document",type:"Document Type",process:"Process Document",review:"Review Document",upload:"Upload Document"};
+  const screens = ["home", "financial", "new", "uploaded", "edit", "type", "process", "review", "upload"];
+  const names = {financial:"Financial",new:"New Document",uploaded:"Uploaded Documents",edit:"Edit Document",type:"Document Type",process:"Process Document",review:"Review Document",upload:"Upload Document"};
   const sessionFiles = [];
   let uploadedRenderVersion = 0;
   let activeFile = null;
@@ -172,6 +172,7 @@
     }
     announce("");
     if (next === "uploaded") renderUploaded();
+    if (next === "home" || next === "financial") void window.BillyFinancial?.refresh?.();
     if (next === "process") {
       updateProcess();
       if(!window.BillyApp?.isOnline() && window.BillyAccounts?.active?.())
@@ -464,6 +465,7 @@
   bind("snapLaunchUpload", chooseSnapFile);
   bind("snapCameraUpload", chooseSnapFile);
   bind("simpleUploadedDocuments", () => showScreen("uploaded"));
+  bind("billyHomeFinancial", () => showScreen("financial"));
   bind("simpleCapture", () => $("scanOpenCamera").click());
   bind("simpleAddFiles", () => $("filePicker").click());
   bind("simpleContinue", startAutomaticProcessing);
