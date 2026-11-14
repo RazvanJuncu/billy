@@ -146,7 +146,11 @@
     }
     const brief=node("dl","billy-preview-primary");
     addField(brief,"Aircraft",norm.aircraft_registration||doc.aircraft_registration);
-    addField(brief,"Airport",norm.airport_icao||doc.airport_icao||doc.airport);
+    addField(brief,"Airport",
+      record.airport_resolution?.status==="resolved" ? record.airport_resolution.icao :
+      (record.review_metadata?.organization_overrides?.airport||norm.airport_icao||doc.airport_icao||doc.airport));
+    if(record.airport_resolution?.status==="conflict")
+      addField(brief,"Airport check","Conflicting evidence — verify in Attention");
     addField(brief,"Vendor",doc.supplier_name||doc.property_name||doc.operator_name);
     addField(brief,"Document reference",doc.invoice_number||doc.release_number);
     addField(brief,"Flight",doc.flight_number);
