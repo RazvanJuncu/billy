@@ -9,6 +9,7 @@
     return node;
   };
   const state={data:null,currency:null,inFlight:null,token:0,error:null};
+  const nav={section:null,expenseView:"paths",expenseKind:null,selected:null,paymentView:"paths"};
   const currencyGroups=()=>Array.isArray(state.data?.trend?.groups)?state.data.trend.groups:[];
   const activeGroup=()=>currencyGroups().find(x=>x.currency===state.currency)||null;
   const money=(minor,currency)=>{
@@ -100,7 +101,7 @@
   function renderFinancialAttention(){
     const items=issuesList(),section=$("billyFinancialAttentionSection");
     const container=$("billyFinancialAttentionList");
-    section.hidden=!items.length||Boolean(state.error);
+    section.hidden=nav.section!=="attention"||!items.length||Boolean(state.error);
     container.replaceChildren();
     if(section.hidden){
       editingId=null;
@@ -219,6 +220,9 @@
     const visible=rows.filter(item=>{
       if(filters.vendor&&item.vendor!==filters.vendor)return false;
       if(filters.aircraft&&item.aircraft!==filters.aircraft)return false;
+      if(nav.section==="expenses"&&nav.expenseView==="list"&&
+         nav.expenseKind==="aircraft"&&nav.selected==="__unassigned__"&&
+         item.aircraft)return false;
       if(from&&(!item.date||item.date<from))return false;
       if(search&&![item.vendor,item.profile,item.aircraft,item.flight,
          item.reference,item.category].some(value=>
@@ -260,27 +264,190 @@
         "Showing the first 150 matching records. Refine the filters to narrow the list."));
     }
   }
+
+  // Uploaded Documents-style navigation: one useful level at a time.
+  // The ledger, reconciliation links and audited review form are reused,
+  // rather than duplicated in new views or separate account data stores.
+  function enterSection(section){
+    if(!["attention","expenses","payments","insights"].includes(section))return;
+    if(section==="attention"&&!issuesList().length)return;
+    nav.section=section;
+    nav.expenseView="paths";nav.expenseKind=null;nav.selected=null;
+    nav.paymentView="paths";
+    editingId=null;
+    filters.search="";filters.vendor="";filters.aircraft="";filters.period="all";
+    $("billyFinancialSearch").value="";
+    $("billyFinancialPeriodFilter").value="all";
+    render();
+  }
+  function openExpensePath(kind){
+    if(nav.section!=="expenses")return;
+    if(!["aircraft","vendor","all"].includes(kind))return;
+    nav.expenseKind=kind;nav.selected=null;
+    nav.expenseView=kind==="all"?"list":"groups";
+    filters.vendor="";filters.aircraft="";filters.search="";filters.period="all";
+    $("billyFinancialSearch").value="";
+    $("billyFinancialPeriodFilter").value="all";
+    render();
+  }
+  function openExpenseGroup(key){
+    if(nav.section!=="expenses"||nav.expenseView!=="groups")return;
+    nav.selected=key;
+    if(nav.expenseKind==="vendor")filters.vendor=key;
+    if(nav.expenseKind==="aircraft")filters.aircraft=key==="__unassigned__"?"":key;
+    nav.expenseView="list";
+    render();
+  }
+  function openPaymentPath(type){
+    if(nav.section!=="payments"||!["linked","unmatched"].includes(type))return;
+    nav.paymentView=type;
+    render();
+  }
+  function backInFinancial(){
+    if(nav.section==="expenses"&&nav.expenseView==="list"){
+      nav.expenseView=nav.expenseKind==="all"?"paths":"groups";
+      nav.selected=null;filters.vendor="";filters.aircraft="";
+    }else if(nav.section==="expenses"&&nav.expenseView==="groups"){
+      nav.expenseView="paths";nav.expenseKind=null;
+    }else if(nav.section==="payments"&&nav.paymentView!=="paths"){
+      nav.paymentView="paths";
+    }else{
+      nav.section=null;editingId=null;
+    }
+    render();
+  }
+  function showGroupChoices(){
+    const host=$("billyFinancialExpenseGroups");
+    host.replaceChildren();
+    const field=nav.expenseKind==="vendor"?"vendor":"aircraft";
+    const groups=new Map();
+    for(const row of opsList()){
+      const value=row[field]||
+        (field==="aircraft"?"__unassigned__":"Unassigned");
+      groups.set(value,(groups.get(value)||0)+1);
+    }
+    const ordered=[...groups.entries()].sort((a,b)=>{
+      if(a[0]==="__unassigned__")return 1;
+      if(b[0]==="__unassigned__")return -1;
+      return a[0].localeCompare(b[0]);
+    });
+    if(!ordered.length){
+      host.append(make("p","billy-financial-empty","No approved expenses yet"));
+      return;
+    }
+    for(const [value,count] of ordered){
+      const label=value==="__unassigned__"?"Unassigned aircraft":value;
+      const button=createButton("","billy-financial-nav-row",()=>openExpenseGroup(value));
+      const copy=make("span","billy-financial-nav-copy");
+      copy.append(make("strong","",label),
+        make("small","",count+" expense"+(count===1?"":"s")));
+      button.append(copy,make("span","billy-financial-nav-arrow","›"));
+      host.append(button);
+    }
+  }
+  function renderUnmatchedPayments(){
+    const host=$("billyFinancialUnmatchedList");
+    host.replaceChildren();
+    const unmatched=issuesList().filter(x=>x.kind==="unmatched_payment");
+    if(!unmatched.length){
+      host.append(make("p","billy-financial-empty","No unmatched payment slips"));
+      return;
+    }
+    for(const item of unmatched){
+      const row=make("div","billy-financial-attention-item");
+      const copy=make("div","billy-financial-attention-copy");
+      copy.append(make("strong","",item.vendor||"Payment slip"));
+      copy.append(make("small","",
+        [item.date,item.amount_minor!==null&&item.currency?
+          money(item.amount_minor,item.currency):"Amount not available",
+          "Payment evidence not linked"].filter(Boolean).join(" · ")));
+      const actions=make("div","billy-financial-row-actions");
+      actions.append(createButton("Open","billy-financial-subtle",
+        event=>void openDocument(item.id,event.currentTarget)));
+      row.append(copy,actions);host.append(row);
+    }
+  }
+  function renderNavigation(){
+    const issues=issuesList();
+    const unmatched=issues.filter(x=>x.kind==="unmatched_payment");
+    if(nav.section==="attention"&&!issues.length)nav.section=null;
+    const hasData=Boolean(state.data)&&!state.error;
+    $("billyFinancialLanding").hidden=Boolean(nav.section);
+    $("billyFinancialDetail").hidden=!nav.section;
+    const attentionNav=$("billyFinancialAttentionNav");
+    attentionNav.hidden=!hasData||!issues.length;
+    $("billyFinancialAttentionBadge").textContent=String(issues.length);
+    $("billyFinancialAttentionSubtitle").textContent=
+      issues.length+" document"+(issues.length===1?"":"s")+" need review";
+    $("billyFinancialExpensesSubtitle").textContent=
+      opsList().length+" distinct approved expense"+
+      (opsList().length===1?"":"s");
+    const linked=Array.isArray(state.data?.linked_payments)?
+      state.data.linked_payments.length:0;
+    $("billyFinancialPaymentsSubtitle").textContent=
+      linked+" linked · "+unmatched.length+" unmatched";
+    $("billyFinancialUnmatchedCaption").textContent=
+      unmatched.length+" payment slip"+(unmatched.length===1?"":"s")+" without a match";
+    if(!nav.section)return;
+    $("billyFinancialAttentionSection").hidden=nav.section!=="attention";
+    $("billyFinancialExpensesSection").hidden=nav.section!=="expenses";
+    $("billyFinancialPaymentsSection").hidden=nav.section!=="payments";
+    $("billyFinancialInsightsSection").hidden=nav.section!=="insights";
+    const expensePaths=$("billyFinancialExpensePaths");
+    const expenseGroups=$("billyFinancialExpenseGroups");
+    const expenseResults=$("billyFinancialExpenseResults");
+    expensePaths.hidden=nav.section!=="expenses"||nav.expenseView!=="paths";
+    expenseGroups.hidden=nav.section!=="expenses"||nav.expenseView!=="groups";
+    expenseResults.hidden=nav.section!=="expenses"||nav.expenseView!=="list";
+    if(nav.section==="expenses"&&nav.expenseView==="groups")showGroupChoices();
+    const paymentPaths=$("billyFinancialPaymentPaths");
+    paymentPaths.hidden=nav.section!=="payments"||nav.paymentView!=="paths";
+    $("billyFinancialLinkedPanel").hidden=nav.section!=="payments"||nav.paymentView!=="linked";
+    $("billyFinancialUnmatchedPanel").hidden=nav.section!=="payments"||nav.paymentView!=="unmatched";
+    const sectionTitle=nav.section==="attention"?"Needs attention":
+      nav.section==="insights"?"Insights":
+      nav.section==="expenses"?
+        (nav.expenseView==="list"&&nav.selected?
+           nav.selected==="__unassigned__"?"Unassigned aircraft":nav.selected:
+         nav.expenseView==="groups"?
+           nav.expenseKind==="vendor"?"By vendor":"By aircraft":
+         nav.expenseView==="list"?"All expenses":"Expenses"):
+      nav.paymentView==="linked"?"Linked payments":
+      nav.paymentView==="unmatched"?"Unmatched payment slips":"Payments";
+    $("billyFinancialSectionTitle").textContent=sectionTitle;
+    const backText=$("billyFinancialSectionBack").querySelector("span");
+    backText.textContent=
+      nav.section==="expenses"&&nav.expenseView==="list"?
+        nav.expenseKind==="all"?"Expenses":
+        nav.expenseKind==="vendor"?"By vendor":"By aircraft":
+      nav.section==="expenses"&&nav.expenseView==="groups"?"Expenses":
+      nav.section==="payments"&&nav.paymentView!=="paths"?"Payments":"Financial";
+    const coverage=$("billyFinancialCoverage");
+    coverage.hidden=!state.data?.partial;
+    coverage.textContent=state.data?.partial?
+      "Some records exceed the current financial query limit. Totals and lists may be incomplete.":"";
+  }
   function renderFinancialOperations(){
     if(!$("billyFinancialLedger"))return;
     renderFinancialAttention();
     renderExpenseLedger();
-    const partial=Boolean(state.data?.partial);
-    const coverage=$("billyFinancialCoverage");
-    coverage.hidden=!partial;
-    coverage.textContent=partial?
-      "Some records exceed the current financial query limit. Totals and lists may be incomplete.":
-      "";
+    renderUnmatchedPayments();
+    renderNavigation();
   }
   function render(){
     const groups=currencyGroups();
     if(!groups.some(g=>g.currency===state.currency))state.currency=groups[0]?.currency||null;
     fillSelect($("billyFinancialCurrency"));
-    chartBars($("billyFinancialChart"),activeGroup());
+    if(nav.section==="insights")chartBars($("billyFinancialChart"),activeGroup());
     const group=activeGroup();
     $("billyFinancialTotal").textContent=group?money(group.total_minor,group.currency):"-";
     const trend=state.data?.trend;
     $("billyFinancialPeriod").textContent=trend?
-      trend.start_date+" – "+trend.end_date+" · "+group?.documents+" approved documents":
+      (group?.documents??0)+" dated expense"+
+       ((group?.documents??0)===1?"":"s")+" · "+
+       trend.start_date+" – "+trend.end_date+
+       (state.data?.operational_counts?.missing_date?
+         " · Other records need review":""):
       (state.error||"Last 30 days");
     const links=Array.isArray(state.data?.linked_payments)?state.data.linked_payments:[];
     $("billyFinancialLinksCaption").textContent=links.length?
@@ -358,6 +525,25 @@
       filters[key]=event.target.value;renderExpenseLedger();
     });
   }
+  for(const [id,section] of [
+    ["billyFinancialAttentionNav","attention"],
+    ["billyFinancialExpensesNav","expenses"],
+    ["billyFinancialPaymentsNav","payments"],
+    ["billyFinancialInsightsNav","insights"]]){
+    $(id).addEventListener("click",()=>enterSection(section));
+  }
+  for(const [id,kind] of [
+    ["billyFinancialByAircraft","aircraft"],
+    ["billyFinancialByVendor","vendor"],
+    ["billyFinancialAllExpenses","all"]]){
+    $(id).addEventListener("click",()=>openExpensePath(kind));
+  }
+  for(const [id,kind] of [
+    ["billyFinancialLinkedPayments","linked"],
+    ["billyFinancialUnmatchedPayments","unmatched"]]){
+    $(id).addEventListener("click",()=>openPaymentPath(kind));
+  }
+  $("billyFinancialSectionBack").addEventListener("click",backInFinancial);
   window.BillyFinancial={refresh};
   window.addEventListener("billy:account-ready",()=>{
     if(document.body.dataset.billyScreen==="financial")void refresh();
