@@ -61,6 +61,58 @@ test("Vendor memory is tenant-scoped, enforced by unique aliases and one atomic 
   assert.match(edge,/database\(principal,"POST","rpc\/billy_organize_with_vendor"/);
   assert.match(edge,/organization_id:"eq\."\+principal\.organization_id/);
 });
+test("Approved new supplier creates one team-scoped vendor and reuses it later",async()=>{
+  const scope={Map,Set};
+  const first=edge.indexOf("const ORGANIZATION_FLEET=");
+  const last=edge.indexOf("async function organizationInbox(",first);
+  vm.runInNewContext(edge.slice(first,last)+
+    "\\nthis.register=autoRegisterApprovedVendor;this.candidate=approvedVendorCandidate;",scope);
+  const vendors=[];
+  const principal={organization_id:"team-1",user_id:"operator-1"};
+  let created=0;
+  scope.database=async (_principal,method,table,query,body,prefer)=>{
+    assert.equal(query.organization_id===undefined||query.organization_id==="eq.team-1",true);
+    if(method==="GET"&&table==="billy_vendors"){
+      if(query.name_key)return vendors.filter(v=>v.name_key===query.name_key.slice(3));
+      return vendors;
+    }
+    if(method==="GET"&&table==="billy_vendor_aliases")return [];
+    if(method==="POST"&&table==="billy_vendors"){
+      assert.equal(prefer,"resolution=ignore-duplicates,return=representation");
+      assert.equal(query.on_conflict,"organization_id,name_key");
+      assert.equal(body.organization_id,"team-1");
+      if(vendors.some(v=>v.name_key===body.name_key))return [];
+      const item={...body,id:"vendor-"+(++created)};
+      vendors.push(item);return [item];
+    }
+    throw Error("Unexpected database request");
+  };
+  const source={review_metadata:{classification:{profile:"handling_invoice"}},
+    regions_data:[{field_path:"supplier_name",visual_clarity:"clear"}]};
+  const approved={supplier_name:"R. A. Aeroportul International “George Enescu” Bacau"};
+  assert.equal(await scope.register(principal,source,approved,[],new Set()),"created");
+  assert.equal(await scope.register(principal,source,approved,[],new Set()),"matched");
+  assert.equal(created,1);
+  assert.equal(vendors[0].display_name,approved.supplier_name);
+  assert.equal(vendors[0].organization_id,"team-1");
+});
+test("Auto vendor creation never trusts an ambiguous name or a payment evidence issuer",()=>{
+  const f=functions();
+  const first=edge.indexOf("const ORGANIZATION_FLEET=");
+  const last=edge.indexOf("async function organizationInbox(",first);
+  const scope={Map,Set};
+  vm.runInNewContext(edge.slice(first,last)+"\\nthis.candidate=approvedVendorCandidate;",scope);
+  const src=(profile,clarity)=>({review_metadata:{classification:{profile}},
+    regions_data:[{field_path:"supplier_name",visual_clarity:clarity}]});
+  const fields={supplier_name:"Aeroportul International Bacau"};
+  assert.equal(scope.candidate(src("payment_slip","clear"),fields),null);
+  assert.equal(scope.candidate(src("handling_invoice","ambiguous"),fields),null);
+  assert.equal(scope.candidate(src("handling_invoice","clear"),{supplier_name:"Unknown"}),null);
+  assert.equal(scope.candidate(src("handling_invoice","clear"),fields,["supplier_name"]),null);
+  assert.equal(scope.candidate(src("handling_invoice","ambiguous"),fields,[],new Set(["supplier_name"])).field,"supplier_name");
+  assert.match(edge,/vendor_registration:vendorRegistration/);
+  assert.match(edge,/autoRegisterApprovedVendor\\(principal,source,checked,absentPaths,operatorVerified\\)/);
+});
 test("Cached PWA can still submit its original plain vendor field",()=>{
   assert.match(edge,/const legacyVendor=Object\.hasOwn\(data\.fields,"vendor"\)/);
   assert.match(edge,/new_name:legacyVendor/);
