@@ -352,3 +352,47 @@ html[data-billy-mobile="1"] body.billy-functions-revealed .simple-home .simple-q
 @media(prefers-reduced-motion:reduce){
   .billy-financial-nav-row{transition:none}
 }
+
+/* Financial Integrity 1.0 lives inside Insights — not another dashboard tile. */
+.billy-financial-integrity{
+  display:flex;flex-direction:column;gap:12px;
+  border-top:1px solid #373b3e;padding-top:19px;margin-top:6px;
+}
+.billy-financial-integrity-head{
+  display:flex;justify-content:space-between;align-items:center;gap:14px;
+}
+.billy-financial-integrity-head h3{font-size:14px;font-weight:650;margin:0 0 5px}
+.billy-financial-integrity-head p{
+  color:#a3aaae;font-size:11px;line-height:1.5;margin:0;
+}
+.billy-financial-integrity-checks{display:flex;flex-direction:column;gap:4px}
+.billy-financial-integrity-item{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:13px;min-width:0;padding:12px 13px;
+  border-radius:8px;background:#272a2d;
+}
+.billy-financial-integrity-copy{display:flex;flex-direction:column;gap:4px;min-width:0}
+.billy-financial-integrity-copy strong{
+  color:#eef0f1;font-size:12px;font-weight:630;
+}
+.billy-financial-integrity-copy small{
+  color:#9ca4a9;font-size:10px;line-height:1.5;
+}
+.billy-financial-integrity-status{
+  flex:none;color:#b9bfc3;background:#363a3e;
+  padding:4px 8px;border-radius:7px;
+  white-space:nowrap;font-size:10px;font-weight:600;
+}
+.billy-financial-integrity-status[data-integrity-status="fail"]{
+  background:#52403c;color:#f1cfbf;
+}
+.billy-financial-integrity-status[data-integrity-status="attention"]{
+  background:#48433d;color:#e0d3c2;
+}
+.billy-financial-integrity-note{
+  color:#8f989e;font-size:10px;line-height:1.6;margin:1px 0 0;
+}
+@media(max-width:500px){
+  .billy-financial-integrity-item{align-items:flex-start;gap:8px}
+  .billy-financial-integrity-status{font-size:9px;padding:4px 6px}
+}
