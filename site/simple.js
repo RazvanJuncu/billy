@@ -8,6 +8,7 @@
   const screens = ["home", "new", "uploaded", "edit", "type", "process", "review", "upload"];
   const names = {new:"New Document",uploaded:"Uploaded Documents",edit:"Edit Document",type:"Document Type",process:"Process Document",review:"Review Document",upload:"Upload Document"};
   const sessionFiles = [];
+  let uploadedRenderVersion = 0;
   let activeFile = null;
   let approved = false;
   let pendingAutoProcess = false;
@@ -263,6 +264,8 @@
   }
 
   async function renderUploaded(offset=0) {
+    // Ignore an older archive request if a newer navigation/refresh has begun.
+    const renderVersion=++uploadedRenderVersion;
     const list = $("simpleDocumentsList");
     list.replaceChildren();
     window.BillyDocumentsIndex?.start?.(list);
@@ -307,7 +310,7 @@
       const reply=await fetch(api+"/api/vision/records?offset="+offset,{headers,cache:"no-store"});
       if(!reply.ok)throw Error("Team records could not be loaded");
       const result=await reply.json();
-      if(body.dataset.billyScreen!=="uploaded")return;
+      if(renderVersion!==uploadedRenderVersion||body.dataset.billyScreen!=="uploaded")return;
       const rows=Array.isArray(result.records)?result.records:[];
       const extra=Array.isArray(result.parent_records)?result.parent_records:[];
       const rowIds=new Set(rows.map(row=>row.id));
@@ -404,6 +407,7 @@
       // Fetch all approved unassigned root records independently of archive pagination.
       void window.BillyOrganizer?.load?.();
     }catch(error){
+      if(renderVersion!==uploadedRenderVersion||body.dataset.billyScreen!=="uploaded")return;
       const info=document.createElement("p");
       info.textContent="Cloud history unavailable. Check the AI engine connection and team membership.";
       list.appendChild(info);
