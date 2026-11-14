@@ -2163,7 +2163,8 @@ function financialProfile(record){
 function financialDay(record){
   const doc=record?.reviewed_data||{};
   const values=record?.review_metadata?.normalization?.approved?.values||{};
-  for(const raw of [values.issue_date,doc.issue_date]){
+  for(const raw of [record?.review_metadata?.financial_overrides?.issue_date,
+    values.issue_date,doc.issue_date]){
     const value=typeof raw==="string"?raw.trim():"";
     if(/^\d{4}-\d{2}-\d{2}$/.test(value))return value;
     const normalized=canonicalDate(value);
@@ -2299,6 +2300,188 @@ function financialTrend(rows,day){
     duplicate_records_excluded:excluded,without_document_date:undated,
     basis:"approved_expenses_by_service_or_document_date",partial:rows.length>=2500};
 }
+
+// Financial Operations P1.1/P1.2: full approved ledger plus an actionable,
+// explicit exception queue. No POS is counted as a standalone expense.
+// The same exact-source approved fingerprint governs the timeline and ledger.
+function financialOperations(roots,evidence,links,today){
+  const excludedProfiles=new Set(["fuel_release","payment_slip","supplier_statement","generic_document"]);
+  const byProof=new Map(),byExpense=new Map();
+  for(const link of links){
+    if(!link?.expense_document_id||!link?.payment_document_id)continue;
+    byProof.set(link.payment_document_id,link);
+    if(!byExpense.has(link.expense_document_id))byExpense.set(link.expense_document_id,[]);
+    byExpense.get(link.expense_document_id).push(link);
+  }
+  const byFingerprint=new Map();
+  const score=(record)=>{
+    const doc=record.reviewed_data||{};
+    const norm=record.review_metadata?.normalization?.approved?.values||{};
+    const overrides=record.review_metadata?.financial_overrides||{};
+    const present=o=>Object.values(o).filter(value=>
+      (typeof value==="string"&&value.trim())||
+      (typeof value==="number"&&Number.isFinite(value))).length;
+    return [
+      byExpense.has(record.id)?1:0,
+      assistantMoney(record)?1:0,
+      assistantRecordDate(record).date?1:0,
+      Boolean(record.original_storage_key)?1:0,
+      present(doc)+present(norm)+present(overrides)
+    ];
+  };
+  const preferred=(next,prev)=>{
+    const a=score(next),b=score(prev);
+    for(let i=0;i<a.length;i++)if(a[i]!==b[i])return a[i]>b[i];
+    const day=String(next.created_at||"").localeCompare(String(prev.created_at||""));
+    return day<0||(day===0&&String(next.id)<String(prev.id));
+  };
+  for(const record of roots){
+    if(record.parent_document_id||record.state!=="approved"||
+       excludedProfiles.has(financialProfile(record)))continue;
+    const key=financialFingerprint(record)||"record:"+record.id;
+    const previous=byFingerprint.get(key);
+    if(!previous||preferred(record,previous))byFingerprint.set(key,record);
+  }
+  const canonical=[...byFingerprint.values()];
+  const excludedDuplicates=roots.filter(r=>
+    r.state==="approved"&&!r.parent_document_id&&
+    !excludedProfiles.has(financialProfile(r))).length-canonical.length;
+  const ledger=[],attention=[],counts={
+    expenses:canonical.length,priced:0,missing_amount:0,missing_currency:0,
+    missing_date:0,no_payment_proof:0,unmatched_payments:0,
+    duplicate_expenses_excluded:Math.max(0,excludedDuplicates)
+  };
+  for(const rec of canonical){
+    const doc=rec.reviewed_data||{},meta=rec.review_metadata||{};
+    const norm=meta.normalization?.approved?.values||{};
+    const overrides=meta.financial_overrides||{};
+    const amount=Object.hasOwn(overrides,"grand_total")?overrides.grand_total:norm.grand_total;
+    const currency=Object.hasOwn(overrides,"currency")?overrides.currency:norm.currency;
+    const money=assistantMoney(rec),dateInfo=assistantRecordDate(rec);
+    const issues=[];
+    if(typeof amount!=="number"||!Number.isFinite(amount)||
+       (!Object.hasOwn(overrides,"grand_total")&&
+        meta.normalization?.approved?.fields?.grand_total?.status==="ambiguous")){
+      issues.push("missing_amount");counts.missing_amount++;
+    }
+    if(typeof currency!=="string"||!ISO_CURRENCIES.has(currency)||
+       (!Object.hasOwn(overrides,"currency")&&
+        meta.normalization?.approved?.fields?.currency?.status==="ambiguous")){
+      issues.push("missing_currency");counts.missing_currency++;
+    }
+    if(!dateInfo.date){issues.push("missing_date");counts.missing_date++;}
+    if(money)counts.priced++;
+    const paymentLinks=byExpense.get(rec.id)||[];
+    const payment_state=paymentLinks.some(x=>x.payment_result==="confirmed")?
+      "payment_confirmed":paymentLinks.length?"payment_linked":"no_payment_proof";
+    if(!paymentLinks.length)counts.no_payment_proof++;
+    const record={
+      id:rec.id,profile:financialProfile(rec),
+      vendor:assistantValue(rec,"vendor")||"Unassigned",
+      aircraft:assistantValue(rec,"registration")||null,
+      flight:assistantValue(rec,"flight")||null,
+      category:assistantValue(rec,"category")||"other",
+      reference:String(doc.invoice_number||doc.release_number||"").slice(0,80),
+      date:dateInfo.date,date_basis:dateInfo.basis,
+      created_at:rec.created_at||null,
+      amount_minor:money?.minor??null,currency:money?.currency??(
+        typeof currency==="string"&&ISO_CURRENCIES.has(currency)?currency:null),
+      payment_state,linked_payment_count:paymentLinks.length,
+      issues,can_review:Boolean(rec.created_by),
+      original_available:Boolean(rec.original_storage_key),
+      operator_override_fields:Object.keys(overrides).filter(k=>
+        ["grand_total","currency","issue_date"].includes(k))
+    };
+    ledger.push(record);
+    if(issues.length)attention.push({
+      id:rec.id,kind:"missing_financial_fields",profile:record.profile,
+      vendor:record.vendor,date:record.date,issues,
+      amount_minor:record.amount_minor,currency:record.currency,
+      can_review:true
+    });
+  }
+  // Payment evidence is never an expense, even if it has a numerical total.
+  // An unmatched slip means no *linked proof*, never that money was not paid.
+  const seenSlips=new Set();
+  for(const slip of evidence){
+    if(slip.state!=="approved"||financialProfile(slip)!=="payment_slip"||
+       byProof.has(slip.id))continue;
+    const proofKey=financialFingerprint(slip)||"payment:"+slip.id;
+    if(seenSlips.has(proofKey))continue;
+    seenSlips.add(proofKey);
+    counts.unmatched_payments++;
+    attention.push({
+      id:slip.id,kind:"unmatched_payment",profile:"payment_slip",
+      vendor:assistantValue(slip,"vendor")||"Unknown merchant",
+      date:assistantRecordDate(slip).date,issues:["unmatched_payment"],
+      amount_minor:assistantMoney(slip)?.minor??null,
+      currency:assistantMoney(slip)?.currency??null,can_review:false
+    });
+  }
+  ledger.sort((a,b)=>String(b.date||b.created_at||"").localeCompare(
+    String(a.date||a.created_at||""))||a.id.localeCompare(b.id));
+  attention.sort((a,b)=>
+    (a.kind==="missing_financial_fields"?0:1)-(b.kind==="missing_financial_fields"?0:1)||
+    String(b.date||"").localeCompare(String(a.date||"")));
+  return {
+    canonical,ledger:ledger.slice(0,500),attention:attention.slice(0,500),
+    counts,trend:financialTrend(canonical,today),
+    records_truncated:ledger.length>500||attention.length>500
+  };
+}
+async function financialEvidenceRows(principal){
+  const rows=[];let offset=0,partial=false;
+  while(offset<2500){
+    const batch=await database(principal,"GET","document_records",{
+      select:"id,state,created_by,parent_document_id,source_sha256,reviewed_data,review_metadata",
+      organization_id:"eq."+principal.organization_id,state:"eq.approved",
+      order:"created_at.desc",limit:"250",offset:String(offset)
+    });
+    rows.push(...batch.filter(record=>financialProfile(record)==="payment_slip"));
+    if(batch.length<250)return {rows,partial};
+    offset+=250;
+  }
+  return {rows,partial:true};
+}
+async function financialReview(req,principal){
+  let data;
+  try{const raw=await req.text();if(raw.length>1100)throw Error("Too large");
+    data=JSON.parse(raw);}
+  catch{return error("Invalid financial review request.",400);}
+  if(!data||typeof data!=="object"||Array.isArray(data)||
+    !UUID_FORMAT.test(data.record_id||"")||
+    !data.values||typeof data.values!=="object"||Array.isArray(data.values)||
+    Object.keys(data).some(key=>!["record_id","values"].includes(key))||
+    !Object.keys(data.values).length||Object.keys(data.values).length>3||
+    Object.keys(data.values).some(key=>!["grand_total","currency","issue_date"].includes(key)))
+    return error("Invalid financial correction fields.",400);
+  const normalized={};
+  for(const [field,raw] of Object.entries(data.values)){
+    if(field==="grand_total"){
+      const number=canonicalNumber(raw);
+      if(number.status!=="ok"||number.value<0||
+        number.value>1e10||Math.round(number.value*100)/100!==number.value)
+        return error("Enter an exact amount with at most two decimals.",400);
+      normalized.grand_total=number.value;
+    }else if(field==="currency"){
+      const currency=canonicalCurrency(raw);
+      if(currency.status!=="ok")
+        return error("Enter an ISO currency code.",400);
+      normalized.currency=currency.value;
+    }else if(field==="issue_date"){
+      const date=canonicalDate(raw);
+      if(date.status!=="ok"||!/^20\d{2}-\d{2}-\d{2}$/.test(date.value))
+        return error("Enter an unambiguous document date (YYYY-MM-DD).",400);
+      normalized.issue_date=date.value;
+    }
+  }
+  const result=await database(principal,"POST","rpc/billy_apply_financial_review",{},{
+    p_org:principal.organization_id,p_actor:principal.user_id,
+    p_record:data.record_id,p_values:normalized
+  });
+  if(!result?.saved)return error("Financial correction was not saved.",409);
+  return json(result);
+}
 async function financialLinksFor(principal,recordId){
   const own=await database(principal,"GET","document_records",{
     select:"id",organization_id:"eq."+principal.organization_id,id:"eq."+recordId,limit:"1"
@@ -2402,19 +2585,23 @@ async function financialGet(principal,req){
       amount_minor:suggested_link.proof.amount_minor
     }:null});
   }
-  const {rows,partial}=await assistantRows(principal);
+  const [{rows,partial},proofs]=await Promise.all([
+    assistantRows(principal),financialEvidenceRows(principal)
+  ]);
   const today=new Intl.DateTimeFormat("en-CA",{timeZone:"Europe/Bucharest",
     year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
-  const trend=financialTrend(rows,today);
   const links=await database(principal,"GET","billy_financial_links",{
     select:"id,expense_document_id,payment_document_id,payment_result,amount_minor,currency,created_at",
     organization_id:"eq."+principal.organization_id,state:"eq.active",
     order:"created_at.desc",limit:"100"
   });
-  return json({trend,linked_payments:links,counts:{
-    linked:links.length,confirmed:links.filter(x=>x.payment_result==="confirmed").length,
-    unverified:links.filter(x=>x.payment_result!=="confirmed").length
-  },partial:partial||links.length>=100});
+  const ops=financialOperations(rows,proofs.rows,links,today);
+  return json({trend:ops.trend,ledger:ops.ledger,attention:ops.attention,
+    operational_counts:ops.counts,
+    linked_payments:links,counts:{
+      linked:links.length,confirmed:links.filter(x=>x.payment_result==="confirmed").length,
+      unverified:links.filter(x=>x.payment_result!=="confirmed").length
+    },partial:partial||proofs.partial||links.length>=100||ops.records_truncated});
 }
 async function financialUnlink(req,principal){
   let input;
@@ -2869,6 +3056,9 @@ function assistantValue(record,key){
 function assistantRecordDate(record){
   const doc=record.reviewed_data||{};
   const norm=record.review_metadata?.normalization?.approved?.values||{};
+  const audited=record.review_metadata?.financial_overrides||{};
+  if(typeof audited.issue_date==="string"&&validIsoDay(audited.issue_date))
+    return {date:audited.issue_date,basis:"document",source:"operator_verified"};
   for(const key of ["service_date","delivery_date","parking_start","check_in_date","stay_start"]){
     const value=String(norm[key]||doc[key]||"").slice(0,10);
     if(validIsoDay(value))return {date:value,basis:"service"};
@@ -2881,11 +3071,15 @@ function assistantRecordDate(record){
 }
 function assistantMoney(record){
   const meta=record.review_metadata||{},norm=meta.normalization?.approved||{};
-  const amount=norm.values?.grand_total, currency=norm.values?.currency;
+  const overrides=meta.financial_overrides||{};
+  // Operator-approved corrections are separate from original OCR readings.
+  const amount=Object.hasOwn(overrides,"grand_total")?overrides.grand_total:norm.values?.grand_total;
+  const currency=Object.hasOwn(overrides,"currency")?overrides.currency:norm.values?.currency;
+  const ambiguousAmount=!Object.hasOwn(overrides,"grand_total")&&norm.fields?.grand_total?.status==="ambiguous";
+  const ambiguousCurrency=!Object.hasOwn(overrides,"currency")&&norm.fields?.currency?.status==="ambiguous";
   if(typeof amount!=="number"||!Number.isFinite(amount)||
       amount<0||amount>1e11||typeof currency!=="string"||
-      !ISO_CURRENCIES.has(currency)||norm.fields?.grand_total?.status==="ambiguous"||
-      norm.fields?.currency?.status==="ambiguous")return null;
+      !ISO_CURRENCIES.has(currency)||ambiguousAmount||ambiguousCurrency)return null;
   return {currency,minor:Math.round(amount*100)};
 }
 function assistantAggregate(rows,filter,partial){
@@ -2967,7 +3161,7 @@ function assistantAggregate(rows,filter,partial){
 }
 async function assistantRows(principal){
   const rows=[];let offset=0,partial=false;
-  const select="id,state,document_type,source_sha256,reviewed_data,review_metadata,parent_document_id";
+  const select="id,state,created_by,created_at,approved_at,document_type,source_sha256,reviewed_data,review_metadata,parent_document_id,original_storage_key";
   while(offset<2500){
     const batch=await database(principal,"GET","document_records",{
       select,organization_id:"eq."+principal.organization_id,
@@ -3044,16 +3238,17 @@ Deno.serve(async req=>{
   const path=new URL(req.url).pathname;
   // Supabase may present the public path, function-local path, or a slug-prefixed path.
   // Match only known routes regardless of which valid prefix the edge runtime preserves.
-  const routes=["/api/vision/financial","/api/vision/financial-link","/api/vision/financial-unlink","/api/vision/health","/api/vision/extract","/api/vision/recheck","/api/vision/approve","/api/vision/records","/api/vision/delete","/api/vision/original","/api/vision/document-map","/api/vision/organization","/api/vision/assistant","/api/vision/assistant-source"];
+  const routes=["/api/vision/financial","/api/vision/financial-review","/api/vision/financial-link","/api/vision/financial-unlink","/api/vision/health","/api/vision/extract","/api/vision/recheck","/api/vision/approve","/api/vision/records","/api/vision/delete","/api/vision/original","/api/vision/document-map","/api/vision/organization","/api/vision/assistant","/api/vision/assistant-source"];
   const suffix=routes.find(route=>path===route||path.endsWith("/billy-vision"+route));
   if(!suffix)return error("Not found.",404);
-  if(req.method!==(suffix==="/api/vision/financial-link"||suffix==="/api/vision/financial-unlink"||suffix==="/api/vision/document-map"||suffix==="/api/vision/extract"||suffix==="/api/vision/recheck"||suffix==="/api/vision/approve"||suffix==="/api/vision/organization"&&req.method==="POST"||suffix==="/api/vision/assistant"||suffix==="/api/vision/delete"||suffix==="/api/vision/original"&&req.method==="POST"?"POST":"GET"))return error("Method not allowed.",405);
+  if(req.method!==(suffix==="/api/vision/financial-review"||suffix==="/api/vision/financial-link"||suffix==="/api/vision/financial-unlink"||suffix==="/api/vision/document-map"||suffix==="/api/vision/extract"||suffix==="/api/vision/recheck"||suffix==="/api/vision/approve"||suffix==="/api/vision/organization"&&req.method==="POST"||suffix==="/api/vision/assistant"||suffix==="/api/vision/delete"||suffix==="/api/vision/original"&&req.method==="POST"?"POST":"GET"))return error("Method not allowed.",405);
   try{
     const authStarted=(typeof performance==="undefined"?Date.now():performance.now());
     const principal=await trusted(req);
     const authenticationMs=(typeof performance==="undefined"?Date.now():performance.now())-authStarted;
     if(!principal)return error("Sign in to an approved Billy team first.",401);
     if(suffix==="/api/vision/financial")return financialGet(principal,req);
+    if(suffix==="/api/vision/financial-review")return financialReview(req,principal);
     if(suffix==="/api/vision/financial-link")return financialLink(req,principal);
     if(suffix==="/api/vision/financial-unlink")return financialUnlink(req,principal);
     if(suffix==="/api/vision/health")return json({
