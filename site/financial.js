@@ -438,6 +438,7 @@
     const groups=currencyGroups();
     if(!groups.some(g=>g.currency===state.currency))state.currency=groups[0]?.currency||null;
     fillSelect($("billyFinancialCurrency"));
+    fillSelect($("billyFinancialInsightCurrency"));
     if(nav.section==="insights")chartBars($("billyFinancialChart"),activeGroup());
     const group=activeGroup();
     $("billyFinancialTotal").textContent=group?money(group.total_minor,group.currency):"-";
@@ -509,7 +510,7 @@
     })();
     return state.inFlight;
   }
-  for(const id of ["billyFinancialCurrency"]){
+  for(const id of ["billyFinancialCurrency","billyFinancialInsightCurrency"]){
     $(id).addEventListener("change",event=>{
       const selected=event.target.value;
       if(!currencyGroups().some(g=>g.currency===selected))return;
@@ -544,7 +545,19 @@
     $(id).addEventListener("click",()=>openPaymentPath(kind));
   }
   $("billyFinancialSectionBack").addEventListener("click",backInFinancial);
-  window.BillyFinancial={refresh};
+  window.BillyFinancial={
+    refresh,
+    back(){
+      if(!nav.section)return false;
+      backInFinancial();
+      return true;
+    },
+    home(){
+      nav.section=null;nav.expenseView="paths";nav.expenseKind=null;
+      nav.selected=null;nav.paymentView="paths";editingId=null;
+      if(state.data)render();
+    }
+  };
   window.addEventListener("billy:account-ready",()=>{
     if(document.body.dataset.billyScreen==="financial")void refresh();
   });
