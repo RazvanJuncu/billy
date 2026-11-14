@@ -144,6 +144,89 @@
       }
       body.append(children);
     }
+    // Financial link is distinct from the visual 'Attached documents' family.
+    // Fetch only authorized links; the same POS must never add a second expense.
+    if(record.state==="approved"){
+      const financial=node("section","billy-preview-financial");
+      financial.hidden=true;body.append(financial);
+      void (async()=>{
+        try{
+          const api=window.BILLY_AUTH_CONFIG?.apiUrl;
+          if(!api||!window.BillyAccounts?.active?.())return;
+          const headers=await window.BillyAccounts.sessionHeaders();
+          const response=await fetch(api+"/api/vision/financial?record_id="+
+            encodeURIComponent(record.id),{headers,cache:"no-store"});
+          if(!response.ok)throw Error("Financial relationship lookup failed");
+          const payload=await response.json();
+          if(overlay!==shade||!Array.isArray(payload.links))return;
+          financial.replaceChildren();
+          for(const link of payload.links){
+            const isExpense=link.expense_document_id===record.id;
+            const verified=link.payment_result==="confirmed";
+            const related=link.related||{};
+            const strip=node("div","billy-preview-financial-row");
+            const label=node("div","billy-preview-financial-copy");
+            const heading=isExpense?
+              (verified?"Paid":"Payment linked"):
+              "Pays linked invoice";
+            label.append(node("strong","",heading));
+            const currency=link.currency||"",amount=Number(link.amount_minor)/100;
+            const amountText=Number.isFinite(amount)?amount.toFixed(2)+" "+currency:"";
+            const digits=isExpense?related.card_last4:record.reviewed_data?.card_last4;
+            const detail=[amountText,digits?"Card ••••"+digits:null,
+              verified?"Transaction approved":"Transaction status not independently confirmed"]
+              .filter(Boolean).join(" · ");
+            label.append(node("small","",detail));
+            const actions=node("div","billy-preview-financial-actions");
+            if(related.id){
+              const jump=node("button","billy-preview-financial-action",
+                isExpense?"Open slip":"Open invoice");
+              jump.type="button";
+              jump.addEventListener("click",async()=>{
+                jump.disabled=true;
+                try{
+                  const h=await window.BillyAccounts.sessionHeaders();
+                  const r=await fetch(api+"/api/vision/assistant-source?record_id="+
+                    encodeURIComponent(related.id),{headers:h,cache:"no-store"});
+                  if(!r.ok)throw Error("Source unavailable");
+                  const result=await r.json();
+                  if(result.record&&overlay===shade)open(result.record);
+                }catch{jump.title="Could not open linked document";}
+                finally{jump.disabled=false;}
+              });
+              actions.append(jump);
+            }
+            if(isExpense&&record.created_by===window.BillyAccounts?.userId?.()){
+              const remove=node("button","billy-preview-financial-action","Unlink");
+              remove.type="button";
+              remove.addEventListener("click",async()=>{
+                if(!window.confirm("Unlink this payment evidence from the invoice? The original documents remain saved."))return;
+                remove.disabled=true;
+                try{
+                  const h=await window.BillyAccounts.sessionHeaders();
+                  const r=await fetch(api+"/api/vision/financial-unlink",{
+                    method:"POST",headers:{"Content-Type":"application/json",...h},
+                    body:JSON.stringify({link_id:link.id})
+                  });
+                  const result=await r.json();
+                  if(!r.ok||result.unlinked!==true)throw Error(result.detail||"Unlink failed");
+                  if(overlay===shade)open(record);
+                  void window.BillyFinancial?.refresh?.();
+                }catch(e){remove.disabled=false;remove.title=e.message||"Unlink failed";}
+              });
+              actions.append(remove);
+            }
+            strip.append(label,actions);financial.append(strip);
+          }
+          financial.hidden=!payload.links.length;
+        }catch{
+          if(overlay===shade){
+            financial.hidden=false;financial.replaceChildren(
+              node("span","billy-preview-financial-unavailable","Payment links unavailable. Reopen to retry."));
+          }
+        }
+      })();
+    }
     const brief=node("dl","billy-preview-primary");
     addField(brief,"Aircraft",norm.aircraft_registration||doc.aircraft_registration);
     addField(brief,"Airport",
