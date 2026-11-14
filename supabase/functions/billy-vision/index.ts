@@ -1922,6 +1922,67 @@ function withResolvedVendor(record,directory){
     ...(meta.organization_overrides||{}),vendor:vendor.display_name,vendor_id:vendor.id
   }}};
 }
+// Airport identity catalog. Entries were cross-checked against the AACR
+// (Romania), the airport operators' publications and the Serbia eAIP.
+// Extend ONLY with verified pairs; never derive ICAO from country or prefix.
+const VERIFIED_AIRPORT_IATA=new Map([
+  ["BCM","LRBC"], // Bacau / George Enescu: AACR register, Sept 2025
+  ["BBU","LRBS"], // Bucharest Baneasa: Bucharest Airports operator
+  ["BEG","LYBE"]  // Belgrade Nikola Tesla: Belgrade Airport operator
+]);
+function airportOperatorIdentity(raw){
+  const text=String(raw||"").normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g,"").toUpperCase()
+    .replace(/[^A-Z0-9]+/g," ").trim().replace(/\s+/g," ");
+  // Match only this unique, source-verified airport operator. A generic
+  // handling provider or a supplier merely based in Bacau must NOT match.
+  return /\bAEROPORT(?:UL)?\b/.test(text)&&
+    /\bGEORGE ENESCU\b/.test(text)&&/\bBACAU\b/.test(text)?"LRBC":null;
+}
+function airportResolution(record){
+  const meta=record.review_metadata||{};
+  const overrides=meta.organization_overrides||{};
+  const doc=record.reviewed_data||record.extracted_data||{};
+  const norm=meta.normalization?.approved?.values||
+    meta.normalization?.extracted?.values||{};
+  const manual=String(overrides.airport||"").trim().toUpperCase();
+  if(/^[A-Z]{4}$/.test(manual))
+    return {status:"resolved",icao:manual,source:"operator_verified",evidence:[]};
+  const evidence=[],add=(source,icao)=>{
+    if(icao&&/^[A-Z]{4}$/.test(icao))evidence.push({source,icao});
+  };
+  const explicit=String(norm.airport_icao||doc.airport_icao||"").trim().toUpperCase();
+  add("document_icao",/^[A-Z]{4}$/.test(explicit)?explicit:null);
+  const rawAirport=String(doc.airport||"").trim().toUpperCase();
+  if(/^[A-Z]{4}$/.test(rawAirport))add("document_airport",rawAirport);
+  else if(VERIFIED_AIRPORT_IATA.has(rawAirport))
+    add("verified_iata",VERIFIED_AIRPORT_IATA.get(rawAirport));
+  // Airport operator as supplier is corroborating evidence; it is NOT
+  // proof of where a different flight/service occurred if another code differs.
+  const operator=airportOperatorIdentity(
+    doc.supplier_name||doc.property_name||"");
+  add("verified_airport_operator",operator);
+  const distinct=[...new Set(evidence.map(item=>item.icao))];
+  if(distinct.length>1)return {status:"conflict",icao:null,evidence};
+  if(distinct.length===1){
+    // If the source prints an unknown three-letter code, do not discard it
+    // just because the billing company also happens to own an airport.
+    if(/^[A-Z]{3}$/.test(rawAirport)&&!VERIFIED_AIRPORT_IATA.has(rawAirport))
+      return {status:"needs_review",icao:null,evidence};
+    return {status:"resolved",icao:distinct[0],
+      source:evidence[0].source,evidence};
+  }
+  return {status:"unresolved",icao:null,evidence};
+}
+function withResolvedAirport(record){
+  const result=airportResolution(record);
+  if(result.status!=="resolved"||!result.icao)return {...record,airport_resolution:result};
+  const meta=record.review_metadata||{};
+  const overrides=meta.organization_overrides||{};
+  return {...record,airport_resolution:result,review_metadata:{
+    ...meta,organization_overrides:{...overrides,airport:overrides.airport||result.icao}
+  }};
+}
 function organizationMissing(record,directory){
   if(!record||record.state!=="approved"||record.parent_document_id)return [];
   const doc=record.reviewed_data||record.extracted_data||{};
@@ -1934,13 +1995,13 @@ function organizationMissing(record,directory){
   const missing=[];
   const aircraft=String(overrides.aircraft||normalized.aircraft_registration||
     doc.aircraft_registration||"").toUpperCase().trim().replace(/^YR\s+/,"YR-");
-  const airport=String(overrides.airport||normalized.airport_icao||
-    doc.airport_icao||doc.airport||"").trim().toUpperCase();
+  const airportEvidence=airportResolution(record);
+  const airport=airportEvidence.status==="resolved"?airportEvidence.icao:null;
   const service=String(overrides.service||metadata.classification?.expense_category||"").trim().toLowerCase();
   const vendor=String(overrides.vendor||doc.supplier_name||doc.property_name||
     doc.operator_name||"").trim();
   if(aviation&&!ORGANIZATION_FLEET.includes(aircraft))missing.push("aircraft");
-  if(aviation&&!/^[A-Z]{4}$/.test(airport))missing.push("airport");
+  if(aviation&&(!airport||!/^[A-Z]{4}$/.test(airport)))missing.push("airport");
   if(!["payment_slip","supplier_statement","generic_document"].includes(profile)&&
      !ORGANIZATION_SERVICES.includes(service))missing.push("service");
   // A nonempty OCR reading is NOT a known vendor. Only a verified exact
@@ -1966,7 +2027,7 @@ async function organizationInbox(principal){
     for(const record of chunk){
       const missing=organizationMissing(record,directory);
       if(missing.length){
-        const effective=withResolvedVendor(record,directory);
+        const effective=withResolvedAirport(withResolvedVendor(record,directory));
         const {original_storage_key,...visible}=effective;
         pending.push({...visible,has_original:Boolean(original_storage_key),missing_fields:missing});
       }
@@ -2102,7 +2163,7 @@ async function listRecords(principal,req) {
     organization_id:"eq."+principal.organization_id,id:"in.("+missing.join(",")+")",limit:"50"
   }):[];
   const visible=record=>{
-    const effective=withResolvedVendor(record,directory);
+    const effective=withResolvedAirport(withResolvedVendor(record,directory));
     const {original_storage_key,...rest}=effective;
     return {...rest,has_original:Boolean(original_storage_key),
       organization_missing_fields:organizationMissing(record,directory),
@@ -2508,7 +2569,7 @@ async function assistantAsk(req,principal){
         "I can analyze approved documents, costs and operations. Try rephrasing."});
   const {rows,partial}=await assistantRows(principal);
   const directory=await vendorDirectory(principal);
-  const result=assistantAggregate(rows.map(r=>withResolvedVendor(r,directory)),parsed,partial);
+  const result=assistantAggregate(rows.map(r=>withResolvedAirport(withResolvedVendor(r,directory))),parsed,partial);
   const scoped=Boolean(parsed.aircraft_registration||parsed.flight_number);
   const notes=parsed.language==="ro"?[
     "Sumele sunt calculate exclusiv din documente aprobate Billy, separat pe monedă.",
