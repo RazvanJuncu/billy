@@ -139,5 +139,5 @@ test("Piggy marker only decorates duplicate root families and links to their ori
   assert.match(preview,/Open original/);
   assert.match(preview,/record\.duplicate_original_state==="approved"/);
   assert.match(preview,/assistant-source\?record_id=/);
-  assert.match(read("site/sw.js"),/v108-financial-hub/);
+  assert.match(read("site/sw.js"),/billydpi-orbit-v\d+-[a-z0-9-]+/);
 });
