@@ -218,7 +218,36 @@
             }
             strip.append(label,actions);financial.append(strip);
           }
-          financial.hidden=!payload.links.length;
+          if(!payload.links.length&&payload.suggested_link&&
+              payload.suggested_link.expense_document_id===record.id){
+            const proposal=payload.suggested_link;
+            const suggestion=node("div","billy-preview-financial-row");
+            const text=node("div","billy-preview-financial-copy");
+            text.append(node("strong","","Payment evidence available"));
+            text.append(node("small","",
+              (Number(proposal.amount_minor)/100).toFixed(2)+" "+proposal.currency+
+              " · Same photo, amount, currency and date"));
+            const actions=node("div","billy-preview-financial-actions");
+            const linkButton=node("button","billy-preview-financial-action","Link payment");
+            linkButton.type="button";
+            linkButton.addEventListener("click",async()=>{
+              linkButton.disabled=true;
+              try{
+                const h=await window.BillyAccounts.sessionHeaders();
+                const r=await fetch(api+"/api/vision/financial-link",{
+                  method:"POST",headers:{"Content-Type":"application/json",...h},
+                  body:JSON.stringify({expense_document_id:proposal.expense_document_id,
+                    payment_document_id:proposal.payment_document_id})
+                });
+                const result=await r.json();
+                if(!r.ok||result.linked!==true)throw Error(result.detail||"Link failed");
+                if(overlay===shade)open(record);
+                void window.BillyFinancial?.refresh?.();
+              }catch(e){linkButton.disabled=false;linkButton.title=e.message||"Link failed";}
+            });
+            actions.append(linkButton);suggestion.append(text,actions);financial.append(suggestion);
+          }
+          financial.hidden=!financial.childElementCount;
         }catch{
           if(overlay===shade){
             financial.hidden=false;financial.replaceChildren(
