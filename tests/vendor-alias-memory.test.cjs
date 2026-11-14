@@ -66,7 +66,7 @@ test("Approved new supplier creates one team-scoped vendor and reuses it later",
   const first=edge.indexOf("const ORGANIZATION_FLEET=");
   const last=edge.indexOf("async function organizationInbox(",first);
   vm.runInNewContext(edge.slice(first,last)+
-    "\\nthis.register=autoRegisterApprovedVendor;this.candidate=approvedVendorCandidate;",scope);
+    "\nthis.register=autoRegisterApprovedVendor;this.candidate=approvedVendorCandidate;",scope);
   const vendors=[];
   const principal={organization_id:"team-1",user_id:"operator-1"};
   let created=0;
@@ -101,7 +101,7 @@ test("Auto vendor creation never trusts an ambiguous name or a payment evidence 
   const first=edge.indexOf("const ORGANIZATION_FLEET=");
   const last=edge.indexOf("async function organizationInbox(",first);
   const scope={Map,Set};
-  vm.runInNewContext(edge.slice(first,last)+"\\nthis.candidate=approvedVendorCandidate;",scope);
+  vm.runInNewContext(edge.slice(first,last)+"\nthis.candidate=approvedVendorCandidate;",scope);
   const src=(profile,clarity)=>({review_metadata:{classification:{profile}},
     regions_data:[{field_path:"supplier_name",visual_clarity:clarity}]});
   const fields={supplier_name:"Aeroportul International Bacau"};
@@ -111,7 +111,7 @@ test("Auto vendor creation never trusts an ambiguous name or a payment evidence 
   assert.equal(scope.candidate(src("handling_invoice","clear"),fields,["supplier_name"]),null);
   assert.equal(scope.candidate(src("handling_invoice","ambiguous"),fields,[],new Set(["supplier_name"])).field,"supplier_name");
   assert.match(edge,/vendor_registration:vendorRegistration/);
-  assert.match(edge,/autoRegisterApprovedVendor\\(principal,source,checked,absentPaths,operatorVerified\\)/);
+  assert.match(edge,/autoRegisterApprovedVendor\(principal,source,checked,absentPaths,operatorVerified\)/);
 });
 test("Cached PWA can still submit its original plain vendor field",()=>{
   assert.match(edge,/const legacyVendor=Object\.hasOwn\(data\.fields,"vendor"\)/);
