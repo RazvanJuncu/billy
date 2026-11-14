@@ -23,6 +23,53 @@ const root=(profile="handling_invoice",doc={},overrides={})=>({
   review_metadata:{classification:{profile,expense_category:"handling"},
     organization_overrides:overrides}
 });
+test("BCM, BBU and BEG resolve from verified IATA codes without changing approved OCR",()=>{
+  const start=edge.indexOf("const ORGANIZATION_FLEET=");
+  const end=edge.indexOf("async function organizationInbox(",start);
+  const ctx={};
+  vm.runInNewContext(edge.slice(start,end)+
+    "\nthis.resolveAirport=airportResolution;this.virtualAirport=withResolvedAirport;this.missing=organizationMissing;",ctx);
+  for(const [iata,icao] of [["BCM","LRBC"],["BBU","LRBS"],["BEG","LYBE"]]){
+    const row=root("fuel_release",{supplier_name:"Ordinary fueler",airport:iata,airport_icao:null,
+      aircraft_registration:"YR-DDN"});
+    row.review_metadata.classification.expense_category="fuel";
+    assert.equal(ctx.resolveAirport(row).icao,icao);
+    assert.deepEqual(Array.from(ctx.missing(row)),[]);
+    assert.equal(ctx.virtualAirport(row).review_metadata.organization_overrides.airport,icao);
+    assert.equal(row.reviewed_data.airport,iata,"Approved source remains unchanged");
+  }
+});
+test("Verified Bacau airport operator name can identify LRBC from billing details",()=>{
+  const first=edge.indexOf("const ORGANIZATION_FLEET=");
+  const last=edge.indexOf("async function organizationInbox(",first);
+  const ctx={};
+  vm.runInNewContext(edge.slice(first,last)+"\nthis.airport=airportResolution;this.missing=organizationMissing;",ctx);
+  const row=root("handling_invoice",{aircraft_registration:"YR-DDN",airport_icao:null,
+    supplier_name:"R. A. Aeroportul International “George Enescu” Bacau"});
+  const outcome=ctx.airport(row);
+  assert.equal(outcome.status,"resolved");
+  assert.equal(outcome.icao,"LRBC");
+  assert.deepEqual(Array.from(ctx.missing(row)),[]);
+  const unrelated=root("handling_invoice",{aircraft_registration:"YR-DDN",airport_icao:null,
+    supplier_name:"Bacau Aviation Services"});
+  assert.equal(ctx.airport(unrelated).status,"unresolved");
+  assert.ok(Array.from(ctx.missing(unrelated)).includes("airport"));
+});
+test("Conflicting printed ICAO and Bacau provider always goes to attention",()=>{
+  const first=edge.indexOf("const ORGANIZATION_FLEET=");
+  const last=edge.indexOf("async function organizationInbox(",first);
+  const ctx={};
+  vm.runInNewContext(edge.slice(first,last)+"\nthis.airport=airportResolution;this.missing=organizationMissing;",ctx);
+  const row=root("handling_invoice",{aircraft_registration:"YR-DDN",airport_icao:"LOWW",
+    supplier_name:"R. A. Aeroportul International “George Enescu” Bacau"});
+  assert.equal(ctx.airport(row).status,"conflict");
+  assert.ok(Array.from(ctx.missing(row)).includes("airport"));
+  assert.equal(ctx.airport({...row,review_metadata:{...row.review_metadata,
+    organization_overrides:{airport:"LOWW"}}}).icao,"LOWW");
+  assert.match(inbox,/Conflicting airport evidence/);
+  assert.match(read("site/document-preview.js"),/Airport check/);
+  assert.doesNotMatch(edge,/update public.document_records.*airportResolution/);
+});
 test("Missing aircraft puts approved handling document in attention; linked child is not a separate task",()=>{
   const missing=analyzer();
   const parent=root();
@@ -86,5 +133,5 @@ test("Split inbox shows private original and only missing form controls",()=>{
   assert.match(idx,/m\.organization_overrides\|\|\{\}/);
   assert.match(idx,/refreshOrganization/);
   assert.match(read("site/simple.js"),/window\.BillyOrganizer\?\.load\?\.\(\)/);
-  assert.match(read("site/index.html"),/organization-inbox\.js\?v=1\.1\.0/);
+  assert.match(read("site/index.html"),/organization-inbox\.js\?v=1\.1\.1/);
 });
