@@ -134,9 +134,10 @@ test("Financial links are separate from physical nesting and always auditable",(
   assert.match(source,/Only the document owner can unlink its payment/);
 });
 test("Financial UI shows only approved backend money and permits evidence open/unlink",()=>{
-  assert.match(home,/billyFinancialMiniChart/);
+  assert.doesNotMatch(home,/billyFinancialMiniChart/);
   assert.match(home,/simpleFinancial/);
-  assert.match(home,/billyFinancialMiniCurrency/);
+  assert.match(home,/id="billyHomeFinancial" class="simple-choice"/);
+  assert.doesNotMatch(home,/billyFinancialMiniCurrency/);
   assert.match(finance,/\/api\/vision\/financial"/);
   assert.match(finance,/window\.BillyAccounts\.sessionHeaders\(\)/);
   assert.match(finance,/No approved expenses for this period/);
