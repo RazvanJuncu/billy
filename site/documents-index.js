@@ -131,13 +131,13 @@
     wrap.dataset.duplicateOf=record.duplicate_of;
     const badge=el("span","billy-duplicate-hint");
     badge.setAttribute("aria-label","Duplicate document");
-    badge.title="Duplicate! Open this document to view the original.";
+    badge.title="Duplicate. Open this document to view the original.";
     const piggy=document.createElement("img");
     piggy.className="billy-duplicate-piggy";
     piggy.src="./piggybank-mark.svg";
     piggy.width=34;piggy.height=34;piggy.alt="";
     piggy.setAttribute("aria-hidden","true");
-    const speech=el("span","billy-duplicate-speech","Duplicate!");
+    const speech=el("span","billy-duplicate-speech","Duplicate");
     badge.append(piggy,speech);
     wrap.append(card,badge);
     return wrap;
