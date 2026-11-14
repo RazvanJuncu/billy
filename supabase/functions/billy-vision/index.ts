@@ -2430,6 +2430,170 @@ function financialOperations(roots,evidence,links,today,viewerId=null){
     records_truncated:ledger.length>500||attention.length>500
   };
 }
+
+// Financial Integrity 1.0. Read-only, deterministic checks against the exact
+// approved records that power Financial. Never treats missing evidence as unpaid
+// or a passing regression suite as proof that operator review ran in production.
+function financialIntegrityReport(operations,proofs,activeLinks,audit,partial){
+  const checks=[];
+  const add=(id,title,status,description,affected=0)=>checks.push({
+    id,title,status,description,affected
+  });
+  const canonical=operations.canonical||[];
+  const trend=operations.trend||{};
+  const start=trend.start_date||"",end=trend.end_date||"";
+  const active=Array.isArray(activeLinks)?activeLinks:[];
+  const paymentById=new Map(proofs.filter(x=>x?.id).map(x=>[x.id,x]));
+  const canonicalById=new Map(canonical.map(x=>[x.id,x]));
+  const fingerprintKeys=new Set();
+  let repeated=0;
+  for(const doc of canonical){
+    const key=financialFingerprint(doc);
+    if(key&&fingerprintKeys.has(key))repeated++;
+    if(key)fingerprintKeys.add(key);
+  }
+  add("duplicates","Duplicate protection",
+    partial?"incomplete":repeated?"fail":"pass",
+    partial?"Data limit reached; not all originals were checked.":
+      repeated?"Multiple canonical expenses share the same fingerprint.":
+      "Identical approved source expenses are counted once.",
+    repeated);
+  const expected=new Map(), actual=new Map();
+  let counted=0,unpriced=0,undated=0;
+  for(const rec of canonical){
+    const value=assistantMoney(rec),date=assistantRecordDate(rec).date;
+    if(!value){unpriced++;continue;}
+    if(!date){undated++;continue;}
+    if(date<start||date>end)continue;
+    const k=value.currency;
+    expected.set(k,(expected.get(k)||0)+value.minor);counted++;
+  }
+  for(const group of trend.groups||[]){
+    actual.set(group.currency,(actual.get(group.currency)||0)+group.total_minor);
+  }
+  const mismatches=[...new Set([...expected.keys(),...actual.keys()])]
+    .filter(currency=>(expected.get(currency)||0)!==(actual.get(currency)||0));
+  add("totals","Totals & currencies",
+    partial?"incomplete":mismatches.length?"fail":counted?"pass":"not_tested",
+    partial?"Data limit reached; totals are not complete.":
+      mismatches.length?"Displayed totals disagree with independently summed expenses.":
+      counted?"Only dated, priced expenses are summed in their own currency.":
+      "No dated, priced expenses were available to validate.",
+    mismatches.length);
+  const misplaced=canonical.filter(rec=>rec.parent_document_id||
+    rec.state!=="approved"||["fuel_release","payment_slip","supplier_statement","generic_document"]
+      .includes(financialProfile(rec)));
+  add("expense_vs_proof","Expense / payment separation",
+    partial?"incomplete":misplaced.length?"fail":"pass",
+    partial?"Cannot confirm that all documents were considered.":
+      misplaced.length?"A payment or non-expense is included as an expense.":
+      "Payment slips, fuel releases and nested documents are excluded from spending totals.",
+    misplaced.length);
+  let linkFaults=0,unverifiedLinks=0;
+  const reused=new Set();
+  for(const link of active){
+    if(reused.has(link.payment_document_id))linkFaults++;
+    reused.add(link.payment_document_id);
+    const proof=paymentById.get(link.payment_document_id);
+    const invoice=canonicalById.get(link.expense_document_id);
+    if(!proof||!invoice||proof.state!=="approved"||
+       financialProfile(proof)!=="payment_slip"){
+      linkFaults++;continue;
+    }
+    const expenseMoney=assistantMoney(invoice),paymentMoney=assistantMoney(proof);
+    if(!expenseMoney||!paymentMoney||expenseMoney.currency!==link.currency||
+       paymentMoney.currency!==link.currency||expenseMoney.minor!==link.amount_minor||
+       paymentMoney.minor!==link.amount_minor)linkFaults++;
+    const transaction=financialTransactionStatus(proof);
+    if(transaction==="failed"||
+       link.payment_result==="confirmed"&&transaction!=="confirmed")linkFaults++;
+    if(link.payment_result!=="confirmed")unverifiedLinks++;
+  }
+  add("payment_links","Payment link evidence",
+    partial?"incomplete":linkFaults?"fail":active.length?"pass":"not_tested",
+    partial?"Some links or payment proofs were not loaded.":
+      linkFaults?"Payment relationship, amount, currency or confirmation does not match its evidence.":
+      active.length?unverifiedLinks+" of "+active.length+
+        " linked payment(s) are not independently confirmed. No payment is inferred as paid.":
+      "No linked payment evidence has been tested.",
+    linkFaults);
+  const docsWithOverrides=canonical.filter(rec=>{
+    const o=rec.review_metadata?.financial_overrides;
+    return o&&typeof o==="object"&&Object.keys(o).length;
+  });
+  let auditFaults=0;
+  if(audit?.available){
+    const latest=new Map();
+    for(const event of audit.events||[]){
+      if(!latest.has(event.document_id))latest.set(event.document_id,event);
+    }
+    for(const rec of docsWithOverrides){
+      const record=latest.get(rec.id);
+      const override=rec.review_metadata?.financial_overrides||{};
+      if(!record||Object.keys(override).some(key=>
+         JSON.stringify(record.after_values?.[key])!==JSON.stringify(override[key])))
+        auditFaults++;
+    }
+  }
+  add("correction_audit","Operator correction audit",
+    !audit?.available||partial||audit.complete===false?"incomplete":
+      auditFaults?"fail":docsWithOverrides.length?"pass":"not_tested",
+    !audit?.available?"Could not verify the correction event log.":
+      partial||audit.complete===false?"Not all correction events were available.":
+      auditFaults?"Financial corrections are missing or disagree with their audit records.":
+      docsWithOverrides.length?"Verified corrections match saved audit events.":
+      "No operator correction has been exercised on live approved records yet.",
+    auditFaults);
+  const financialMissing=operations.counts?.missing_amount+
+      operations.counts?.missing_currency+operations.counts?.missing_date||0;
+  const unmatched=operations.counts?.unmatched_payments||0;
+  add("exceptions","Missing financial evidence",
+    partial?"incomplete":financialMissing||unmatched?"attention":"pass",
+    partial?"Full exception coverage cannot be confirmed.":
+      financialMissing||unmatched?
+        "Some approved expenses have missing fields or payment slips have no linked invoice.":
+        "No missing financial fields or unmatched payment slips were detected.",
+    financialMissing+unmatched);
+  // Planned work is explicitly NOT validated by this release.
+  add("cross_photo","Different-photo matching","not_tested",
+    "Cross-photo duplicate and invoice/payment matching is not implemented.");
+  add("partial_refund","Partial payments & refunds","not_tested",
+    "Split payments, credit notes, refunds and bank reconciliation are not implemented.");
+  const counts={pass:0,attention:0,fail:0,incomplete:0,not_tested:0};
+  for(const item of checks)counts[item.status]++;
+  const status=counts.fail?"investigate":
+    counts.incomplete?"incomplete":counts.attention?"review_required":
+    counts.not_tested?"limited":"checked";
+  return {version:"1.0",status,counts,checks,
+    read_only:true,as_of:trend.end_date||null,
+    canonical_expenses:canonical.length,dated_priced_expenses:counted,
+    undated_priced_expenses:undated,unpriced_expenses:unpriced,
+    linked_payments:active.length,unverified_linked_payments:unverifiedLinks};
+}
+async function financialAuditEvents(principal,roots){
+  const ids=[...new Set(roots.filter(rec=>{
+    const values=rec.review_metadata?.financial_overrides;
+    return values&&typeof values==="object"&&Object.keys(values).length;
+  }).map(rec=>rec.id))];
+  if(!ids.length)return {available:true,complete:true,events:[]};
+  const events=[];
+  try{
+    for(let i=0;i<ids.length;i+=70){
+      const group=ids.slice(i,i+70);
+      const rows=await database(principal,"GET","billy_financial_review_events",{
+        select:"document_id,after_values,created_at",
+        organization_id:"eq."+principal.organization_id,
+        document_id:"in.("+group.join(",")+")",
+        order:"created_at.desc",limit:"501"
+      });
+      if(rows.length>=501)return {available:true,complete:false,events};
+      events.push(...rows);
+    }
+    return {available:true,complete:true,events};
+  }catch{
+    return {available:false,complete:false,events:[]};
+  }
+}
 async function financialEvidenceRows(principal){
   const rows=[];let offset=0,partial=false;
   while(offset<2500){
@@ -2597,8 +2761,11 @@ async function financialGet(principal,req){
     order:"created_at.desc",limit:"100"
   });
   const ops=financialOperations(rows,proofs.rows,links,today,principal.user_id);
+  const audit=await financialAuditEvents(principal,ops.canonical);
+  const integrity=financialIntegrityReport(ops,proofs.rows,links,audit,
+    partial||proofs.partial||links.length>=100||ops.records_truncated);
   return json({trend:ops.trend,ledger:ops.ledger,attention:ops.attention,
-    operational_counts:ops.counts,
+    operational_counts:ops.counts,integrity,
     linked_payments:links,counts:{
       linked:links.length,confirmed:links.filter(x=>x.payment_result==="confirmed").length,
       unverified:links.filter(x=>x.payment_result!=="confirmed").length
