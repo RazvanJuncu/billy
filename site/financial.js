@@ -434,6 +434,35 @@
     renderUnmatchedPayments();
     renderNavigation();
   }
+  function renderIntegrity(){
+    const host=$("billyFinancialIntegrityChecks");
+    if(!host)return;
+    host.replaceChildren();
+    const report=state.data?.integrity;
+    if(!report||!Array.isArray(report.checks)){
+      $("billyFinancialIntegritySummary").textContent=
+        state.error?"Integrity checks unavailable":"Not checked";
+      return;
+    }
+    const counts=report.counts||{};
+    const checked=counts.pass||0;
+    const action=(counts.fail||0)+(counts.attention||0);
+    const unverified=(counts.not_tested||0)+(counts.incomplete||0);
+    $("billyFinancialIntegritySummary").textContent=
+      checked+" checked · "+action+" need attention · "+unverified+" not verified";
+    const labels={pass:"Checked",attention:"Review",fail:"Investigate",
+      incomplete:"Incomplete",not_tested:"Not tested"};
+    for(const check of report.checks){
+      const row=make("div","billy-financial-integrity-item");
+      const info=make("div","billy-financial-integrity-copy");
+      info.append(make("strong","",check.title||"Check"));
+      info.append(make("small","",check.description||""));
+      const status=make("span","billy-financial-integrity-status",
+        labels[check.status]||"Not verified");
+      status.dataset.integrityStatus=check.status||"not_tested";
+      row.append(info,status);host.append(row);
+    }
+  }
   function render(){
     const groups=currencyGroups();
     if(!groups.some(g=>g.currency===state.currency))state.currency=groups[0]?.currency||null;
@@ -471,6 +500,7 @@
       list.append(button);
     }
     renderFinancialOperations();
+    if(nav.section==="insights")renderIntegrity();
   }
   async function openDocument(id,button){
     const config=window.BILLY_AUTH_CONFIG||{};
@@ -545,6 +575,10 @@
     $(id).addEventListener("click",()=>openPaymentPath(kind));
   }
   $("billyFinancialSectionBack").addEventListener("click",backInFinancial);
+  $("billyFinancialIntegrityRefresh").addEventListener("click",async()=>{
+    $("billyFinancialIntegritySummary").textContent="Checking approved records…";
+    await refresh();
+  });
   window.BillyFinancial={
     refresh,
     back(){
