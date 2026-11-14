@@ -63,6 +63,214 @@
     }
     host.setAttribute("aria-label",details.join(". "));
   }
+
+  const filters={search:"",vendor:"",aircraft:"",period:"all"};
+  let editingId=null;
+  const opsList=()=>Array.isArray(state.data?.ledger)?state.data.ledger:[];
+  const issuesList=()=>Array.isArray(state.data?.attention)?state.data.attention:[];
+  const statusText=(stateName)=>({
+    payment_confirmed:"Payment confirmed",
+    payment_linked:"Payment linked",
+    no_payment_proof:"No payment proof linked"
+  })[stateName]||"Payment status unknown";
+  const issueNames={
+    missing_amount:"Amount",
+    missing_currency:"Currency",
+    missing_date:"Document date",
+    unmatched_payment:"Payment needs matching"
+  };
+  const createButton=(name,className,fn)=>{
+    const button=make("button",className,name);
+    button.type="button";
+    button.addEventListener("click",fn);
+    return button;
+  };
+  function resetOptions(id,values,all,current){
+    const select=$(id);
+    if(!select)return;
+    const unique=[...new Set(values.filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+    select.replaceChildren();
+    const any=make("option","",all);any.value="";select.append(any);
+    for(const value of unique){
+      const option=make("option","",value);option.value=value;select.append(option);
+    }
+    select.value=unique.includes(current)?current:"";
+    return select.value;
+  }
+  function renderFinancialAttention(){
+    const items=issuesList(),section=$("billyFinancialAttentionSection");
+    const container=$("billyFinancialAttentionList");
+    section.hidden=!items.length||Boolean(state.error);
+    container.replaceChildren();
+    if(section.hidden){
+      editingId=null;
+      $("billyFinancialReviewEditor").hidden=true;
+      return;
+    }
+    $("billyFinancialAttentionCount").textContent=String(items.length);
+    for(const issue of items.slice(0,100)){
+      const item=make("div","billy-financial-attention-item");
+      const left=make("div","billy-financial-attention-copy");
+      left.append(make("strong","",issue.vendor||
+        (issue.kind==="unmatched_payment"?"Payment slip":"Expense")));
+      const details=issue.issues.map(x=>issueNames[x]||x).join(" · ");
+      left.append(make("small","",details));
+      const actions=make("div","billy-financial-row-actions");
+      actions.append(createButton("View","billy-financial-subtle",
+        event=>void openDocument(issue.id,event.currentTarget)));
+      if(issue.kind==="missing_financial_fields"&&issue.can_review){
+        actions.append(createButton("Review","billy-financial-subtle",
+          ()=>{editingId=issue.id;renderReviewEditor();}));
+      }
+      item.append(left,actions);container.append(item);
+    }
+    renderReviewEditor();
+  }
+  function renderReviewEditor(){
+    const host=$("billyFinancialReviewEditor");
+    host.replaceChildren();
+    const issue=issuesList().find(x=>x.id===editingId&&
+      x.kind==="missing_financial_fields"&&x.can_review);
+    host.hidden=!issue;
+    if(!issue)return;
+    const header=make("div","billy-financial-review-head");
+    header.append(make("strong","","Review · "+issue.vendor));
+    header.append(createButton("×","billy-financial-review-close",()=>{
+      editingId=null;renderReviewEditor();
+    }));
+    const detail=make("p","",
+      "Add only values you verified against the document. Corrections are audited; original readings remain unchanged.");
+    const form=make("form","billy-financial-review-form");
+    const names={
+      missing_amount:["grand_total","Amount (e.g. 278.93)","text","278.93"],
+      missing_currency:["currency","Currency (e.g. EUR)","text","EUR"],
+      missing_date:["issue_date","Document date (YYYY-MM-DD)","text","2026-11-13"]
+    };
+    const controls=[];
+    for(const missing of issue.issues){
+      if(!names[missing])continue;
+      const [field,label,type,placeholder]=names[missing];
+      const fieldWrap=make("label","billy-financial-review-field");
+      fieldWrap.append(make("span","",label));
+      const input=make("input","");
+      input.name=field;input.type=type;input.placeholder=placeholder;
+      input.autocomplete="off";input.maxLength=24;
+      fieldWrap.append(input);form.append(fieldWrap);
+      controls.push([field,input]);
+    }
+    const feedback=make("p","billy-financial-review-feedback","");
+    feedback.setAttribute("role","status");
+    const buttons=make("div","billy-financial-review-actions");
+    buttons.append(createButton("Open source","billy-financial-subtle",
+      event=>void openDocument(issue.id,event.currentTarget)));
+    const save=make("button","billy-financial-save","Save verified values");
+    save.type="submit";buttons.append(save);
+    form.append(buttons,feedback);
+    form.addEventListener("submit",async event=>{
+      event.preventDefault();
+      const values={};
+      for(const [name,input] of controls){
+        const value=input.value.trim();
+        if(value)values[name]=value;
+      }
+      if(!Object.keys(values).length){
+        feedback.textContent="Enter at least one verified value.";
+        return;
+      }
+      if(!window.BillyAccounts?.active?.()){
+        feedback.textContent="Sign in to save corrections.";return;
+      }
+      save.disabled=true;feedback.textContent="Saving verified values...";
+      try{
+        const headers=await window.BillyAccounts.sessionHeaders();
+        const api=window.BILLY_AUTH_CONFIG?.apiUrl;
+        if(!api)throw Error("Financial service is unavailable");
+        const response=await fetch(api+"/api/vision/financial-review",{
+          method:"POST",cache:"no-store",
+          headers:{"Content-Type":"application/json",...headers},
+          body:JSON.stringify({record_id:issue.id,values})
+        });
+        const payload=await response.json();
+        if(!response.ok||payload.saved!==true)
+          throw Error(payload.detail||"Unable to save verified values");
+        editingId=null;await refresh();
+      }catch(error){
+        feedback.textContent=error?.message||"Correction could not be saved";
+        save.disabled=false;
+      }
+    });
+    host.append(header,detail,form);
+  }
+  function renderExpenseLedger(){
+    const host=$("billyFinancialLedger");
+    const rows=opsList();
+    filters.vendor=resetOptions("billyFinancialVendor",
+      rows.map(x=>x.vendor), "All vendors",filters.vendor)||"";
+    filters.aircraft=resetOptions("billyFinancialAircraft",
+      rows.map(x=>x.aircraft),"All aircraft",filters.aircraft)||"";
+    const end=state.data?.trend?.end_date||"";
+    const from=filters.period==="all"?"":(()=>{
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(end))return "";
+      const base=new Date(end+"T00:00:00Z");
+      base.setUTCDate(base.getUTCDate()-(Number(filters.period)-1));
+      return base.toISOString().slice(0,10);
+    })();
+    const search=filters.search.normalize("NFKC").toLocaleLowerCase("en-US");
+    const visible=rows.filter(item=>{
+      if(filters.vendor&&item.vendor!==filters.vendor)return false;
+      if(filters.aircraft&&item.aircraft!==filters.aircraft)return false;
+      if(from&&(!item.date||item.date<from))return false;
+      if(search&&![item.vendor,item.profile,item.aircraft,item.flight,
+         item.reference,item.category].some(value=>
+        String(value||"").toLocaleLowerCase("en-US").includes(search)))return false;
+      return true;
+    });
+    $("billyFinancialLedgerCount").textContent=
+      visible.length+" of "+rows.length+" approved expenses"+
+      ((state.data?.operational_counts?.duplicate_expenses_excluded||0)?
+        " · duplicates excluded":"");
+    host.replaceChildren();
+    if(state.error||!visible.length){
+      host.append(make("p","billy-financial-empty",
+        state.error?"Financial records unavailable":"No expenses match these filters"));
+      return;
+    }
+    for(const item of visible.slice(0,150)){
+      const row=make("div","billy-financial-expense-row");
+      const identity=make("div","billy-financial-expense-identity");
+      identity.append(make("strong","",item.vendor||"Unassigned"));
+      const context=[(item.profile||"").replaceAll("_"," "),item.aircraft,
+        item.date||"No document date"].filter(Boolean).join(" · ");
+      identity.append(make("small","",context));
+      const totals=make("div","billy-financial-expense-amount");
+      totals.append(make("strong","",item.amount_minor!==null?
+        money(item.amount_minor,item.currency):
+        (item.currency?"Amount needed":"Incomplete amount")));
+      totals.append(make("small",item.issues?.length?
+        "billy-financial-issue-text":"",
+        item.issues?.length?
+          "Financial details missing":statusText(item.payment_state)));
+      const actions=make("div","billy-financial-row-actions");
+      actions.append(createButton("Open","billy-financial-subtle",
+        event=>void openDocument(item.id,event.currentTarget)));
+      row.append(identity,totals,actions);host.append(row);
+    }
+    if(visible.length>150){
+      host.append(make("p","billy-financial-coverage",
+        "Showing the first 150 matching records. Refine the filters to narrow the list."));
+    }
+  }
+  function renderFinancialOperations(){
+    if(!$("billyFinancialLedger"))return;
+    renderFinancialAttention();
+    renderExpenseLedger();
+    const partial=Boolean(state.data?.partial);
+    const coverage=$("billyFinancialCoverage");
+    coverage.hidden=!partial;
+    coverage.textContent=partial?
+      "Some records exceed the current financial query limit. Totals and lists may be incomplete.":
+      "";
+  }
   function render(){
     const groups=currencyGroups();
     if(!groups.some(g=>g.currency===state.currency))state.currency=groups[0]?.currency||null;
@@ -94,6 +302,7 @@
       button.addEventListener("click",()=>void openDocument(link.expense_document_id,button));
       list.append(button);
     }
+    renderFinancialOperations();
   }
   async function openDocument(id,button){
     const config=window.BILLY_AUTH_CONFIG||{};
@@ -138,6 +347,15 @@
       const selected=event.target.value;
       if(!currencyGroups().some(g=>g.currency===selected))return;
       state.currency=selected;render();
+    });
+  }
+  $("billyFinancialSearch").addEventListener("input",event=>{
+    filters.search=event.target.value;renderExpenseLedger();
+  });
+  for(const [id,key] of [["billyFinancialVendor","vendor"],
+    ["billyFinancialAircraft","aircraft"],["billyFinancialPeriodFilter","period"]]){
+    $(id).addEventListener("change",event=>{
+      filters[key]=event.target.value;renderExpenseLedger();
     });
   }
   window.BillyFinancial={refresh};
