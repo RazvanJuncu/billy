@@ -1343,41 +1343,51 @@ body[data-billy-screen="uploaded"] #simpleUploaded .billy-hub-symbol{
 #simpleUploaded .billy-duplicate-wrap>.billy-doc-family{
   width:100%;min-width:0;
 }
+/* One quiet material tone for both Piggy and the message bubble.
+   The original SVG's body is #f5f5f5; brightness(.413) renders it #656565. */
 #simpleUploaded .billy-duplicate-hint{
-  position:absolute;z-index:5;right:-8px;top:50%;
+  --billy-duplicate-tone:#656565;
+  position:absolute;z-index:5;right:-10px;top:50%;
   transform:translate(100%,-50%);pointer-events:none;
-  display:flex;align-items:center;gap:2px;
-  color:#e1e4e6;font-size:11px;font-weight:650;letter-spacing:0;
+  display:flex;align-items:center;gap:10px;
   white-space:nowrap;
 }
 #simpleUploaded .billy-duplicate-piggy{
   display:block;width:34px;height:34px;object-fit:contain;
-  /* Muted neutral grey, matching the archive's X button palette. */
-  filter:grayscale(1) brightness(.44);
-  transform:rotate(-9deg);flex:none;
+  filter:grayscale(1) brightness(.413);
+  transform:rotate(-8deg);flex:none;
 }
 #simpleUploaded .billy-duplicate-speech{
-  position:relative;display:inline-flex;align-items:center;
-  min-height:29px;padding:5px 11px;
-  border:0!important;background:#303337;border-radius:13px 13px 13px 5px;
-  line-height:1.1;box-shadow:0 3px 8px rgba(0,0,0,.16);
+  position:relative;display:inline-flex;align-items:center;justify-content:center;
+  min-height:32px;padding:7px 13px;
+  border:0!important;
+  background:var(--billy-duplicate-tone);
+  color:#121416;
+  font-size:11px;font-weight:650;letter-spacing:0;
+  line-height:1.15;border-radius:15px 15px 15px 9px;
+  box-shadow:none;
 }
-#simpleUploaded .billy-duplicate-speech::before{
-  content:"";position:absolute;left:-4px;top:50%;
-  width:9px;height:9px;transform:translateY(-50%) rotate(45deg);
-  border:0;background:inherit;border-radius:2px;
+/* Small lower-left chat tail, not the pointed diamond between pig and bubble. */
+#simpleUploaded .billy-duplicate-speech::after{
+  content:"";position:absolute;left:4px;bottom:-4px;
+  width:10px;height:9px;
+  background:var(--billy-duplicate-tone);
+  clip-path:polygon(0 100%,25% 0,100% 0);
+  border-radius:0 0 0 2px;
 }
 @media(max-width:1250px){
   #simpleUploaded .billy-duplicate-hint{
-    top:-5px;right:13px;transform:translateY(-25%);gap:1px;
+    top:-5px;right:13px;transform:translateY(-25%);gap:7px;
   }
   #simpleUploaded .billy-duplicate-piggy{width:24px;height:24px}
-  #simpleUploaded .billy-duplicate-speech{font-size:10px;padding:3px 6px}
+  #simpleUploaded .billy-duplicate-speech{
+    min-height:27px;padding:5px 10px;font-size:10px;border-radius:14px 14px 14px 8px;
+  }
 }
 @media(max-width:560px){
-  #simpleUploaded .billy-duplicate-hint{top:-4px;right:5px}
+  #simpleUploaded .billy-duplicate-hint{top:-4px;right:5px;gap:6px}
   #simpleUploaded .billy-duplicate-piggy{width:21px;height:21px}
-  #simpleUploaded .billy-duplicate-speech{font-size:9px}
+  #simpleUploaded .billy-duplicate-speech{min-height:24px;font-size:9px;padding:4px 9px}
 }
 .billy-preview-duplicate{
   display:flex;align-items:center;gap:10px;margin:1px 0 15px;
