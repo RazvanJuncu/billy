@@ -813,12 +813,12 @@ async function trusted(req) {
   if(!Array.isArray(members)||!["owner","reviewer","operator"].includes(members[0]?.role))return null;
   return {user_id:user.id,organization_id:team,role:members[0].role,url,secret};
 }
-async function database(principal,method,path,query,body) {
+async function database(principal,method,path,query,body,prefer="return=representation") {
   const target=new URL(principal.url+"/rest/v1/"+path);
   for(const [k,v] of Object.entries(query||{}))target.searchParams.set(k,v);
   const response=await fetch(target,{method,
     headers:{"apikey":principal.secret,"Authorization":"Bearer "+principal.secret,
-      "Content-Type":"application/json","Prefer":"return=representation"},
+      "Content-Type":"application/json","Prefer":prefer},
     body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(12000)});
   if(!response.ok)throw Error("Could not save or read the Billy review record.");
   return await response.json();
@@ -1751,7 +1751,7 @@ async function approve(req,principal){
     absentPaths=checkedAbsentPaths(data.not_on_document,checked,data.document_type);
   }catch{return error("Approved document or absent-field selections are invalid.",400);}
   const owned=await database(principal,"GET","document_records",{
-    "select":"id,document_type,extracted_data,regions_data,translation_metadata,review_metadata,state",
+    "select":"id,document_type,extracted_data,regions_data,translation_metadata,review_metadata,state,parent_document_id",
     "id":"eq."+data.extraction_id,"organization_id":"eq."+principal.organization_id,
     "created_by":"eq."+principal.user_id,"limit":"1"
   });
@@ -1802,7 +1802,16 @@ async function approve(req,principal){
     approved_at:new Date().toISOString(),approved_by:principal.user_id
   });
   if(!Array.isArray(updated)||updated.length!==1)return error("This document was already approved.",409);
+  // Registration is based on the FINAL approved reading, never raw extraction.
+  // An unavailable directory must not silently invalidate the saved approval.
+  let vendorRegistration="skipped";
+  try{vendorRegistration=await autoRegisterApprovedVendor(principal,source,checked,absentPaths,operatorVerified);}
+  catch(e){
+    console.warn("Billy vendor auto-registration deferred (approved record unchanged).");
+    vendorRegistration="pending";
+  }
   return json({status:"approved",approval_id:source.id,document_type:data.document_type,
+    vendor_registration:vendorRegistration,
     correction_count:corrections,validation_warnings:warnings,
     normalized_data:approvedNormalized,review_metadata:reviewMetadata,
     posted_to_excel:false});
@@ -1854,6 +1863,51 @@ async function vendorDirectory(principal){
     if(vendor)byKey.set(alias.alias_key,vendor);
   }
   return {vendors:vendors.map(({id,display_name})=>({id,name:display_name})),byKey};
+}
+// Auto-register the vendor *after* final approval, from the approved issuer
+// field only. Never treat bank/card-holder text or unverified fuzzy similarity as
+// a supplier. A unique (organization_id,name_key) constraint makes this safe
+// across concurrent approvals and reprocessing.
+const NON_VENDOR_REGISTRY_PROFILES=new Set(["payment_slip","supplier_statement","generic_document"]);
+function approvedVendorCandidate(source,approved,absentPaths=[],operatorVerified=new Set()){
+  const profile=source?.review_metadata?.classification?.profile||"";
+  if(NON_VENDOR_REGISTRY_PROFILES.has(profile))return null;
+  for(const field of ["supplier_name","property_name"]){
+    if(absentPaths.includes(field))continue;
+    if(typeof approved?.[field]!=="string")continue;
+    const name=approved[field].normalize("NFKC").replace(/\\s+/gu," ").trim();
+    const key=vendorKey(name);
+    if(!key||name.length<3||name.length>120||!/\\p{L}/u.test(name)||
+       /(?:\\?{1,}|…|\\.{3,}|https?:\\/\\/|www\\.|@)/i.test(name))continue;
+    // Explicitly low-clarity OCR must not silently create a trusted vendor,
+    // unless the operator separately confirmed or corrected that field.
+    const weak=(source.regions_data||[]).some(row=>row.field_path===field&&
+      ["slight_uncertainty","ambiguous","unreadable","unassessed"].includes(row.visual_clarity));
+    if(weak&&!operatorVerified.has(field))continue;
+    return {name,key,field};
+  }
+  return null;
+}
+async function autoRegisterApprovedVendor(principal,source,approved,absentPaths,operatorVerified){
+  const candidate=approvedVendorCandidate(source,approved,absentPaths,operatorVerified);
+  if(!candidate)return "skipped";
+  const directory=await vendorDirectory(principal);
+  if(directory.byKey.has(candidate.key))return "matched";
+  // Service-role-only table; the PWA cannot insert vendors or choose their IDs.
+  // Conflict handling NEVER renames an existing canonical vendor.
+  const inserted=await database(principal,"POST","billy_vendors",{
+    on_conflict:"organization_id,name_key",select:"id,display_name"
+  },{
+    organization_id:principal.organization_id,created_by:principal.user_id,
+    display_name:candidate.name,name_key:candidate.key
+  },"resolution=ignore-duplicates,return=representation");
+  if(inserted.length)return "created";
+  const existing=await database(principal,"GET","billy_vendors",{
+    select:"id",organization_id:"eq."+principal.organization_id,
+    name_key:"eq."+candidate.key,limit:"1"
+  });
+  if(existing.length===1)return "matched";
+  throw Error("Vendor registration is not visible after conflict.");
 }
 function resolvedVendor(record,directory){
   if(!directory)return null;
