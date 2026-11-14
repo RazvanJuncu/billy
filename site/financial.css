@@ -1,0 +1,103 @@
+/* Financial P0: quiet, data-backed activity on the Billy homepage. */
+.billy-home-top{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;align-items:end;min-height:171px;margin-bottom:12px;
+}
+.billy-home-top .simple-greeting{
+  min-height:0!important;margin:0!important;padding:0 0 30px;
+  align-self:end;min-width:0;
+}
+.billy-home-financial{
+  min-width:0;min-height:162px;display:flex;flex-direction:column;
+  gap:7px;justify-content:flex-end;
+}
+.billy-home-financial-top{padding:2px 11px 4px;min-height:92px}
+.billy-home-financial-heading{display:flex;align-items:center;justify-content:space-between;
+  gap:9px;color:#aaaeb2;font-size:10px;font-weight:560}
+.billy-financial-chart-tools{display:inline-flex;align-items:center;gap:9px}
+.billy-financial-mini-currency{
+  font:inherit;font-size:10px;max-width:65px;color:#b9bec2;
+  background:transparent;border:0;border-radius:5px;cursor:pointer
+}
+.billy-financial-mini-bar-chart{display:flex;align-items:flex-end;gap:7px;height:62px;
+  padding:10px 2px 0}
+.billy-financial-mini-bar{
+  flex:1;max-width:64px;min-width:8px;height:var(--height);
+  border-radius:4px 4px 0 0;background:#53575a;transition:background .16s ease;
+}
+.billy-financial-mini-bar:last-child{background:#c6c8c9}
+.billy-financial-mini-bar:hover{background:#e1e3e4}
+.billy-financial-loading,.billy-financial-mini-empty{
+  color:#81868b;font-size:11px;align-self:center;margin:auto
+}
+.billy-financial-open{
+  width:100%;min-height:54px;display:grid;grid-template-columns:1fr auto;
+  grid-template-rows:auto auto;align-content:center;gap:3px 12px;
+  text-align:left;position:relative;padding:9px 15px!important;
+  background:#1b1c1e!important;border:0!important;border-radius:11px!important;
+  color:#f3f3f3;cursor:pointer;transition:background .16s ease,transform .16s ease;
+}
+.billy-financial-open:hover,.billy-financial-open:focus-visible{
+  background:#2d2e30!important;transform:translateY(-1px);
+}
+.billy-financial-open:active{transform:scale(.995)}
+.billy-financial-open-title{font-size:14px;font-weight:680;line-height:1.1}
+.billy-financial-open-caption{grid-column:1;font-size:10px;color:#999fa3}
+.billy-financial-chevron{grid-column:2;grid-row:1 / span 2;align-self:center;color:#aeb2b6;font-size:18px}
+.simple-financial{
+  width:min(940px,calc(100% - 40px));margin:0 auto;padding:30px 0 65px;
+  gap:17px!important;min-height:calc(100dvh - 145px);
+  justify-content:flex-start!important;flex:0 0 auto!important;
+}
+.simple-financial .simple-heading{font-size:clamp(28px,3.1vw,40px);font-weight:650}
+.billy-financial-dashboard{
+  background:#1b1d1f;border-radius:17px;padding:25px 27px;
+  display:flex;flex-direction:column;gap:30px;
+}
+.billy-financial-dash-top{display:flex;justify-content:space-between;align-items:start;gap:12px}
+.billy-financial-kicker{font-size:10px;letter-spacing:.12em;font-weight:650;color:#93999d}
+.billy-financial-total{font-size:clamp(30px,4vw,45px);font-weight:690;letter-spacing:-.05em;margin:9px 0 3px}
+.billy-financial-period{font-size:12px;color:#989da1}
+.billy-financial-select-label{display:flex;align-items:center;gap:7px;color:#aab0b5;font-size:11px}
+.billy-financial-select-label select{
+  background:#292c2e;border:0;border-radius:7px;color:#f2f2f2;
+  min-height:35px;padding:0 7px;font:inherit;cursor:pointer;
+}
+.billy-financial-full-chart{display:flex;gap:13px;align-items:flex-end;min-height:190px;padding-top:15px}
+.billy-financial-week{flex:1;display:flex;align-items:center;flex-direction:column;gap:10px;min-width:0}
+.billy-financial-week-value{font-size:11px;color:#c7cbce;white-space:nowrap}
+.billy-financial-week-track{height:130px;width:min(100%,112px);display:flex;align-items:end;
+  border-bottom:1px solid #494d50}
+.billy-financial-week-bar{width:100%;min-height:2px;height:var(--height);
+  background:#53575a;border-radius:5px 5px 0 0}
+.billy-financial-week:last-child .billy-financial-week-bar{background:#c6c9cb}
+.billy-financial-week-label{font-size:10px;color:#8c9297;white-space:nowrap}
+.billy-financial-dash-footer{border-top:1px solid #303335;padding-top:20px;display:flex;flex-direction:column;gap:15px}
+.billy-financial-dash-footer>div:first-child{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
+.billy-financial-dash-footer strong{font-size:14px}
+.billy-financial-dash-footer span{font-size:11px;color:#a5aaad}
+.billy-financial-links{display:flex;flex-direction:column;gap:5px}
+.billy-financial-link-row{display:flex;gap:12px;align-items:center;justify-content:space-between;
+  padding:14px 15px!important;background:#292b2d!important;color:#f0f0f0;
+  border:0!important;border-radius:8px!important;cursor:pointer;text-align:left}
+.billy-financial-link-row:hover{background:#35383b!important}
+.billy-financial-link-row strong{font-size:12px}
+.billy-financial-link-row span{font-size:11px;color:#adb2b5}
+.billy-financial-disclaimer{color:#8b9296;font-size:11px;line-height:1.6;max-width:690px;margin:0}
+.billy-financial-empty{font-size:13px;color:#92989c;padding:15px 0}
+@media(max-width:900px){
+  .billy-home-top{grid-template-columns:1fr;gap:12px;min-height:0}
+  .billy-home-top .simple-greeting{padding-bottom:0;min-height:0;margin-bottom:4px!important}
+  .billy-home-financial{min-height:144px}
+  .billy-home-financial-top{min-height:83px}
+  .billy-financial-mini-bar-chart{height:57px}
+}
+@media(max-width:600px){
+  .simple-financial{width:calc(100% - 32px);padding-top:18px;gap:12px!important}
+  .billy-financial-dashboard{padding:17px;gap:19px;border-radius:12px}
+  .billy-financial-full-chart{gap:6px;min-height:145px}
+  .billy-financial-week-track{height:100px}
+  .billy-financial-week-value{font-size:9px}
+  .billy-financial-week-label{font-size:9px}
+}
+@media(prefers-reduced-motion:reduce){.billy-financial-open,.billy-financial-mini-bar{transition:none}}
