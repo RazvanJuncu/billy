@@ -2166,6 +2166,7 @@ function financialDay(record){
   for(const raw of [record?.review_metadata?.financial_overrides?.issue_date,
     values.issue_date,doc.issue_date]){
     const value=typeof raw==="string"?raw.trim():"";
+    if(!value)continue;
     if(/^\d{4}-\d{2}-\d{2}$/.test(value))return value;
     const normalized=canonicalDate(value);
     if(normalized.status==="ok")return normalized.value;
