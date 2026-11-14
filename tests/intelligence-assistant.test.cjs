@@ -81,6 +81,23 @@ test("Repeated uploads of the same approved invoice do not double-count",()=>{
   assert.equal(expanded.groups[0].total_minor,13900);
   assert.equal(expanded.coverage.duplicate_records_excluded,1);
 });
+test("Financial and Assistant share canonical deduplication across OCR amount formats",()=>{
+  const e=engine();
+  const raws=["367,20","367,20€","367.20 EUR","367,20 "];
+  const repeated=raws.map((raw,index)=>{
+    const rec=record("bacau-"+index,367.2,"EUR");
+    rec.source_sha256="a".repeat(64);
+    rec.reviewed_data.invoice_number=null;
+    rec.reviewed_data.grand_total=raw;
+    return rec;
+  });
+  const r=e.aggregate(repeated,{aircraft_registration:"YR-DSR",
+    start_date:"2026-11-11",end_date:"2026-11-11",
+    expense_category:null,vendor_name:null,flight_number:null},false);
+  assert.equal(r.groups[0].total_minor,36720);
+  assert.equal(r.groups[0].documents,1);
+  assert.equal(r.coverage.duplicate_records_excluded,3);
+});
 test("Ambiguous money is excluded, no raw OCR arithmetic or assumed exchange rates",()=>{
   const e=engine(),a=record("x",9,"EUR");
   delete a.review_metadata.normalization.approved.values.grand_total;
