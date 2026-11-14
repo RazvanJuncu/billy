@@ -21,7 +21,7 @@
   <link rel="stylesheet" href="./accounts.css?v=0.7.0">
   <link rel="stylesheet" href="./document-type.css?v=0.6.0">
   <link rel="stylesheet" href="./simple.css?v=2.4.9">
-  <link rel="stylesheet" href="./financial.css?v=1.2.0">
+  <link rel="stylesheet" href="./financial.css?v=1.3.0">
   <link rel="stylesheet" href="./nested-mitosis.css?v=0.3.0">
   <link rel="stylesheet" href="./intelligence-assistant.css?v=0.3.4">
   <link rel="stylesheet" href="./multi-documents.css?v=1.0.0">
@@ -52,7 +52,7 @@
   <script src="./documents-index.js?v=1.9.1" defer></script>
   <script src="./original-archive.js?v=1.1.0" defer></script>
   <script src="./document-preview.js?v=1.5.2" defer></script>
-  <script src="./financial.js?v=1.2.0" defer></script>
+  <script src="./financial.js?v=1.3.0" defer></script>
   <script src="./simple.js?v=2.2.3" defer></script>
   <script src="./piggybank-hud.js?v=1.0.0" defer></script>
   <script src="./intelligence-assistant.js?v=0.3.0" defer></script>
@@ -263,7 +263,7 @@
             </div>
             <nav class="billy-financial-nav" aria-label="Financial sections">
               <button id="billyFinancialAttentionNav" class="billy-financial-nav-row" type="button" hidden>
-                <span class="billy-financial-nav-icon" aria-hidden="true">!</span>
+                <span class="billy-financial-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 2 21h20L12 3z"/><path d="M12 9v5m0 3h.01"/></svg></span>
                 <span class="billy-financial-nav-copy">
                   <strong>Needs attention</strong>
                   <small id="billyFinancialAttentionSubtitle">Documents requiring review</small>
@@ -272,23 +272,23 @@
                 <span class="billy-financial-nav-arrow" aria-hidden="true">›</span>
               </button>
               <button id="billyFinancialExpensesNav" class="billy-financial-nav-row" type="button">
-                <span class="billy-financial-nav-icon" aria-hidden="true">▤</span>
+                <span class="billy-financial-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6m-6 4h6"/></svg></span>
                 <span class="billy-financial-nav-copy"><strong>Expenses</strong>
                   <small id="billyFinancialExpensesSubtitle">Browse approved expenses</small>
                 </span>
                 <span class="billy-financial-nav-arrow" aria-hidden="true">›</span>
               </button>
               <button id="billyFinancialPaymentsNav" class="billy-financial-nav-row" type="button">
-                <span class="billy-financial-nav-icon" aria-hidden="true">↔</span>
+                <span class="billy-financial-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18m-13 4h3"/></svg></span>
                 <span class="billy-financial-nav-copy"><strong>Payments</strong>
                   <small id="billyFinancialPaymentsSubtitle">Linked and unmatched payment evidence</small>
                 </span>
                 <span class="billy-financial-nav-arrow" aria-hidden="true">›</span>
               </button>
               <button id="billyFinancialInsightsNav" class="billy-financial-nav-row" type="button">
-                <span class="billy-financial-nav-icon" aria-hidden="true">▥</span>
+                <span class="billy-financial-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20V12m6 8V7m6 13V10m4 10V4M2 20h20"/></svg></span>
                 <span class="billy-financial-nav-copy"><strong>Insights</strong>
-                  <small>Spending trends and reports</small>
+                  <small>Spending trends and activity</small>
                 </span>
                 <span class="billy-financial-nav-arrow" aria-hidden="true">›</span>
               </button>
@@ -362,7 +362,9 @@
             <section class="billy-financial-section" id="billyFinancialInsightsSection" aria-label="Insights" hidden>
               <div class="billy-financial-section-head">
                 <h3>Approved expenses · 30 days</h3>
-                <span class="billy-financial-section-sub">By week, in the selected currency</span>
+                <label class="billy-financial-select-label">Currency
+                  <select id="billyFinancialInsightCurrency" aria-label="Insight chart currency"></select>
+                </label>
               </div>
               <div class="billy-financial-full-chart" id="billyFinancialChart" role="img" aria-label="Weekly approved expenses"></div>
               <p class="billy-financial-disclaimer">Approved document amounts only. Payment slips are not new expenses.
