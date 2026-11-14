@@ -130,6 +130,14 @@
       if(!vendors.length){input.value="__new__";name.hidden=false;}
       wrap.append(input,name);
     }else{
+      if(key==="airport" && record.airport_resolution?.status==="conflict"){
+        const sourceNames={document_icao:"Document ICAO",document_airport:"Document airport",
+          verified_iata:"Printed IATA",verified_airport_operator:"Billing provider"};
+        const labels=(record.airport_resolution.evidence||[]).map(e=>
+          (sourceNames[e.source]||"Source")+": "+e.icao).join(" · ");
+        wrap.append(create("small","billy-org-read",
+          "Conflicting airport evidence: "+labels+". Verify the service airport."));
+      }
       input=create("input","billy-org-input");
       input.type="text";input.autocomplete="off";
       input.placeholder="ICAO (e.g. LRBS)";
