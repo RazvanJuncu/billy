@@ -143,7 +143,11 @@ function mockBackend(opts={}) {
       const filters=["id","organization_id","created_by","source_sha256","document_type","state","parent_document_id"];
       let list=[...stored.values()].filter(item=>filters.every(field=>{
         const expected=url.searchParams.get(field);
-        return !expected||(expected==="is.null"?item[field]==null:expected==="eq."+item[field]);
+        if(!expected)return true;
+        if(expected==="is.null")return item[field]==null;
+        if(expected.startsWith("in.(")&&expected.endsWith(")"))
+          return expected.slice(4,-1).split(",").includes(item[field]);
+        return expected==="eq."+item[field];
       }));
       if(url.searchParams.get("order")==="created_at.desc")list=list.reverse();
       const offset=Number(url.searchParams.get("offset")||0);
