@@ -172,7 +172,7 @@
     }
     announce("");
     if (next === "uploaded") renderUploaded();
-    if (next === "home" || next === "financial") void window.BillyFinancial?.refresh?.();
+    if (next === "financial") void window.BillyFinancial?.refresh?.();
     if (next === "process") {
       updateProcess();
       if(!window.BillyApp?.isOnline() && window.BillyAccounts?.active?.())
