@@ -99,7 +99,7 @@ test("Assistant endpoint is authenticated, scoped to the team and rejects arbitr
   assert.ok(edge.includes('if(suffix==="/api/vision/assistant")return await assistantAsk(req,principal)'));
   assert.ok(edge.includes('if(suffix==="/api/vision/assistant-source")return await assistantSource(req,principal)'));
   assert.match(edge,/const principal=await trusted\(req\)/);
-  assert.match(edge,/select:"id,document_type,state,created_at,approved_at,extracted_data/);
+  assert.match(edge,/select:"id,created_by,document_type,state,created_at,approved_at,extracted_data/);
   assert.doesNotMatch(edge.slice(edge.indexOf("async function assistantRows("),
     edge.indexOf("async function assistantAsk(")),/eval\(|SELECT \*/);
 });
