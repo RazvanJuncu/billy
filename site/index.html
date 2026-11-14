@@ -248,54 +248,128 @@
 
         <section class="simple-financial simple-screen" id="simpleFinancial" aria-label="Financial" hidden>
           <h1 class="simple-heading">Financial</h1>
-          <div class="billy-financial-dashboard">
-            <div class="billy-financial-dash-top">
-              <div><span class="billy-financial-kicker">APPROVED EXPENSES</span>
-                <div id="billyFinancialTotal" class="billy-financial-total">-</div>
-                <div id="billyFinancialPeriod" class="billy-financial-period">Last 30 days</div>
+          <div id="billyFinancialLanding" class="billy-financial-landing">
+            <div class="billy-financial-summary">
+              <div class="billy-financial-dash-top">
+                <div>
+                  <span class="billy-financial-kicker">APPROVED EXPENSES · LAST 30 DAYS</span>
+                  <div id="billyFinancialTotal" class="billy-financial-total">-</div>
+                  <div id="billyFinancialPeriod" class="billy-financial-period">Loading approved expenses</div>
+                </div>
+                <label class="billy-financial-select-label">Currency
+                  <select id="billyFinancialCurrency" aria-label="Choose currency"></select>
+                </label>
               </div>
-              <label class="billy-financial-select-label">Currency
-                <select id="billyFinancialCurrency" aria-label="Choose currency"></select>
-              </label>
             </div>
-            <div class="billy-financial-full-chart" id="billyFinancialChart" role="img"
-              aria-label="Weekly approved expenses"></div>
-            <div class="billy-financial-dash-footer">
-              <div><strong>Payment links</strong>
-                <span id="billyFinancialLinksCaption">No verified matches yet</span>
-              </div>
-              <div id="billyFinancialLinks" class="billy-financial-links"></div>
-            </div>
+            <nav class="billy-financial-nav" aria-label="Financial sections">
+              <button id="billyFinancialAttentionNav" class="billy-financial-nav-row" type="button" hidden>
+                <span class="billy-financial-nav-icon" aria-hidden="true">!</span>
+                <span class="billy-financial-nav-copy">
+                  <strong>Needs attention</strong>
+                  <small id="billyFinancialAttentionSubtitle">Documents requiring review</small>
+                </span>
+                <span id="billyFinancialAttentionBadge" class="billy-financial-nav-badge" aria-label="Attention count"></span>
+                <span class="billy-financial-nav-arrow" aria-hidden="true">›</span>
+              </button>
+              <button id="billyFinancialExpensesNav" class="billy-financial-nav-row" type="button">
+                <span class="billy-financial-nav-icon" aria-hidden="true">▤</span>
+                <span class="billy-financial-nav-copy"><strong>Expenses</strong>
+                  <small id="billyFinancialExpensesSubtitle">Browse approved expenses</small>
+                </span>
+                <span class="billy-financial-nav-arrow" aria-hidden="true">›</span>
+              </button>
+              <button id="billyFinancialPaymentsNav" class="billy-financial-nav-row" type="button">
+                <span class="billy-financial-nav-icon" aria-hidden="true">↔</span>
+                <span class="billy-financial-nav-copy"><strong>Payments</strong>
+                  <small id="billyFinancialPaymentsSubtitle">Linked and unmatched payment evidence</small>
+                </span>
+                <span class="billy-financial-nav-arrow" aria-hidden="true">›</span>
+              </button>
+              <button id="billyFinancialInsightsNav" class="billy-financial-nav-row" type="button">
+                <span class="billy-financial-nav-icon" aria-hidden="true">▥</span>
+                <span class="billy-financial-nav-copy"><strong>Insights</strong>
+                  <small>Spending trends and reports</small>
+                </span>
+                <span class="billy-financial-nav-arrow" aria-hidden="true">›</span>
+              </button>
+            </nav>
           </div>
-          <section class="billy-financial-section" id="billyFinancialAttentionSection" aria-label="Financial attention" hidden>
-            <div class="billy-financial-section-head">
-              <h2>Needs attention <span id="billyFinancialAttentionCount"></span></h2>
-              <span class="billy-financial-section-sub">Only exceptions that need a decision</span>
-            </div>
-            <div id="billyFinancialAttentionList" class="billy-financial-attention-list"></div>
-            <div id="billyFinancialReviewEditor" class="billy-financial-review-editor" hidden></div>
-          </section>
-          <section class="billy-financial-section" aria-label="Expense ledger">
-            <div class="billy-financial-section-head">
-              <h2>Expenses</h2>
-              <span id="billyFinancialLedgerCount" class="billy-financial-section-sub">Approved records</span>
-            </div>
-            <div class="billy-financial-filters">
-              <input id="billyFinancialSearch" type="search" autocomplete="off"
-                placeholder="Search vendor, reference or flight" aria-label="Search expenses">
-              <select id="billyFinancialVendor" aria-label="Filter by vendor"><option value="">All vendors</option></select>
-              <select id="billyFinancialAircraft" aria-label="Filter by aircraft"><option value="">All aircraft</option></select>
-              <select id="billyFinancialPeriodFilter" aria-label="Filter by period">
-                <option value="all">All dates</option>
-                <option value="30">Last 30 days</option>
-                <option value="90">Last 90 days</option>
-              </select>
-            </div>
-            <div id="billyFinancialLedger" class="billy-financial-ledger"></div>
-          </section>
-          <p id="billyFinancialCoverage" class="billy-financial-coverage" hidden></p>
-          <p class="billy-financial-disclaimer">Approved document amounts only. Payment slips are not new expenses.
-            Invoice dates are used when service dates are unavailable. Currencies are never combined.</p>
+          <div id="billyFinancialDetail" class="billy-financial-detail" hidden>
+            <button id="billyFinancialSectionBack" class="billy-financial-back" type="button">‹ <span>Financial</span></button>
+            <h2 id="billyFinancialSectionTitle" class="billy-financial-detail-title"></h2>
+            <section class="billy-financial-section" id="billyFinancialAttentionSection" aria-label="Financial attention" hidden>
+              <div class="billy-financial-section-head">
+                <h3>Needs attention <span id="billyFinancialAttentionCount"></span></h3>
+                <span class="billy-financial-section-sub">Only exceptions that need a decision</span>
+              </div>
+              <div id="billyFinancialAttentionList" class="billy-financial-attention-list"></div>
+              <div id="billyFinancialReviewEditor" class="billy-financial-review-editor" hidden></div>
+            </section>
+            <section class="billy-financial-section" id="billyFinancialExpensesSection" aria-label="Expenses" hidden>
+              <div id="billyFinancialExpensePaths" class="billy-financial-subnav">
+                <button id="billyFinancialByAircraft" class="billy-financial-nav-row" type="button">
+                  <span class="billy-financial-nav-copy"><strong>By aircraft</strong><small>Explore expenses by registration</small></span>
+                  <span class="billy-financial-nav-arrow" aria-hidden="true">›</span>
+                </button>
+                <button id="billyFinancialByVendor" class="billy-financial-nav-row" type="button">
+                  <span class="billy-financial-nav-copy"><strong>By vendor</strong><small>Browse expenses by supplier</small></span>
+                  <span class="billy-financial-nav-arrow" aria-hidden="true">›</span>
+                </button>
+                <button id="billyFinancialAllExpenses" class="billy-financial-nav-row" type="button">
+                  <span class="billy-financial-nav-copy"><strong>All expenses</strong><small>Search and filter the complete ledger</small></span>
+                  <span class="billy-financial-nav-arrow" aria-hidden="true">›</span>
+                </button>
+              </div>
+              <div id="billyFinancialExpenseGroups" class="billy-financial-subnav" hidden></div>
+              <div id="billyFinancialExpenseResults" hidden>
+                <div class="billy-financial-section-head">
+                  <span id="billyFinancialLedgerCount" class="billy-financial-section-sub">Approved records</span>
+                </div>
+                <div class="billy-financial-filters">
+                  <input id="billyFinancialSearch" type="search" autocomplete="off"
+                    placeholder="Search vendor, reference or flight" aria-label="Search expenses">
+                  <select id="billyFinancialVendor" aria-label="Filter by vendor"><option value="">All vendors</option></select>
+                  <select id="billyFinancialAircraft" aria-label="Filter by aircraft"><option value="">All aircraft</option></select>
+                  <select id="billyFinancialPeriodFilter" aria-label="Filter by period">
+                    <option value="all">All dates</option>
+                    <option value="30">Last 30 days</option>
+                    <option value="90">Last 90 days</option>
+                  </select>
+                </div>
+                <div id="billyFinancialLedger" class="billy-financial-ledger"></div>
+              </div>
+            </section>
+            <section class="billy-financial-section" id="billyFinancialPaymentsSection" aria-label="Payments" hidden>
+              <div id="billyFinancialPaymentPaths" class="billy-financial-subnav">
+                <button id="billyFinancialLinkedPayments" class="billy-financial-nav-row" type="button">
+                  <span class="billy-financial-nav-copy"><strong>Linked payments</strong>
+                    <small id="billyFinancialLinksCaption">Payment evidence associated with expenses</small></span>
+                  <span class="billy-financial-nav-arrow" aria-hidden="true">›</span>
+                </button>
+                <button id="billyFinancialUnmatchedPayments" class="billy-financial-nav-row" type="button">
+                  <span class="billy-financial-nav-copy"><strong>Unmatched payment slips</strong>
+                    <small id="billyFinancialUnmatchedCaption">Payments requiring reconciliation</small></span>
+                  <span class="billy-financial-nav-arrow" aria-hidden="true">›</span>
+                </button>
+              </div>
+              <div id="billyFinancialLinkedPanel" class="billy-financial-links" hidden>
+                <div id="billyFinancialLinks" class="billy-financial-links"></div>
+              </div>
+              <div id="billyFinancialUnmatchedPanel" hidden>
+                <div id="billyFinancialUnmatchedList" class="billy-financial-attention-list"></div>
+              </div>
+            </section>
+            <section class="billy-financial-section" id="billyFinancialInsightsSection" aria-label="Insights" hidden>
+              <div class="billy-financial-section-head">
+                <h3>Approved expenses · 30 days</h3>
+                <span class="billy-financial-section-sub">By week, in the selected currency</span>
+              </div>
+              <div class="billy-financial-full-chart" id="billyFinancialChart" role="img" aria-label="Weekly approved expenses"></div>
+              <p class="billy-financial-disclaimer">Approved document amounts only. Payment slips are not new expenses.
+                Invoice dates are used when service dates are unavailable. Currencies are never combined.</p>
+            </section>
+            <p id="billyFinancialCoverage" class="billy-financial-coverage" hidden></p>
+          </div>
         </section>
 
         <section class="simple-new simple-screen" id="simpleNew" aria-label="New document" hidden>
