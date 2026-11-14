@@ -149,6 +149,7 @@
   }
 
   function showScreen(name) {
+    const previous=body.dataset.billyScreen;
     let next = screens.includes(name) ? name : "home";
     if (next === "process" && !selectedDocumentType()) next = activeFile ? "type" : "new";
     if (next === "type" && !activeFile) next = "new";
@@ -172,7 +173,10 @@
     }
     announce("");
     if (next === "uploaded") renderUploaded();
-    if (next === "financial") void window.BillyFinancial?.refresh?.();
+    if (next === "financial") {
+      if(previous!=="financial")window.BillyFinancial?.home?.();
+      void window.BillyFinancial?.refresh?.();
+    }
     if (next === "process") {
       updateProcess();
       if(!window.BillyApp?.isOnline() && window.BillyAccounts?.active?.())
@@ -419,6 +423,7 @@
   function goBack() {
     const now = body.dataset.billyScreen;
     if(now==="uploaded"&&window.BillyDocumentsIndex?.back?.())return;
+    if(now==="financial"&&window.BillyFinancial?.back?.())return;
     // Never return to the obsolete source-panel editor or extraction form.
     if (now === "process" && window.BillyApp?.isBusy?.()) {
       announce("Document processing is in progress. Document check will open automatically.");
