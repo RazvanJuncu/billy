@@ -92,7 +92,7 @@ test("P1 ledger counts approved invoices once and keeps payment evidence out of 
  assert.equal(result.counts.missing_currency,1);
  assert.equal(result.counts.missing_date,1);
  assert.equal(result.counts.unmatched_payments,1);
- assert.equal(result.ledger.find(r=>r.vendor==="Bacau Airport").id,"a",
+ assert.equal(result.ledger.find(r=>r.profile==="handling_invoice").id,"a",
    "Fully archived linked original wins over later duplicate");
  assert.equal(result.ledger.find(r=>r.id==="a").payment_state,"payment_linked");
  assert.equal(result.ledger.find(r=>r.id==="c").payment_state,"no_payment_proof");
