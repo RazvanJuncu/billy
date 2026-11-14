@@ -87,6 +87,43 @@
     exit.title="Close preview";exit.setAttribute("aria-label","Close preview");
     exit.addEventListener("click",close);header.append(heading,exit);
     const body=node("div","billy-preview-body");
+    if(record.is_duplicate&&record.duplicate_of&&!record.parent_document_id){
+      const duplicate=node("div","billy-preview-duplicate");
+      const mark=node("img","billy-preview-duplicate-piggy");
+      mark.src="./piggybank-mark.svg";mark.alt="";mark.width=28;mark.height=28;
+      const copy=node("div","billy-preview-duplicate-copy");
+      copy.append(node("strong","","Duplicate document"));
+      copy.append(node("small","",
+        record.duplicate_original_state==="approved"?
+          "Another approved copy is the original.":
+          "One copy is designated the original."));
+      duplicate.append(mark,copy);
+      if(record.duplicate_original_state==="approved"){
+        const go=node("button","billy-preview-duplicate-open","Open original");
+        go.type="button";
+        go.addEventListener("click",async()=>{
+          if(go.disabled)return;
+          go.disabled=true;
+          try{
+            const api=window.BILLY_AUTH_CONFIG?.apiUrl;
+            if(!api||!window.BillyAccounts?.active?.())throw Error("Sign in to view the original");
+            const headers=await window.BillyAccounts.sessionHeaders();
+            const reply=await fetch(api+"/api/vision/assistant-source?record_id="+
+              encodeURIComponent(record.duplicate_of),{headers,cache:"no-store"});
+            if(!reply.ok)throw Error("Original unavailable");
+            const data=await reply.json();
+            if(!data.record||data.record.id!==record.duplicate_of)
+              throw Error("Original unavailable");
+            if(overlay===shade)open(data.record);
+          }catch(error){
+            go.disabled=false;
+            go.title=error?.message||"Original unavailable";
+          }
+        });
+        duplicate.append(go);
+      }
+      body.append(duplicate);
+    }
     const hasOriginal=record.state==="approved"&&record.has_original===true;
     const note=node("p","billy-preview-source-note",hasOriginal
       ?"Original archived securely. Approved fields below."
