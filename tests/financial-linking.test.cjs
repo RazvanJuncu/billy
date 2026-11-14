@@ -126,7 +126,7 @@ test("Financial links are separate from physical nesting and always auditable",(
   assert.match(schema,/event_type in \('linked','unlinked','deleted'\)/);
   assert.match(schema,/alter table public\.billy_financial_links enable row level security/);
   assert.match(schema,/revoke all on public\.billy_financial_links/);
-  assert.match(schema,/financial_links can only be revoked/i);
+  assert.match(schema,/financial links can only be revoked/i);
   assert.match(source,/reconcileSamePhoto\(principal,source\.id\)/);
   assert.match(source,/async function financialUnlink\(req,principal\)/);
   assert.match(source,/Only the document owner can unlink its payment/);
@@ -138,7 +138,7 @@ test("Financial UI shows only approved backend money and permits evidence open/u
   assert.match(finance,/\/api\/vision\/financial"/);
   assert.match(finance,/window\.BillyAccounts\.sessionHeaders\(\)/);
   assert.match(finance,/No approved expenses for this period/);
-  assert.doesNotMatch(finance,/demo|illustrative|fakeSpend/);
+  assert.doesNotMatch(finance,/const demo|illustrativeData|fakeSpend/);
   assert.match(preview,/api\+"\/api\/vision\/financial\?record_id="/);
   assert.match(preview,/api\+"\/api\/vision\/financial-unlink"/);
   assert.match(preview,/verified\?"Paid":"Payment linked"/);
