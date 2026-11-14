@@ -195,7 +195,7 @@ test("Uploaded Documents has distinct monochrome icons for all service categorie
   assert.match(index,/header\.append\(serviceIcon\(key\)\)/);
   assert.match(index,/button\.prepend\(serviceIcon\(node\.__billyParentId\?"Receipt":node\.__billyDocument\.service\)\)/);
   assert.match(css,/\.billy-service-icon/);
-  assert.match(read("site/index.html"),/documents-index\.js\?v=1\.8\.0/);
+  assert.match(read("site/index.html"),/documents-index\.js\?v=1\.8\.1/);
 });
 
 test("Uploaded archive opens a saved-document preview instead of downloading JSON",()=>{
