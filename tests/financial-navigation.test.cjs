@@ -28,12 +28,12 @@ class FakeElement{
 }
 function mockApp(data){
   const all=new Map(ids.map(id=>[id,new FakeElement("div",id)]));
-  // Reflect HTML's initial hidden attributes before Financial JS manages views.
+  // Reflect the initial visibility of elements in the HTML template.
   for(const [id,node] of all){
-    const escaped=id.replace(/[.*+?^$\{\}()|[\]\\]/g,"\\  const all=new Map(ids.map(id=>[id,new FakeElement("div",id)]));
-  const back=all.get("billyFinancialSectionBack");");
-    const tag=html.match(new RegExp("<[^>]*\\bid=\\\""+escaped+"\\\"[^>]*>"))?.[0]||"";
-    node.hidden=/\\shidden(?:\\s|>)/.test(tag);
+    const pos=html.indexOf('id="'+id+'"');
+    assert.ok(pos>=0);
+    const tag=html.slice(html.lastIndexOf("<",pos),html.indexOf(">",pos)+1);
+    node.hidden=/\shidden(?:\s|>)/.test(tag);
   }
   const back=all.get("billyFinancialSectionBack");
   back.backLabel=new FakeElement("span");
