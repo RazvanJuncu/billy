@@ -21,6 +21,7 @@
   <link rel="stylesheet" href="./accounts.css?v=0.7.0">
   <link rel="stylesheet" href="./document-type.css?v=0.6.0">
   <link rel="stylesheet" href="./simple.css?v=2.4.6">
+  <link rel="stylesheet" href="./financial.css?v=1.0.0">
   <link rel="stylesheet" href="./nested-mitosis.css?v=0.3.0">
   <link rel="stylesheet" href="./intelligence-assistant.css?v=0.3.4">
   <link rel="stylesheet" href="./multi-documents.css?v=1.0.0">
@@ -51,6 +52,7 @@
   <script src="./documents-index.js?v=1.8.1" defer></script>
   <script src="./original-archive.js?v=1.1.0" defer></script>
   <script src="./document-preview.js?v=1.4.1" defer></script>
+  <script src="./financial.js?v=1.0.0" defer></script>
   <script src="./simple.js?v=2.2.2" defer></script>
   <script src="./piggybank-hud.js?v=1.0.0" defer></script>
   <script src="./intelligence-assistant.js?v=0.3.0" defer></script>
@@ -204,9 +206,28 @@
 
         <section class="simple-home simple-screen" id="simpleHome" aria-label="Main menu">
           <div class="simple-home-expanded" id="simpleFunctionArea">
-            <div class="simple-greeting" aria-live="off">
-              <h1 id="simpleGreetingTitle" class="simple-greeting-title">Welcome back.</h1>
-              <p id="simpleGreetingSubtitle" class="simple-greeting-subtitle">Ready when you are.</p>
+            <div class="billy-home-top">
+              <div class="simple-greeting" aria-live="off">
+                <h1 id="simpleGreetingTitle" class="simple-greeting-title">Welcome back.</h1>
+                <p id="simpleGreetingSubtitle" class="simple-greeting-subtitle">Ready when you are.</p>
+              </div>
+              <div class="billy-home-financial" aria-label="Financial activity">
+                <div class="billy-home-financial-top">
+                  <div class="billy-home-financial-heading">
+                    <span>Approved expenses</span>
+                    <span>30 days</span>
+                  </div>
+                  <div class="billy-financial-mini-bar-chart" id="billyFinancialMiniChart" role="img"
+                    aria-label="Approved expense activity, last 30 days">
+                    <span class="billy-financial-loading">Loading activity…</span>
+                  </div>
+                </div>
+                <button id="billyHomeFinancial" class="billy-financial-open" type="button">
+                  <span class="billy-financial-open-title">Financial</span>
+                  <span class="billy-financial-open-caption" id="billyFinancialMiniCaption">Expenses & payments</span>
+                  <span class="billy-financial-chevron" aria-hidden="true">↗</span>
+                </button>
+              </div>
             </div>
             <div class="simple-choice-grid">
               <button id="simpleNewDocument" class="simple-choice" type="button">
@@ -225,6 +246,31 @@
             <span class="simple-quick-cta">Tap to QuickScan</span>
           </button>
           <button id="simpleRevealFunctions" class="simple-reveal-functions" type="button" aria-expanded="false" aria-controls="simpleFunctionArea">Reveal functions</button>
+        </section>
+
+        <section class="simple-financial simple-screen" id="simpleFinancial" aria-label="Financial" hidden>
+          <h1 class="simple-heading">Financial</h1>
+          <div class="billy-financial-dashboard">
+            <div class="billy-financial-dash-top">
+              <div><span class="billy-financial-kicker">APPROVED EXPENSES</span>
+                <div id="billyFinancialTotal" class="billy-financial-total">—</div>
+                <div id="billyFinancialPeriod" class="billy-financial-period">Last 30 days</div>
+              </div>
+              <label class="billy-financial-select-label">Currency
+                <select id="billyFinancialCurrency" aria-label="Choose currency"></select>
+              </label>
+            </div>
+            <div class="billy-financial-full-chart" id="billyFinancialChart" role="img"
+              aria-label="Weekly approved expenses"></div>
+            <div class="billy-financial-dash-footer">
+              <div><strong>Payment links</strong>
+                <span id="billyFinancialLinksCaption">No verified matches yet</span>
+              </div>
+              <div id="billyFinancialLinks" class="billy-financial-links"></div>
+            </div>
+          </div>
+          <p class="billy-financial-disclaimer">Approved document amounts only. Payment slips are not new expenses.
+            Invoice dates are used when service dates are unavailable. Currencies are never combined.</p>
         </section>
 
         <section class="simple-new simple-screen" id="simpleNew" aria-label="New document" hidden>
