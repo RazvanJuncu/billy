@@ -31,7 +31,7 @@ const regions = [{
 }];
 
 function mockBackend(opts={}) {
-  const stored=new Map(), calls=[], examples=[...(opts.preloadedExamples||[])], googlePrompts=[];
+  const stored=new Map(), calls=[], examples=[...(opts.preloadedExamples||[])], googlePrompts=[], financialLinks=[];
   let handler;
   const googleResponse=()=>new Response(JSON.stringify({
     candidates:[{content:{parts:[{text:JSON.stringify({...opts.fuelDoc||doc,regions:opts.regions||regions,document_language:opts.language||"en",english_translations:opts.englishTranslations||[]})}]}}],
@@ -89,6 +89,32 @@ function mockBackend(opts={}) {
     if(url.pathname.endsWith("/billy_vendors")||
        url.pathname.endsWith("/billy_vendor_aliases"))
       return new Response("[]",{status:200});
+    if(url.pathname.endsWith("/billy_financial_links")){
+      if(init.method==="POST"){
+        const item={...JSON.parse(init.body),
+          id:"33333333-3333-4333-8333-333333333333",
+          created_at:"2026-11-14T00:00:00Z"};
+        financialLinks.push(item);
+        return new Response(JSON.stringify([item]),{status:201});
+      }
+      if(init.method==="PATCH"){
+        const link=financialLinks.find(x=>x.id===url.searchParams.get("id")?.slice(3)&&x.state==="active");
+        if(!link)return new Response("[]",{status:200});
+        Object.assign(link,JSON.parse(init.body));
+        return new Response(JSON.stringify([{id:link.id}]),{status:200});
+      }
+      let rows=[...financialLinks];
+      if(url.searchParams.get("state"))rows=rows.filter(x=>x.state===url.searchParams.get("state").slice(3));
+      if(url.searchParams.get("id"))rows=rows.filter(x=>x.id===url.searchParams.get("id").slice(3));
+      if(url.searchParams.get("payment_document_id"))
+        rows=rows.filter(x=>x.payment_document_id===url.searchParams.get("payment_document_id").slice(3));
+      const or=url.searchParams.get("or");
+      if(or){
+        const match=or.match(/^\(expense_document_id\.eq\.([^,]+),payment_document_id\.eq\.([^\)]+)\)$/);
+        if(match)rows=rows.filter(x=>x.expense_document_id===match[1]||x.payment_document_id===match[2]);
+      }
+      return new Response(JSON.stringify(rows),{status:200});
+    }
     if(url.pathname.endsWith("/document_records")){
       if(init.method==="DELETE"){
         const id=url.searchParams.get("id")?.replace(/^eq\./,"");
@@ -117,7 +143,7 @@ function mockBackend(opts={}) {
       const filters=["id","organization_id","created_by","source_sha256","document_type","state","parent_document_id"];
       let list=[...stored.values()].filter(item=>filters.every(field=>{
         const expected=url.searchParams.get(field);
-        return !expected||expected==="eq."+item[field];
+        return !expected||(expected==="is.null"?item[field]==null:expected==="eq."+item[field]);
       }));
       if(url.searchParams.get("order")==="created_at.desc")list=list.reverse();
       const offset=Number(url.searchParams.get("offset")||0);
@@ -141,9 +167,65 @@ function mockBackend(opts={}) {
     "https://synthetic.supabase.co/functions/v1/billy-vision"+route,
     {method,headers:authHeaders,...extra}
   );
-  return {handler,call,stored,calls,examples,googlePrompts};
+  return {handler,call,stored,calls,examples,googlePrompts,financialLinks};
 }
 
+test("Authenticated Financial P0 links one approved nested POS and allows audited unlink request",async()=>{
+  const {handler,call,stored,financialLinks}=mockBackend();
+  const parentId="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const childId="bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+  const parentDoc={...doc,supplier_name:"Bacau Airport",grand_total:"367.20",
+    currency:"EUR",issue_date:"2026-11-09",invoice_number:"B-10"};
+  const parent={
+    id:parentId,organization_id:ORG,created_by:UID,
+    state:"approved",document_type:"invoice",parent_document_id:null,
+    reviewed_data:parentDoc,
+    review_metadata:{classification:{profile:"handling_invoice",expense_category:"handling"},
+      normalization:{approved:{values:{grand_total:367.2,currency:"EUR",issue_date:"2026-11-09"},fields:{}}}},
+    source_sha256:"a".repeat(64)
+  };
+  const child={
+    id:childId,organization_id:ORG,created_by:UID,
+    state:"extracted",document_type:"invoice",parent_document_id:parentId,
+    relationship_type:"attached_document",extracted_data:{...parentDoc,supplier_name:"Bacau Airport"},
+    review_metadata:{classification:{profile:"payment_slip",expense_category:"unknown"}},
+    regions_data:[],source_sha256:"b".repeat(64)
+  };
+  stored.set(parentId,parent);stored.set(childId,child);
+  const approve=await handler(call("/api/vision/approve","POST",{
+    headers:{...authHeaders,"Content-Type":"application/json"},
+    body:JSON.stringify({extraction_id:childId,document_type:"invoice",confirmed:true,
+      document:{...child.extracted_data,card_last4:"••••2212",
+        transaction_status:null,lines:[],notes:[]}})
+  }));
+  assert.equal(approve.status,200,await approve.text());
+  const saved=stored.get(childId);
+  assert.equal(saved.reviewed_data.card_last4,"2212");
+  assert.equal(financialLinks.length,1);
+  assert.equal(financialLinks[0].payment_result,"unverified");
+  assert.equal(financialLinks[0].amount_minor,36720);
+  const summary=await handler(call("/api/vision/financial"));
+  assert.equal(summary.status,200);
+  const data=await summary.json();
+  assert.equal(data.counts.linked,1);
+  assert.equal(data.trend.groups.find(x=>x.currency==="EUR").total_minor,36720,
+    "Approved POS is not a second expense");
+  const detail=await handler(call("/api/vision/financial?record_id="+parentId));
+  assert.equal(detail.status,200);
+  assert.equal((await detail.json()).links[0].related.card_last4,"2212");
+  const unauthorized=await handler(new Request(
+    "https://synthetic.supabase.co/functions/v1/billy-vision/api/vision/financial",
+    {headers:{"X-Billy-Organization":ORG}}));
+  assert.equal(unauthorized.status,401);
+  const unlink=await handler(call("/api/vision/financial-unlink","POST",{
+    headers:{...authHeaders,"Content-Type":"application/json"},
+    body:JSON.stringify({link_id:financialLinks[0].id})
+  }));
+  assert.equal(unlink.status,200,await unlink.text());
+  assert.equal(financialLinks[0].state,"revoked");
+  const empty=await handler(call("/api/vision/financial?record_id="+parentId));
+  assert.equal((await empty.json()).links.length,0);
+});
 test("Gemini is server-side; PWA uses Supabase HTTPS and public key only",()=>{
   assert.match(config,/apiUrl: "https:\/\/ookafdnvavohfopxfxpf\.supabase\.co\/functions\/v1\/billy-vision"/);
   assert.match(auth,/"apikey":config\.publishableKey/);
