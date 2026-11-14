@@ -16,7 +16,8 @@ const PROFILE_FIELDS = {
   crew_expense_receipt:["service_date","expense_purpose","crew_member","aircraft_registration","flight_number","payment_method"],
   aircraft_supplies_invoice:["aircraft_registration","part_number","purchase_order_number","service_date"],
   other_expense:["service_date","expense_purpose","payment_method"],
-  generic_invoice:[],generic_receipt:[],payment_slip:[],supplier_statement:[],generic_document:[]
+  generic_invoice:[],generic_receipt:[],payment_slip:["card_last4","card_brand","transaction_reference",
+    "transaction_status","terminal_id","payment_method"],supplier_statement:[],generic_document:[]
 };
 const INVOICE_FIELDS = [...BASE_INVOICE_FIELDS,...new Set(Object.values(PROFILE_FIELDS).flat())];
 const CATEGORIES = ["fuel","handling","taxi","city_tax","catering","hotel","pax_gifts","parking","crew_expenses","aircraft_supplies","other","unknown"];
@@ -46,7 +47,7 @@ const PROFILE_INSTRUCTIONS = {
   other_expense:"Other operational expense: identify its actual nature from printed items, amount, currency and date. Do not force a different category or infer operational details.",
   generic_invoice:"Extract only visible invoice facts, without making up fields.",
   generic_receipt:"Extract visible receipt date, vendor, amount and currency. Do not invent invoice fields.",
-  payment_slip:"Proof of card payment, NOT a new invoice or expense. Extract merchant, transaction date, amount and currency.",
+  payment_slip:"Card POS/payment receipt, NOT an independent expense. Read merchant as supplier_name, transaction date as issue_date, exact amount as grand_total, currency, printed card brand, ONLY the masked last 4 card digits, terminal ID, transaction/auth reference, method. transaction_status is approved/declined/refunded/unknown ONLY if explicitly printed: never infer successful payment from a receipt being approved by a human. Never store full card numbers, account numbers, expiry, or cardholder names in fields or notes.",
   supplier_statement:"Summary of supplier invoices. Never interpret a statement as several new bills.",
   generic_document:"Extract available fields without guessing. Missing totals and invoice numbers may be normal."
 };
@@ -177,6 +178,7 @@ const INSTRUCTIONS =
   "For English documents use document_language='en' and english_translations=[]. " +
   "Never translate, modify or reformat proper names, registration numbers, invoice numbers, " +
   "dates, meter readings, currency codes, numeric values, quantities, brands or fuel grades. " +
+  "Never transcribe full card PANs, IBANs, cardholder names or expiration dates in notes or extracted card fields. " +
   "Do not invent missing wording. For uncertain translations, omit the entry, " +
   "leave the source wording and rely on operator verification. " +
   "Use null when not printed or confidently visible; never invent. " +
@@ -222,7 +224,11 @@ function cleanDoc(value,type) {
     const field=value[k];
     if(field!==null && field!==undefined && typeof field!=="string")throw Error("Invalid document field.");
     if(typeof field==="string" && field.length>700)throw Error("Document field too long.");
-    doc[k]=typeof field==="string"?field.trim():null;
+    // Store masked card last-four only, never a full PAN accidentally read by OCR.
+    if(k==="card_last4"){
+      const masked=typeof field==="string"?field.trim().replace(/[•*xX\s-]/g,""):null;
+      doc[k]=masked&&/^\d{4}$/.test(masked)?masked:null;
+    }else doc[k]=typeof field==="string"?field.trim():null;
   }
   const listKey=type==="invoice"?"lines":"handwritten_entries";
   const subKeys=type==="invoice"?LINE_FIELDS:["label","transcription","legibility","interpreted_as","english_label","english_translation"];
@@ -1810,8 +1816,14 @@ async function approve(req,principal){
     console.warn("Billy vendor auto-registration deferred (approved record unchanged).");
     vendorRegistration="pending";
   }
+  let financialLinking="skipped";
+  try{financialLinking=await reconcileSamePhoto(principal,source.id);}
+  catch(e){
+    console.warn("Billy financial reconciliation deferred",String(e?.message||"unavailable").slice(0,100));
+    financialLinking="pending";
+  }
   return json({status:"approved",approval_id:source.id,document_type:data.document_type,
-    vendor_registration:vendorRegistration,
+    vendor_registration:vendorRegistration,financial_linking:financialLinking,
     correction_count:corrections,validation_warnings:warnings,
     normalized_data:approvedNormalized,review_metadata:reviewMetadata,
     posted_to_excel:false});
@@ -2141,6 +2153,223 @@ async function organizeDocument(req,principal){
   return json({saved:true,record_id:record.id,
     missing_fields:organizationMissing(refreshed,finalDirectory),
     organization_overrides:overrides});
+}
+
+// Financial Linking Engine P0: strict same-photo matching, no independent
+// accounting effect from a POS slip, and no AI-generated confidence scores.
+function financialProfile(record){
+  return String(record?.review_metadata?.classification?.profile||"");
+}
+function financialDay(record){
+  const doc=record?.reviewed_data||{};
+  const values=record?.review_metadata?.normalization?.approved?.values||{};
+  for(const raw of [values.issue_date,doc.issue_date]){
+    const value=typeof raw==="string"?raw.trim():"";
+    if(/^\d{4}-\d{2}-\d{2}$/.test(value))return value;
+    const normalized=canonicalDate(value);
+    if(normalized.status==="ok")return normalized.value;
+  }
+  return null;
+}
+function financialTransactionStatus(record){
+  const raw=String(record?.reviewed_data?.transaction_status||"").trim().toLowerCase();
+  if(/^(?:approved|successful|success|completed|accepted)$/.test(raw))return "confirmed";
+  if(/^(?:declined|failed|failure|rejected|void|voided|cancelled|canceled|refunded)$/.test(raw))return "failed";
+  return "unverified";
+}
+function financialCardLast4(record){
+  const raw=record?.reviewed_data?.card_last4;
+  return typeof raw==="string"&&/^\d{4}$/.test(raw)?raw:null;
+}
+function samePhotoCandidate(expense,payment){
+  if(!expense||!payment||expense.state!=="approved"||payment.state!=="approved"||
+    expense.parent_document_id||payment.parent_document_id!==expense.id||
+    financialProfile(payment)!=="payment_slip"||
+    ["payment_slip","supplier_statement","generic_document","fuel_release"].includes(financialProfile(expense)))
+    return null;
+  const a=assistantMoney(expense),b=assistantMoney(payment);
+  if(!a||!b||a.currency!==b.currency||a.minor!==b.minor||a.minor<=0)return null;
+  const expenseDate=financialDay(expense),paymentDate=financialDay(payment);
+  if(!expenseDate||!paymentDate||expenseDate!==paymentDate)return null;
+  const outcome=financialTransactionStatus(payment);
+  if(outcome==="failed")return null;
+  // Evidence is transparent and deterministic, not a model-invented score.
+  return {currency:a.currency,amount_minor:a.minor,
+    payment_result:outcome==="confirmed"?"confirmed":"unverified",
+    evidence:{version:"1.0",physical_relation:"attached_document",
+      amount_equal:true,currency_equal:true,date_equal:true,
+      date:expenseDate,same_photo:true,unique_candidate:true}};
+}
+async function reconcileSamePhoto(principal,recordId){
+  const source=await database(principal,"GET","document_records",{
+    select:"id,organization_id,created_by,state,parent_document_id,relationship_type,document_type,reviewed_data,review_metadata",
+    organization_id:"eq."+principal.organization_id,id:"eq."+recordId,limit:"1"
+  });
+  if(source.length!==1)return "missing_source";
+  const selected=source[0];
+  const parentId=selected.parent_document_id||selected.id;
+  const parents=selected.parent_document_id?await database(principal,"GET","document_records",{
+    select:"id,organization_id,created_by,state,parent_document_id,relationship_type,document_type,reviewed_data,review_metadata",
+    organization_id:"eq."+principal.organization_id,id:"eq."+parentId,limit:"1"
+  }):[selected];
+  if(parents.length!==1||parents[0].state!=="approved")return "pending_parent";
+  const parent=parents[0];
+  const children=await database(principal,"GET","document_records",{
+    select:"id,organization_id,created_by,state,parent_document_id,relationship_type,document_type,reviewed_data,review_metadata",
+    organization_id:"eq."+principal.organization_id,parent_document_id:"eq."+parent.id,limit:"25"
+  });
+  const paymentCandidates=children.filter(item=>
+    item.state==="approved"&&financialProfile(item)==="payment_slip");
+  const matches=paymentCandidates.map(payment=>({payment,proof:samePhotoCandidate(parent,payment)}))
+    .filter(item=>item.proof!==null);
+  // Multiple plausible payment papers from the same photo are NOT a unique
+  // unambiguous payment; never pick the first candidate.
+  if(paymentCandidates.length>1||matches.length!==1)return "needs_review";
+  const {payment,proof}=matches[0];
+  const previous=await database(principal,"GET","billy_financial_links",{
+    select:"id,state",organization_id:"eq."+principal.organization_id,
+    payment_document_id:"eq."+payment.id,limit:"10"
+  });
+  if(previous.some(x=>x.state==="active"))return "already_linked";
+  if(previous.some(x=>x.state==="revoked"))return "operator_unlinked";
+  const result=await database(principal,"POST","billy_financial_links",{
+    select:"id"
+  },{
+    organization_id:principal.organization_id,created_by:principal.user_id,
+    expense_document_id:parent.id,payment_document_id:payment.id,
+    match_method:"same_photo_exact",state:"active",
+    payment_result:proof.payment_result,currency:proof.currency,
+    amount_minor:proof.amount_minor,evidence:proof.evidence
+  });
+  return result.length===1?"linked":"pending";
+}
+function financialFingerprint(rec){
+  const doc=rec.reviewed_data||{};
+  const sha=typeof rec.source_sha256==="string"&&/^[0-9a-f]{64}$/i.test(rec.source_sha256)?
+    rec.source_sha256.toLowerCase():null;
+  if(!sha)return null;
+  const vendor=assistantValue(rec,"vendor"),profile=financialProfile(rec)||rec.document_type||"";
+  const reference=String(doc.invoice_number||doc.release_number||"");
+  return [sha,profile,reference,vendor.toLocaleUpperCase("ro-RO"),
+    reference?"":String(doc.grand_total||"")].join("|");
+}
+function financialTrend(rows,day){
+  // Four-day or seven-day bars, depending on viewport; same canonical expense
+  // evidence and source deduplication policy as Piggybank.
+  const end=new Date(day+"T00:00:00Z");
+  const start=new Date(end.getTime()-29*86400000);
+  const startDay=start.toISOString().slice(0,10);
+  const weeks=Array.from({length:5},(_,i)=>{
+    const d=new Date(start.getTime()+i*7*86400000);
+    return d.toISOString().slice(0,10);
+  });
+  const seen=new Set(),grouped=new Map();let excluded=0,undated=0;
+  for(const rec of rows){
+    if(rec.parent_document_id||rec.state!=="approved"||
+      ["fuel_release","payment_slip","supplier_statement","generic_document"].includes(financialProfile(rec)))
+      continue;
+    const money=assistantMoney(rec);
+    if(!money)continue;
+    const date=assistantRecordDate(rec).date;
+    if(!date){undated++;continue;}
+    if(date<startDay||date>day)continue;
+    const fingerprint=financialFingerprint(rec);
+    if(fingerprint&&seen.has(fingerprint)){excluded++;continue;}
+    if(fingerprint)seen.add(fingerprint);
+    if(!grouped.has(money.currency))grouped.set(money.currency,{
+      currency:money.currency,total_minor:0,documents:0,
+      bars:weeks.map(d=>({start_date:d,total_minor:0,documents:0}))
+    });
+    const bucket=grouped.get(money.currency);
+    const i=Math.min(4,Math.max(0,Math.floor((Date.parse(date+"T00:00:00Z")-start.getTime())/(7*86400000))));
+    const bar=bucket.bars[i];
+    bucket.total_minor+=money.minor;bucket.documents++;
+    bar.total_minor+=money.minor;bar.documents++;
+  }
+  return {start_date:startDay,end_date:day,groups:[...grouped.values()].sort((a,b)=>a.currency.localeCompare(b.currency)),
+    duplicate_records_excluded:excluded,without_document_date:undated,
+    basis:"approved_expenses_by_service_or_document_date",partial:rows.length>=2500};
+}
+async function financialLinksFor(principal,recordId){
+  const own=await database(principal,"GET","document_records",{
+    select:"id",organization_id:"eq."+principal.organization_id,id:"eq."+recordId,limit:"1"
+  });
+  if(own.length!==1)return null;
+  const links=await database(principal,"GET","billy_financial_links",{
+    select:"id,expense_document_id,payment_document_id,state,match_method,payment_result,amount_minor,currency,created_by,created_at,evidence",
+    organization_id:"eq."+principal.organization_id,state:"eq.active",
+    or:"(expense_document_id.eq."+recordId+",payment_document_id.eq."+recordId+")",
+    limit:"25"
+  });
+  const counterpartIds=[...new Set(links.map(x=>x.expense_document_id===recordId?
+    x.payment_document_id:x.expense_document_id))];
+  const counterparts=counterpartIds.length?await database(principal,"GET","document_records",{
+    select:"id,state,reviewed_data,review_metadata",
+    organization_id:"eq."+principal.organization_id,
+    id:"in.("+counterpartIds.join(",")+")",limit:"25"
+  }):[];
+  const byId=new Map(counterparts.map(x=>[x.id,x]));
+  return links.map(link=>{
+    const other=byId.get(link.expense_document_id===recordId?
+      link.payment_document_id:link.expense_document_id);
+    return {...link,related:{
+      id:other?.id||null,profile:financialProfile(other),
+      vendor:String(other?.reviewed_data?.supplier_name||"").slice(0,120),
+      card_last4:financialCardLast4(other),
+      transaction_status:financialTransactionStatus(other),
+      date:financialDay(other)
+    }};
+  });
+}
+async function financialGet(principal,req){
+  const id=new URL(req.url).searchParams.get("record_id");
+  if(id!==null){
+    if(!UUID_FORMAT.test(id))return error("Invalid financial document ID.",400);
+    const links=await financialLinksFor(principal,id);
+    return links===null?error("Financial document not found.",404):json({links});
+  }
+  const {rows,partial}=await assistantRows(principal);
+  const today=new Intl.DateTimeFormat("en-CA",{timeZone:"Europe/Bucharest",
+    year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
+  const trend=financialTrend(rows,today);
+  const links=await database(principal,"GET","billy_financial_links",{
+    select:"id,expense_document_id,payment_document_id,payment_result,amount_minor,currency,created_at",
+    organization_id:"eq."+principal.organization_id,state:"eq.active",
+    order:"created_at.desc",limit:"100"
+  });
+  return json({trend,linked_payments:links,counts:{
+    linked:links.length,confirmed:links.filter(x=>x.payment_result==="confirmed").length,
+    unverified:links.filter(x=>x.payment_result!=="confirmed").length
+  },partial:partial||links.length>=100});
+}
+async function financialUnlink(req,principal){
+  let input;
+  try{const raw=await req.text();if(raw.length>500)throw Error("Too long");input=JSON.parse(raw);}
+  catch{return error("Invalid financial unlink request.",400);}
+  if(!input||Object.keys(input).length!==1||!UUID_FORMAT.test(input.link_id||""))
+    return error("Invalid financial link.",400);
+  const links=await database(principal,"GET","billy_financial_links",{
+    select:"id,expense_document_id,payment_document_id,created_by,state",
+    id:"eq."+input.link_id,organization_id:"eq."+principal.organization_id,
+    state:"eq.active",limit:"1"
+  });
+  if(links.length!==1)return error("Financial link is unavailable or already removed.",404);
+  const link=links[0];
+  const owned=await database(principal,"GET","document_records",{
+    select:"id,created_by",organization_id:"eq."+principal.organization_id,
+    id:"eq."+link.expense_document_id,limit:"1"
+  });
+  if(owned.length!==1||owned[0].created_by!==principal.user_id)
+    return error("Only the document owner can unlink its payment.",403);
+  const updated=await database(principal,"PATCH","billy_financial_links",{
+    select:"id",id:"eq."+link.id,organization_id:"eq."+principal.organization_id,
+    state:"eq.active"
+  },{
+    state:"revoked",revoked_by:principal.user_id,
+    revoke_reason:"operator_unlinked"
+  });
+  if(updated.length!==1)return error("Financial link has already changed.",409);
+  return json({unlinked:true,link_id:link.id});
 }
 async function listRecords(principal,req) {
   const directory=await vendorDirectory(principal);
@@ -2608,15 +2837,17 @@ Deno.serve(async req=>{
   const path=new URL(req.url).pathname;
   // Supabase may present the public path, function-local path, or a slug-prefixed path.
   // Match only known routes regardless of which valid prefix the edge runtime preserves.
-  const routes=["/api/vision/health","/api/vision/extract","/api/vision/recheck","/api/vision/approve","/api/vision/records","/api/vision/delete","/api/vision/original","/api/vision/document-map","/api/vision/organization","/api/vision/assistant","/api/vision/assistant-source"];
+  const routes=["/api/vision/financial","/api/vision/financial-unlink","/api/vision/health","/api/vision/extract","/api/vision/recheck","/api/vision/approve","/api/vision/records","/api/vision/delete","/api/vision/original","/api/vision/document-map","/api/vision/organization","/api/vision/assistant","/api/vision/assistant-source"];
   const suffix=routes.find(route=>path===route||path.endsWith("/billy-vision"+route));
   if(!suffix)return error("Not found.",404);
-  if(req.method!==(suffix==="/api/vision/document-map"||suffix==="/api/vision/extract"||suffix==="/api/vision/recheck"||suffix==="/api/vision/approve"||suffix==="/api/vision/organization"&&req.method==="POST"||suffix==="/api/vision/assistant"||suffix==="/api/vision/delete"||suffix==="/api/vision/original"&&req.method==="POST"?"POST":"GET"))return error("Method not allowed.",405);
+  if(req.method!==(suffix==="/api/vision/financial-unlink"||suffix==="/api/vision/document-map"||suffix==="/api/vision/extract"||suffix==="/api/vision/recheck"||suffix==="/api/vision/approve"||suffix==="/api/vision/organization"&&req.method==="POST"||suffix==="/api/vision/assistant"||suffix==="/api/vision/delete"||suffix==="/api/vision/original"&&req.method==="POST"?"POST":"GET"))return error("Method not allowed.",405);
   try{
     const authStarted=(typeof performance==="undefined"?Date.now():performance.now());
     const principal=await trusted(req);
     const authenticationMs=(typeof performance==="undefined"?Date.now():performance.now())-authStarted;
     if(!principal)return error("Sign in to an approved Billy team first.",401);
+    if(suffix==="/api/vision/financial")return financialGet(principal,req);
+    if(suffix==="/api/vision/financial-unlink")return financialUnlink(req,principal);
     if(suffix==="/api/vision/health")return json({
       status:"online",provider:"gemini",model:MODEL,configured:!!providerKey(),
       requires_review:true,excel_write_enabled:false,
