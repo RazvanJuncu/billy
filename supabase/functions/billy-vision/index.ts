@@ -2321,12 +2321,77 @@ async function financialLinksFor(principal,recordId){
     }};
   });
 }
+async function financialSuggestion(principal,recordId){
+  const selected=await database(principal,"GET","document_records",{
+    select:"id,created_by,state,parent_document_id,relationship_type,reviewed_data,review_metadata",
+    id:"eq."+recordId,organization_id:"eq."+principal.organization_id,limit:"1"
+  });
+  if(selected.length!==1)return null;
+  const parentId=selected[0].parent_document_id||selected[0].id;
+  const roots=selected[0].parent_document_id?await database(principal,"GET","document_records",{
+    select:"id,created_by,state,parent_document_id,relationship_type,reviewed_data,review_metadata",
+    id:"eq."+parentId,organization_id:"eq."+principal.organization_id,limit:"1"
+  }):selected;
+  if(roots.length!==1||roots[0].state!=="approved"||roots[0].parent_document_id)return null;
+  const parent=roots[0];
+  const children=await database(principal,"GET","document_records",{
+    select:"id,created_by,state,parent_document_id,relationship_type,reviewed_data,review_metadata",
+    organization_id:"eq."+principal.organization_id,parent_document_id:"eq."+parent.id,limit:"25"
+  });
+  const slips=children.filter(x=>x.state==="approved"&&financialProfile(x)==="payment_slip");
+  if(slips.length!==1)return null;
+  const payment=slips[0],proof=samePhotoCandidate(parent,payment);
+  if(!proof||!payment.relationship_type||payment.relationship_type!=="attached_document")return null;
+  const existing=await database(principal,"GET","billy_financial_links",{
+    select:"id",organization_id:"eq."+principal.organization_id,
+    state:"eq.active",payment_document_id:"eq."+payment.id,limit:"1"
+  });
+  if(existing.length)return null;
+  return {expense_document_id:parent.id,payment_document_id:payment.id,
+    owner_id:parent.created_by,proof};
+}
+async function financialLink(req,principal){
+  let input;
+  try{const raw=await req.text();if(raw.length>500)throw Error("Too long");input=JSON.parse(raw);}
+  catch{return error("Invalid financial link request.",400);}
+  if(!input||Object.keys(input).length!==2||
+      !UUID_FORMAT.test(input.expense_document_id||"")||
+      !UUID_FORMAT.test(input.payment_document_id||""))
+    return error("Invalid financial document references.",400);
+  const proposal=await financialSuggestion(principal,input.expense_document_id);
+  if(!proposal||proposal.expense_document_id!==input.expense_document_id||
+     proposal.payment_document_id!==input.payment_document_id)
+    return error("No unique, verifiable payment match is available.",409);
+  if(proposal.owner_id!==principal.user_id)
+    return error("Only the uploading operator may link this payment.",403);
+  const proof=proposal.proof;
+  const rows=await database(principal,"POST","billy_financial_links",{
+    select:"id"
+  },{
+    organization_id:principal.organization_id,created_by:principal.user_id,
+    expense_document_id:proposal.expense_document_id,
+    payment_document_id:proposal.payment_document_id,
+    state:"active",match_method:"operator_verified",
+    payment_result:proof.payment_result,
+    currency:proof.currency,amount_minor:proof.amount_minor,
+    evidence:{...proof.evidence,operator_confirmed_relation:true}
+  });
+  if(rows.length!==1)return error("Payment link could not be saved.",409);
+  return json({linked:true,link_id:rows[0].id});
+}
 async function financialGet(principal,req){
   const id=new URL(req.url).searchParams.get("record_id");
   if(id!==null){
     if(!UUID_FORMAT.test(id))return error("Invalid financial document ID.",400);
     const links=await financialLinksFor(principal,id);
-    return links===null?error("Financial document not found.",404):json({links});
+    if(links===null)return error("Financial document not found.",404);
+    const suggested_link=links.length?null:await financialSuggestion(principal,id);
+    return json({links,suggested_link:suggested_link?{
+      expense_document_id:suggested_link.expense_document_id,
+      payment_document_id:suggested_link.payment_document_id,
+      currency:suggested_link.proof.currency,
+      amount_minor:suggested_link.proof.amount_minor
+    }:null});
   }
   const {rows,partial}=await assistantRows(principal);
   const today=new Intl.DateTimeFormat("en-CA",{timeZone:"Europe/Bucharest",
@@ -2837,16 +2902,17 @@ Deno.serve(async req=>{
   const path=new URL(req.url).pathname;
   // Supabase may present the public path, function-local path, or a slug-prefixed path.
   // Match only known routes regardless of which valid prefix the edge runtime preserves.
-  const routes=["/api/vision/financial","/api/vision/financial-unlink","/api/vision/health","/api/vision/extract","/api/vision/recheck","/api/vision/approve","/api/vision/records","/api/vision/delete","/api/vision/original","/api/vision/document-map","/api/vision/organization","/api/vision/assistant","/api/vision/assistant-source"];
+  const routes=["/api/vision/financial","/api/vision/financial-link","/api/vision/financial-unlink","/api/vision/health","/api/vision/extract","/api/vision/recheck","/api/vision/approve","/api/vision/records","/api/vision/delete","/api/vision/original","/api/vision/document-map","/api/vision/organization","/api/vision/assistant","/api/vision/assistant-source"];
   const suffix=routes.find(route=>path===route||path.endsWith("/billy-vision"+route));
   if(!suffix)return error("Not found.",404);
-  if(req.method!==(suffix==="/api/vision/financial-unlink"||suffix==="/api/vision/document-map"||suffix==="/api/vision/extract"||suffix==="/api/vision/recheck"||suffix==="/api/vision/approve"||suffix==="/api/vision/organization"&&req.method==="POST"||suffix==="/api/vision/assistant"||suffix==="/api/vision/delete"||suffix==="/api/vision/original"&&req.method==="POST"?"POST":"GET"))return error("Method not allowed.",405);
+  if(req.method!==(suffix==="/api/vision/financial-link"||suffix==="/api/vision/financial-unlink"||suffix==="/api/vision/document-map"||suffix==="/api/vision/extract"||suffix==="/api/vision/recheck"||suffix==="/api/vision/approve"||suffix==="/api/vision/organization"&&req.method==="POST"||suffix==="/api/vision/assistant"||suffix==="/api/vision/delete"||suffix==="/api/vision/original"&&req.method==="POST"?"POST":"GET"))return error("Method not allowed.",405);
   try{
     const authStarted=(typeof performance==="undefined"?Date.now():performance.now());
     const principal=await trusted(req);
     const authenticationMs=(typeof performance==="undefined"?Date.now():performance.now())-authStarted;
     if(!principal)return error("Sign in to an approved Billy team first.",401);
     if(suffix==="/api/vision/financial")return financialGet(principal,req);
+    if(suffix==="/api/vision/financial-link")return financialLink(req,principal);
     if(suffix==="/api/vision/financial-unlink")return financialUnlink(req,principal);
     if(suffix==="/api/vision/health")return json({
       status:"online",provider:"gemini",model:MODEL,configured:!!providerKey(),
