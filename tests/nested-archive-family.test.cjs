@@ -124,10 +124,13 @@ test("Piggy marker only decorates duplicate root families and links to their ori
   assert.match(index,/piggy\.src="\.\/piggybank-mark\.svg"/);
   assert.match(index,/billy-duplicate-speech","Duplicate"/);
   assert.match(css,/#simpleUploaded \.billy-duplicate-hint\{/);
-  assert.match(css,/#simpleUploaded \.billy-duplicate-speech::before\{/);
-  assert.match(css,/#simpleUploaded \.billy-duplicate-speech\{[^}]*border:0!important;background:#303337/);
-  assert.match(css,/#simpleUploaded \.billy-duplicate-piggy\{[^}]*filter:grayscale\(1\) brightness\(\.44\)/);
+  assert.match(css,/#simpleUploaded \.billy-duplicate-speech::after\{/);
+  assert.match(css,/#simpleUploaded \.billy-duplicate-speech\{[^}]*border:0!important;[\s\S]*?background:var\(--billy-duplicate-tone\)/);
+  assert.match(css,/#simpleUploaded \.billy-duplicate-piggy\{[^}]*filter:grayscale\(1\) brightness\(\.413\)/);
   assert.doesNotMatch(css,/\.billy-duplicate-speech\{[^}]*#b88469/);
+  assert.match(css,/#simpleUploaded \.billy-duplicate-hint\{[\s\S]*?gap:10px/);
+  assert.match(css,/#simpleUploaded \.billy-duplicate-speech\{[^}]*color:#121416/);
+  assert.match(css,/--billy-duplicate-tone:#656565/);
   assert.match(css,/pointer-events:none/);
   assert.match(css,/#simpleUploaded \.billy-duplicate-wrap\{/);
   assert.match(html,/documents-index\.js\?v=1\.9\.1/);
@@ -136,5 +139,5 @@ test("Piggy marker only decorates duplicate root families and links to their ori
   assert.match(preview,/Open original/);
   assert.match(preview,/record\.duplicate_original_state==="approved"/);
   assert.match(preview,/assistant-source\?record_id=/);
-  assert.match(read("site/sw.js"),/v105-piggy-chat-bubble/);
+  assert.match(read("site/sw.js"),/v106-piggy-matched-bubble/);
 });
