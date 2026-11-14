@@ -129,6 +129,8 @@ test("Financial links are separate from physical nesting and always auditable",(
   assert.match(schema,/financial links can only be revoked/i);
   assert.match(source,/reconcileSamePhoto\(principal,source\.id\)/);
   assert.match(source,/async function financialUnlink\(req,principal\)/);
+  assert.match(source,/async function financialLink\(req,principal\)/);
+  assert.match(source,/async function financialSuggestion\(principal,recordId\)/);
   assert.match(source,/Only the document owner can unlink its payment/);
 });
 test("Financial UI shows only approved backend money and permits evidence open/unlink",()=>{
@@ -143,4 +145,5 @@ test("Financial UI shows only approved backend money and permits evidence open/u
   assert.match(preview,/api\+"\/api\/vision\/financial-unlink"/);
   assert.match(preview,/verified\?"Paid":"Payment linked"/);
   assert.match(preview,/Open slip/);
+  assert.match(preview,/Link payment/);
 });
