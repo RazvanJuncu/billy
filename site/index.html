@@ -21,7 +21,7 @@
   <link rel="stylesheet" href="./accounts.css?v=0.7.0">
   <link rel="stylesheet" href="./document-type.css?v=0.6.0">
   <link rel="stylesheet" href="./simple.css?v=2.4.9">
-  <link rel="stylesheet" href="./financial.css?v=1.3.0">
+  <link rel="stylesheet" href="./financial.css?v=1.4.0">
   <link rel="stylesheet" href="./nested-mitosis.css?v=0.3.0">
   <link rel="stylesheet" href="./intelligence-assistant.css?v=0.3.4">
   <link rel="stylesheet" href="./multi-documents.css?v=1.0.0">
@@ -52,7 +52,7 @@
   <script src="./documents-index.js?v=1.9.1" defer></script>
   <script src="./original-archive.js?v=1.1.0" defer></script>
   <script src="./document-preview.js?v=1.5.2" defer></script>
-  <script src="./financial.js?v=1.3.0" defer></script>
+  <script src="./financial.js?v=1.4.0" defer></script>
   <script src="./simple.js?v=2.2.4" defer></script>
   <script src="./piggybank-hud.js?v=1.0.0" defer></script>
   <script src="./intelligence-assistant.js?v=0.3.0" defer></script>
@@ -369,6 +369,19 @@
               <div class="billy-financial-full-chart" id="billyFinancialChart" role="img" aria-label="Weekly approved expenses"></div>
               <p class="billy-financial-disclaimer">Approved document amounts only. Payment slips are not new expenses.
                 Invoice dates are used when service dates are unavailable. Currencies are never combined.</p>
+              <div class="billy-financial-integrity" aria-label="Financial integrity checks">
+                <div class="billy-financial-integrity-head">
+                  <div>
+                    <h3>Integrity checks</h3>
+                    <p id="billyFinancialIntegritySummary" role="status">Not checked</p>
+                  </div>
+                  <button id="billyFinancialIntegrityRefresh" class="billy-financial-subtle"
+                    type="button">Recheck</button>
+                </div>
+                <div id="billyFinancialIntegrityChecks" class="billy-financial-integrity-checks"></div>
+                <p class="billy-financial-integrity-note">Read-only checks on approved documents.
+                  Not a substitute for accounting approval. Unimplemented workflows are shown as not tested.</p>
+              </div>
             </section>
             <p id="billyFinancialCoverage" class="billy-financial-coverage" hidden></p>
           </div>
