@@ -118,6 +118,33 @@ test("Approved expense trend never double-counts nested slips, duplicate documen
   assert.equal(data.groups.find(x=>x.currency==="USD").total_minor,10000);
   assert.equal(data.groups.length,2);
 });
+test("Four Bacău approvals of the same scan count once despite OCR euro formatting",()=>{
+  const x=mount();
+  const originals=["367,20","367,20€","367.20 EUR","367,20 "].map((raw,i)=>{
+    const item=record(id(String(i+1)),"handling_invoice","367.20","EUR","2026-11-09");
+    item.reviewed_data.grand_total=raw;
+    item.reviewed_data.invoice_number=null;
+    item.reviewed_data.supplier_name="R. A. Aeroportul International George Enescu Bacau";
+    item.source_sha256="a".repeat(64);
+    return item;
+  });
+  const city=record(id("e"),"city_tax_receipt","12.00","EUR","2026-10-22");
+  city.source_sha256="b".repeat(64);
+  const result=x.trend([...originals,city],"2026-11-14");
+  const eur=result.groups.find(g=>g.currency==="EUR");
+  assert.equal(eur.total_minor,37920,"Same source + normalized money is one expense");
+  assert.equal(eur.documents,2);
+  assert.equal(result.duplicate_records_excluded,3);
+  // Two separate invoices on one photograph with distinct invoice numbers
+  // remain two distinct financial records.
+  const distinct=record(id("f"),"handling_invoice","367.20","EUR","2026-11-09");
+  distinct.source_sha256="a".repeat(64);
+  distinct.reviewed_data.supplier_name=originals[0].reviewed_data.supplier_name;
+  distinct.reviewed_data.invoice_number="OTHER-10";
+  const expanded=x.trend([...originals,distinct,city],"2026-11-14");
+  assert.equal(expanded.groups.find(g=>g.currency==="EUR").total_minor,74640);
+  assert.equal(expanded.duplicate_records_excluded,3);
+});
 test("Financial links are separate from physical nesting and always auditable",()=>{
   assert.match(schema,/create table if not exists public\.billy_financial_links/);
   assert.match(schema,/billy_financial_active_payment_unique/);
