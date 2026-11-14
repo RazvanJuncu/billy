@@ -124,9 +124,27 @@
     }
     return [...families.values()];
   }
+  function decorateDuplicate(card,root){
+    const record=root.__billyRecord;
+    if(!record?.is_duplicate||!record.duplicate_of||record.parent_document_id)return card;
+    const wrap=el("div","billy-duplicate-wrap");
+    wrap.dataset.duplicateOf=record.duplicate_of;
+    const badge=el("span","billy-duplicate-hint");
+    badge.setAttribute("aria-label","Duplicate document");
+    badge.title="Duplicate! Open this document to view the original.";
+    const piggy=document.createElement("img");
+    piggy.className="billy-duplicate-piggy";
+    piggy.src="./piggybank-mark.svg";
+    piggy.width=34;piggy.height=34;piggy.alt="";
+    piggy.setAttribute("aria-hidden","true");
+    const speech=el("span","billy-duplicate-speech","Duplicate!");
+    badge.append(piggy,speech);
+    wrap.append(card,badge);
+    return wrap;
+  }
   function familyCard(family){
     const {root,children,missingParent}=family;
-    if(!children.length&&!missingParent)return root;
+    if(!children.length&&!missingParent)return decorateDuplicate(root,root);
     const shell=el("section","billy-doc-family");
     shell.setAttribute("aria-label","Document with attached records");
     if(children.length){
@@ -147,7 +165,7 @@
       nested.append(line);
     }
     shell.append(nested);
-    return shell;
+    return decorateDuplicate(shell,root);
   }
   function refresh(){
     const list=state.list;if(!list||!list.isConnected)return;
