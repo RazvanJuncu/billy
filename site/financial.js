@@ -12,11 +12,11 @@
   const currencyGroups=()=>Array.isArray(state.data?.trend?.groups)?state.data.trend.groups:[];
   const activeGroup=()=>currencyGroups().find(x=>x.currency===state.currency)||null;
   const money=(minor,currency)=>{
-    if(!currency)return "—";
+    if(!currency)return "-";
     const amount=Number(minor)/100;
     return Number.isFinite(amount)?new Intl.NumberFormat("en-GB",{
       style:"currency",currency,maximumFractionDigits:2,minimumFractionDigits:2
-    }).format(amount):"—";
+    }).format(amount):"-";
   };
   function fillSelect(select){
     if(!select)return;
@@ -31,7 +31,7 @@
       select.disabled=false;
       select.value=groups.some(g=>g.currency===state.currency)?state.currency:groups[0].currency;
     }else{
-      const option=make("option","","—");option.value="";select.append(option);
+      const option=make("option","","-");option.value="";select.append(option);
       select.disabled=true;
     }
   }
@@ -78,7 +78,7 @@
     chartBars($("billyFinancialMiniChart"),activeGroup(),true);
     chartBars($("billyFinancialChart"),activeGroup(),false);
     const group=activeGroup();
-    $("billyFinancialTotal").textContent=group?money(group.total_minor,group.currency):"—";
+    $("billyFinancialTotal").textContent=group?money(group.total_minor,group.currency):"-";
     const trend=state.data?.trend;
     $("billyFinancialPeriod").textContent=trend?
       trend.start_date+" – "+trend.end_date+" · "+group?.documents+" approved documents":
