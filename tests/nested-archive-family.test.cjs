@@ -44,9 +44,10 @@ test("Reopening archive never duplicates a payment slip after stale and fresh ro
   assert.equal(units[0].root,freshParent);
   assert.equal(units[0].children.length,1);
   assert.equal(units[0].children[0],freshChild);
-  assert.match(index,/state\\.records=\\[\\];\\s*state\\.navigation=null/);
-  assert.match(simple,/const renderVersion=\\+\\+uploadedRenderVersion/);
-  assert.match(simple,/renderVersion!==uploadedRenderVersion\\|\\|body\\.dataset\\.billyScreen!=="uploaded"/);
+  assert.ok(index.includes("state.records=[];"));
+  assert.ok(index.includes("state.navigation=null;"));
+  assert.ok(simple.includes("const renderVersion=++uploadedRenderVersion;"));
+  assert.ok(simple.includes('renderVersion!==uploadedRenderVersion||body.dataset.billyScreen!=="uploaded"'));
 });
 test("Unrelated documents remain separate; a missing parent cannot appear as independent invoice",()=>{
   const unrelated=node("p2",null,{title:"Fuel Release"});
