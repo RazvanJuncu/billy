@@ -2304,7 +2304,7 @@ function financialTrend(rows,day){
 // Financial Operations P1.1/P1.2: full approved ledger plus an actionable,
 // explicit exception queue. No POS is counted as a standalone expense.
 // The same exact-source approved fingerprint governs the timeline and ledger.
-function financialOperations(roots,evidence,links,today){
+function financialOperations(roots,evidence,links,today,viewerId=null){
   const excludedProfiles=new Set(["fuel_release","payment_slip","supplier_statement","generic_document"]);
   const byProof=new Map(),byExpense=new Map();
   for(const link of links){
@@ -2387,7 +2387,7 @@ function financialOperations(roots,evidence,links,today){
       amount_minor:money?.minor??null,currency:money?.currency??(
         typeof currency==="string"&&ISO_CURRENCIES.has(currency)?currency:null),
       payment_state,linked_payment_count:paymentLinks.length,
-      issues,can_review:Boolean(rec.created_by),
+      issues,can_review:rec.created_by===viewerId,
       original_available:Boolean(rec.original_storage_key),
       operator_override_fields:Object.keys(overrides).filter(k=>
         ["grand_total","currency","issue_date"].includes(k))
@@ -2397,7 +2397,7 @@ function financialOperations(roots,evidence,links,today){
       id:rec.id,kind:"missing_financial_fields",profile:record.profile,
       vendor:record.vendor,date:record.date,issues,
       amount_minor:record.amount_minor,currency:record.currency,
-      can_review:true
+      can_review:record.can_review
     });
   }
   // Payment evidence is never an expense, even if it has a numerical total.
@@ -2595,7 +2595,7 @@ async function financialGet(principal,req){
     organization_id:"eq."+principal.organization_id,state:"eq.active",
     order:"created_at.desc",limit:"100"
   });
-  const ops=financialOperations(rows,proofs.rows,links,today);
+  const ops=financialOperations(rows,proofs.rows,links,today,principal.user_id);
   return json({trend:ops.trend,ledger:ops.ledger,attention:ops.attention,
     operational_counts:ops.counts,
     linked_payments:links,counts:{
