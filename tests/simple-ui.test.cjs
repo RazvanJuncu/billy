@@ -263,3 +263,23 @@ test("Uploaded Documents has neutral headings and only one proper back chevron",
   assert.match(hub,/All:\["M8 3h11/);
   assert.match(read("site/index.html"),/documents-hub\.js\?v=1\.4\.0/);
 });
+
+test("Homepage retains a four-zone hierarchy: greeting, Financial, New, Uploaded",()=>{
+  const home=read("site/index.html");
+  const financialCSS=read("site/financial.css");
+  const financialJS=read("site/financial.js");
+  const start=home.indexOf('<div class="billy-home-top">');
+  const end=home.indexOf('<a href="./install.html"',start);
+  const excerpt=home.slice(start,end);
+  const names=["simpleGreetingTitle","billyHomeFinancial","simpleNewDocument","simpleUploadedDocuments"];
+  const locations=names.map(id=>excerpt.indexOf('id="'+id+'"'));
+  assert.ok(locations.every((index)=>index>=0),"All four fields must be present");
+  assert.ok(locations.every((position,i)=>i===0||position>locations[i-1]),
+    "Greeting / Financial above New / Uploaded");
+  assert.match(home,/id="billyHomeFinancial" class="simple-choice"/);
+  assert.match(financialCSS,/\.billy-home-top\{\s*display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(financialCSS,/\.simple-home \.billy-home-financial \.simple-choice\{\s*width:100%;min-height:248px!important/);
+  assert.doesNotMatch(excerpt,/billyFinancialMiniChart|billyFinancialMiniCurrency|Approved expenses/);
+  assert.doesNotMatch(financialJS,/billyFinancialMiniChart|billyFinancialMiniCurrency|billyFinancialMiniCaption/);
+  assert.match(home,/id="billyFinancialChart"/,"Detailed graph remains inside Financial");
+});
