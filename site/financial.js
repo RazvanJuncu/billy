@@ -459,7 +459,7 @@
       info.append(make("small","",check.description||""));
       const status=make("span","billy-financial-integrity-status",
         labels[check.status]||"Not verified");
-      status.dataset.integrityStatus=check.status||"not_tested";
+      status.setAttribute("data-integrity-status",check.status||"not_tested");
       row.append(info,status);host.append(row);
     }
   }
