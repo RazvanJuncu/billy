@@ -107,7 +107,13 @@
     const byId=new Map(entries.filter(node=>node.__billyRecordId)
       .map(node=>[node.__billyRecordId,node]));
     const families=new Map();
+    const seenIds=new Set();
     for(const node of entries){
+      // A refresh can briefly contain stale and freshly fetched DOM nodes for
+      // the same record. Prefer the latest node and never render an ID twice.
+      const recordId=node.__billyRecordId;
+      if(recordId&&(seenIds.has(recordId)||byId.get(recordId)!==node))continue;
+      if(recordId)seenIds.add(recordId);
       const parentId=node.__billyParentId;
       const parent=parentId?byId.get(parentId):null;
       const root=parent||node;
@@ -231,6 +237,10 @@
     return true;
   }
   function start(list){
+    // Do not repopulate a newly cleared archive with DOM nodes from its last
+    // visit while the fresh cloud request is still in flight.
+    state.records=[];
+    state.navigation=null;
     // Opening the archive always starts at the hub, not the last drill-down.
     install(list);
     navigate("Home");
