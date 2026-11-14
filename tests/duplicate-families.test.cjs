@@ -122,7 +122,7 @@ test("Large/partial duplicate scan fails closed rather than inventing canonical 
 });
 test("Duplicate families are read-only, per-team and do not change financial counts or nesting",()=>{
   assert.match(backend,/async function duplicateAnnotations\(principal,records,directory\)/);
-  assert.match(backend,/source_sha256:"in\."\+hashes\.join/);
+  assert.ok(backend.includes('source_sha256:"in.("+hashes.join(",")+")"'));
   assert.match(backend,/organization_id:"eq\."\+principal\.organization_id/);
   assert.match(backend,/parent_document_id:"is\.null"/);
   assert.match(backend,/duplicateById=await duplicateAnnotations\(principal,\[\.\.\.page,\.\.\.parents\],directory\)/);
