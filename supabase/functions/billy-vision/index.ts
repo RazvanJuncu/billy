@@ -2244,14 +2244,23 @@ async function reconcileSamePhoto(principal,recordId){
   return result.length===1?"linked":"pending";
 }
 function financialFingerprint(rec){
+  // Multiple approvals of the SAME original image must not become multiple
+  // expenses because OCR renders the same amount as "367,20" vs "367,20€".
+  // Use typed approved money, not raw text, in the document identity.
   const doc=rec.reviewed_data||{};
   const sha=typeof rec.source_sha256==="string"&&/^[0-9a-f]{64}$/i.test(rec.source_sha256)?
     rec.source_sha256.toLowerCase():null;
   if(!sha)return null;
-  const vendor=assistantValue(rec,"vendor"),profile=financialProfile(rec)||rec.document_type||"";
-  const reference=String(doc.invoice_number||doc.release_number||"");
-  return [sha,profile,reference,vendor.toLocaleUpperCase("ro-RO"),
-    reference?"":String(doc.grand_total||"")].join("|");
+  const vendor=assistantValue(rec,"vendor").normalize("NFKC").trim()
+    .replace(/\s+/gu," ").toLocaleUpperCase("ro-RO");
+  const profile=financialProfile(rec)||rec.document_type||"";
+  const reference=String(doc.invoice_number||doc.release_number||"")
+    .normalize("NFKC").trim().toLocaleUpperCase("en-US");
+  const money=assistantMoney(rec);
+  // If amount is not validly normalized, never use raw OCR money to create
+  // a separate financial identity. There is no priced expense to count.
+  const canonicalAmount=money?money.currency+":"+money.minor:"unpriced";
+  return [sha,profile,reference,vendor,canonicalAmount].join("|");
 }
 function financialTrend(rows,day){
   // Four-day or seven-day bars, depending on viewport; same canonical expense
@@ -2767,17 +2776,10 @@ function assistantAggregate(rows,filter,partial){
       if(dateInfo.basis==="document")invoiceDates++;
       continue;
     }
-    // Prevent duplicate uploads of the same source invoice from inflating spend.
-    // If a scan contains multiple distinct invoices, their references/providers
-    // distinguish them, even if they shared one original photo.
-    const approved=rec.reviewed_data||{};
-    const sha=typeof rec.source_sha256==="string"&&/^[0-9a-f]{64}$/i.test(rec.source_sha256)?
-      rec.source_sha256.toLowerCase():null;
+    // Reuse the very same canonical identity as Financial; an OCR formatting
+    // difference must not distort spend in Billy Assistant or Piggybank.
     const profile=rec.review_metadata?.classification?.profile||rec.document_type||"";
-    const docReference=String(approved.invoice_number||approved.release_number||"");
-    const fingerprint=sha?[sha,profile,docReference,
-      vendor.toLocaleUpperCase("ro-RO"),
-      docReference?"":String(approved.grand_total||"")].join("|"):null;
+    const fingerprint=financialFingerprint(rec);
     if(fingerprint&&seenDocuments.has(fingerprint)){duplicates++;continue;}
     if(fingerprint)seenDocuments.add(fingerprint);
     matched++;
