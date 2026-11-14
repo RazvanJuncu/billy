@@ -113,3 +113,24 @@ test("After original archive, the approved mitosis replaces the old handoff UI",
   assert.match(read("site/sw.js"),/nested-mitosis\.js/);
   assert.match(read("site/sw.js"),/nested-mitosis\.css/);
 });
+
+test("Piggy marker only decorates duplicate root families and links to their original",()=>{
+  const html=read("site/index.html");
+  const preview=read("site/document-preview.js");
+  assert.match(index,/function decorateDuplicate\(card,root\)/);
+  assert.match(index,/!record\?\.is_duplicate\|\|!record\.duplicate_of\|\|record\.parent_document_id/);
+  assert.match(index,/return decorateDuplicate\(root,root\)/);
+  assert.match(index,/return decorateDuplicate\(shell,root\)/);
+  assert.match(index,/piggy\.src="\.\/piggybank-mark\.svg"/);
+  assert.match(index,/billy-duplicate-speech","Duplicate!"/);
+  assert.match(css,/#simpleUploaded \.billy-duplicate-hint\{/);
+  assert.match(css,/pointer-events:none/);
+  assert.match(css,/#simpleUploaded \.billy-duplicate-wrap\{/);
+  assert.match(html,/documents-index\.js\?v=1\.9\.0/);
+  assert.match(html,/document-preview\.js\?v=1\.5\.2/);
+  assert.match(preview,/Duplicate document/);
+  assert.match(preview,/Open original/);
+  assert.match(preview,/record\.duplicate_original_state==="approved"/);
+  assert.match(preview,/assistant-source\?record_id=/);
+  assert.match(read("site/sw.js"),/v104-duplicate-piggy/);
+});
