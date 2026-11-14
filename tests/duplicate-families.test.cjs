@@ -131,7 +131,7 @@ test("Duplicate families are read-only, per-team and do not change financial cou
   assert.match(index,/return decorateDuplicate\(root,root\)/);
   assert.match(index,/return decorateDuplicate\(shell,root\)/);
   assert.match(index,/record\.parent_document_id\)return card/);
-  assert.match(index,/billy-duplicate-speech","Duplicate!"/);
+  assert.match(index,/billy-duplicate-speech","Duplicate"/);
   assert.match(index,/piggy\.src="\.\/piggybank-mark\.svg"/);
   assert.match(css,/\.billy-duplicate-hint\{/);
   assert.match(preview,/Duplicate document/);
