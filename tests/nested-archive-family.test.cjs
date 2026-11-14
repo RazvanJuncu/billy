@@ -34,6 +34,20 @@ test("Parent and child become one family regardless of order, without duplicate 
   assert.match(index,/nodes\.some\(node=>/);
   assert.match(index,/family\.root\.__billyDocument\[groupKey\]/);
 });
+test("Reopening archive never duplicates a payment slip after stale and fresh rows overlap",()=>{
+  const oldParent=node("parent",null,{title:"Handling Invoice"});
+  const oldChild=node("slip","parent",{title:"Payment Slip"});
+  const freshParent=node("parent",null,{title:"Handling Invoice"});
+  const freshChild=node("slip","parent",{title:"Payment Slip"});
+  const units=Array.from(group([oldParent,oldChild,freshParent,freshChild]));
+  assert.equal(units.length,1);
+  assert.equal(units[0].root,freshParent);
+  assert.equal(units[0].children.length,1);
+  assert.equal(units[0].children[0],freshChild);
+  assert.match(index,/state\\.records=\\[\\];\\s*state\\.navigation=null/);
+  assert.match(simple,/const renderVersion=\\+\\+uploadedRenderVersion/);
+  assert.match(simple,/renderVersion!==uploadedRenderVersion\\|\\|body\\.dataset\\.billyScreen!=="uploaded"/);
+});
 test("Unrelated documents remain separate; a missing parent cannot appear as independent invoice",()=>{
   const unrelated=node("p2",null,{title:"Fuel Release"});
   const missing=node("c2","not-in-page",{title:"Payment Slip"});
