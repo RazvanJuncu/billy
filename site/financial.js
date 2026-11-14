@@ -74,7 +74,7 @@
     $("billyFinancialPeriod").textContent=trend?
       trend.start_date+" – "+trend.end_date+" · "+group?.documents+" approved documents":
       (state.error||"Last 30 days");
-remove mini caption    const links=Array.isArray(state.data?.linked_payments)?state.data.linked_payments:[];
+    const links=Array.isArray(state.data?.linked_payments)?state.data.linked_payments:[];
     $("billyFinancialLinksCaption").textContent=links.length?
       links.length+" attached payment "+(links.length===1?"proof":"proofs")+
       (state.data?.partial?" · partial archive":""):
