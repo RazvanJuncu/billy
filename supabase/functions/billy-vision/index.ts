@@ -1875,10 +1875,10 @@ function approvedVendorCandidate(source,approved,absentPaths=[],operatorVerified
   for(const field of ["supplier_name","property_name"]){
     if(absentPaths.includes(field))continue;
     if(typeof approved?.[field]!=="string")continue;
-    const name=approved[field].normalize("NFKC").replace(/\\s+/gu," ").trim();
+    const name=approved[field].normalize("NFKC").replace(/\s+/gu," ").trim();
     const key=vendorKey(name);
-    if(!key||name.length<3||name.length>120||!/\\p{L}/u.test(name)||
-       /(?:\\?{1,}|…|\\.{3,}|https?:\\/\\/|www\\.|@)/i.test(name))continue;
+    if(!key||name.length<3||name.length>120||!/\p{L}/u.test(name)||
+       /(?:\?{1,}|…|\.{3,}|https?:\/\/|www\.|@)/i.test(name))continue;
     // Explicitly low-clarity OCR must not silently create a trusted vendor,
     // unless the operator separately confirmed or corrected that field.
     const weak=(source.regions_data||[]).some(row=>row.field_path===field&&
