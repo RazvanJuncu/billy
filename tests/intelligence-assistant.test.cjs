@@ -14,7 +14,16 @@ function engine(){
   assert.ok(start>0&&end>start,"assistant backend exists");
   const scope={ORGANIZATION_SERVICES:["fuel","handling","taxi","hotel","other"],
     ISO_CURRENCIES:new Set(["EUR","RON","USD"])};
-  vm.runInNewContext(edge.slice(start,end)+
+  // This test isolates the assistant from the Edge Function; include the
+  // shared canonical fingerprint and its profile dependency from Financial.
+  const profileStart=edge.indexOf("function financialProfile(");
+  const profileEnd=edge.indexOf("function financialDay(",profileStart);
+  const fingerprintStart=edge.indexOf("function financialFingerprint(");
+  const fingerprintEnd=edge.indexOf("function financialTrend(",fingerprintStart);
+  assert.ok(profileStart>=0&&profileEnd>profileStart);
+  assert.ok(fingerprintStart>=0&&fingerprintEnd>fingerprintStart);
+  vm.runInNewContext(edge.slice(profileStart,profileEnd)+
+    edge.slice(fingerprintStart,fingerprintEnd)+edge.slice(start,end)+
     "\nthis.intent=assistantIntent;this.aggregate=assistantAggregate;"+
     "this.money=assistantMoney;this.date=assistantRecordDate;"+
     "this.day=assistantDay;this.registration=assistantRegistration;",scope);
