@@ -35,10 +35,10 @@
       select.disabled=true;
     }
   }
-  function chartBars(host,group,mini){
+  function chartBars(host,group){
     host.replaceChildren();
     if(!group||!Array.isArray(group.bars)||!group.bars.length){
-      host.append(make("span",mini?"billy-financial-mini-empty":"billy-financial-empty",
+      host.append(make("span","billy-financial-empty",
         state.error?"Financial activity unavailable":"No approved expenses for this period"));
       host.setAttribute("aria-label","No approved expense values");
       return;
@@ -52,21 +52,14 @@
       });
       details.push(label+": "+money(value,group.currency));
       const pct=max?Math.max(value>0?4:0,100*value/max):0;
-      if(mini){
-        const el=make("span","billy-financial-mini-bar");
-        el.style.setProperty("--height",pct+"%");
-        el.title=label+" · "+money(value,group.currency);
-        host.append(el);
-      }else{
-        const item=make("div","billy-financial-week");
-        const total=make("span","billy-financial-week-value",money(value,group.currency));
-        const track=make("span","billy-financial-week-track");
-        const column=make("span","billy-financial-week-bar");
-        column.style.setProperty("--height",pct+"%");
-        track.append(column);
-        item.append(total,track,make("span","billy-financial-week-label",label));
-        host.append(item);
-      }
+      const item=make("div","billy-financial-week");
+      const total=make("span","billy-financial-week-value",money(value,group.currency));
+      const track=make("span","billy-financial-week-track");
+      const column=make("span","billy-financial-week-bar");
+      column.style.setProperty("--height",pct+"%");
+      track.append(column);
+      item.append(total,track,make("span","billy-financial-week-label",label));
+      host.append(item);
     }
     host.setAttribute("aria-label",details.join(". "));
   }
@@ -74,19 +67,14 @@
     const groups=currencyGroups();
     if(!groups.some(g=>g.currency===state.currency))state.currency=groups[0]?.currency||null;
     fillSelect($("billyFinancialCurrency"));
-    fillSelect($("billyFinancialMiniCurrency"));
-    chartBars($("billyFinancialMiniChart"),activeGroup(),true);
-    chartBars($("billyFinancialChart"),activeGroup(),false);
+    chartBars($("billyFinancialChart"),activeGroup());
     const group=activeGroup();
     $("billyFinancialTotal").textContent=group?money(group.total_minor,group.currency):"-";
     const trend=state.data?.trend;
     $("billyFinancialPeriod").textContent=trend?
       trend.start_date+" – "+trend.end_date+" · "+group?.documents+" approved documents":
       (state.error||"Last 30 days");
-    $("billyFinancialMiniCaption").textContent=
-      state.data?.counts?.linked?state.data.counts.linked+" linked payment"+
-        (state.data.counts.linked===1?"":"s"):"Expenses & payments";
-    const links=Array.isArray(state.data?.linked_payments)?state.data.linked_payments:[];
+remove mini caption    const links=Array.isArray(state.data?.linked_payments)?state.data.linked_payments:[];
     $("billyFinancialLinksCaption").textContent=links.length?
       links.length+" attached payment "+(links.length===1?"proof":"proofs")+
       (state.data?.partial?" · partial archive":""):
@@ -145,7 +133,7 @@
     })();
     return state.inFlight;
   }
-  for(const id of ["billyFinancialCurrency","billyFinancialMiniCurrency"]){
+  for(const id of ["billyFinancialCurrency"]){
     $(id).addEventListener("change",event=>{
       const selected=event.target.value;
       if(!currencyGroups().some(g=>g.currency===selected))return;
@@ -153,7 +141,10 @@
     });
   }
   window.BillyFinancial={refresh};
-  window.addEventListener("billy:account-ready",()=>void refresh());
-  window.addEventListener("billy:document-approved",()=>void refresh());
-  void refresh();
+  window.addEventListener("billy:account-ready",()=>{
+    if(document.body.dataset.billyScreen==="financial")void refresh();
+  });
+  window.addEventListener("billy:document-approved",()=>{
+    if(document.body.dataset.billyScreen==="financial")void refresh();
+  });
 })();
