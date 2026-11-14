@@ -51,7 +51,7 @@
   <script src="./documents-hub.js?v=1.4.0" defer></script>
   <script src="./documents-index.js?v=1.8.1" defer></script>
   <script src="./original-archive.js?v=1.1.0" defer></script>
-  <script src="./document-preview.js?v=1.4.1" defer></script>
+  <script src="./document-preview.js?v=1.5.0" defer></script>
   <script src="./financial.js?v=1.0.0" defer></script>
   <script src="./simple.js?v=2.2.2" defer></script>
   <script src="./piggybank-hud.js?v=1.0.0" defer></script>
@@ -215,7 +215,10 @@
                 <div class="billy-home-financial-top">
                   <div class="billy-home-financial-heading">
                     <span>Approved expenses</span>
-                    <span>30 days</span>
+                    <span class="billy-financial-chart-tools">
+                      <select id="billyFinancialMiniCurrency" class="billy-financial-mini-currency"
+                        aria-label="Chart currency"></select><span>30 days</span>
+                    </span>
                   </div>
                   <div class="billy-financial-mini-bar-chart" id="billyFinancialMiniChart" role="img"
                     aria-label="Approved expense activity, last 30 days">
