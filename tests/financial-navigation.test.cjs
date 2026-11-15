@@ -182,12 +182,14 @@ test("Financial landing matches Uploaded Documents' large circular app navigatio
  const archive=read("site/simple.css");
  assert.match(archive,/\.billy-hub-grid\{display:grid/);
  assert.match(archive,/\.billy-hub-circle\{[^}]*width:106px;height:106px/);
- assert.match(css,/\.billy-financial-landing > \.billy-financial-nav\{[^}]*flex-wrap:wrap/);
+ assert.match(css,/\.billy-financial-landing > \.billy-financial-nav\{[^}]*display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+ assert.doesNotMatch(css,/\.billy-financial-landing > \.billy-financial-nav\{[^}]*display:flex/);
+ assert.match(css,/\.billy-financial-landing \.billy-financial-nav-row\{[^}]*min-height:178px/);
  assert.match(css,/\.billy-financial-landing \.billy-financial-nav-row\{[^}]*flex-direction:column/);
  assert.match(css,/\.billy-financial-landing \.billy-financial-nav-icon\{[^}]*width:106px;height:106px/);
  assert.match(css,/\.billy-financial-landing \.billy-financial-nav-icon svg\{[^}]*width:42px;height:42px/);
  assert.match(css,/\.billy-financial-landing \.billy-financial-nav-copy\{[^}]*text-align:center/);
  assert.match(css,/\.billy-financial-landing \.billy-financial-nav-arrow\{display:none\}/);
- assert.match(html,/financial\.css\?v=1\.6\.0/);
- assert.match(read("site/sw.js"),/v111-financial-circle-apps/);
+ assert.match(html,/financial\.css\?v=1\.6\.1/);
+ assert.match(read("site/sw.js"),/v112-financial-circle-grid/);
 });
