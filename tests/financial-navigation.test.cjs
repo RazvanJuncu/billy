@@ -178,9 +178,16 @@ test("Financial navigation uses a single source of approved data, with no invent
  assert.doesNotMatch(html,/billyFinancialMiniChart|billyFinancialMiniCurrency/);
 });
 
-test("Financial hub icons use round symbol containers matching archive navigation",()=>{
- assert.match(css,/\.billy-financial-nav-icon\{[^}]*border-radius:50%/);
- assert.match(css,/\.billy-financial-nav-icon\{[^}]*background:#282a2d/);
- assert.match(css,/\.billy-financial-nav-icon svg\{[^}]*width:20px/);
- assert.match(html,/financial\.css\?v=1\.5\.0/);
+test("Financial landing matches Uploaded Documents' large circular app navigation",()=>{
+ const archive=read("site/simple.css");
+ assert.match(archive,/\.billy-hub-grid\{display:grid/);
+ assert.match(archive,/\.billy-hub-circle\{[^}]*width:106px;height:106px/);
+ assert.match(css,/\.billy-financial-landing > \.billy-financial-nav\{[^}]*flex-wrap:wrap/);
+ assert.match(css,/\.billy-financial-landing \.billy-financial-nav-row\{[^}]*flex-direction:column/);
+ assert.match(css,/\.billy-financial-landing \.billy-financial-nav-icon\{[^}]*width:106px;height:106px/);
+ assert.match(css,/\.billy-financial-landing \.billy-financial-nav-icon svg\{[^}]*width:42px;height:42px/);
+ assert.match(css,/\.billy-financial-landing \.billy-financial-nav-copy\{[^}]*text-align:center/);
+ assert.match(css,/\.billy-financial-landing \.billy-financial-nav-arrow\{display:none\}/);
+ assert.match(html,/financial\.css\?v=1\.6\.0/);
+ assert.match(read("site/sw.js"),/v111-financial-circle-apps/);
 });
