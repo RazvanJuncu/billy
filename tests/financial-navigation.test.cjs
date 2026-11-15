@@ -177,3 +177,10 @@ test("Financial navigation uses a single source of approved data, with no invent
  assert.doesNotMatch(app,/\.innerHTML\s*=/);
  assert.doesNotMatch(html,/billyFinancialMiniChart|billyFinancialMiniCurrency/);
 });
+
+test("Financial hub icons use round symbol containers matching archive navigation",()=>{
+ assert.match(css,/\.billy-financial-nav-icon\{[^}]*border-radius:50%/);
+ assert.match(css,/\.billy-financial-nav-icon\{[^}]*background:#282a2d/);
+ assert.match(css,/\.billy-financial-nav-icon svg\{[^}]*width:20px/);
+ assert.match(html,/financial\.css\?v=1\.5\.0/);
+});
