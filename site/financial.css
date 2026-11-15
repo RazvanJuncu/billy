@@ -257,10 +257,10 @@ html[data-billy-mobile="1"] body.billy-functions-revealed .simple-home .simple-q
   display:flex;flex-direction:column;gap:8px;min-width:0;
 }
 .billy-financial-nav-row{
-  width:100%;display:flex;align-items:center;gap:14px;text-align:left;
-  min-height:71px;padding:15px 18px!important;
+  width:100%;display:flex;align-items:center;gap:16px;text-align:left;
+  min-height:80px;padding:14px 19px!important;
   background:#1b1d1f!important;color:#e5e7e9!important;
-  border:0!important;border-radius:11px!important;
+  border:0!important;border-radius:12px!important;
   cursor:pointer;transition:background .15s ease,transform .15s ease;
 }
 .billy-financial-nav-row:hover,.billy-financial-nav-row:focus-visible{
@@ -269,12 +269,13 @@ html[data-billy-mobile="1"] body.billy-functions-revealed .simple-home .simple-q
 .billy-financial-nav-row:focus-visible{outline:2px solid #a0a5a9;outline-offset:2px}
 .billy-financial-nav-row:active{transform:scale(.997)}
 .billy-financial-nav-icon{
-  flex:0 0 35px;display:flex;align-items:center;justify-content:center;
-  height:35px;border-radius:9px;background:#2d3033;color:#bfc4c8;
+  flex:0 0 46px;width:46px;height:46px;
+  display:grid;place-items:center;align-self:center;
+  border-radius:50%;background:#282a2d;color:#bfc4c8;
 }
 .billy-financial-nav-icon svg{
-  width:18px;height:18px;fill:none;stroke:currentColor;
-  stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;
+  width:20px;height:20px;fill:none;stroke:currentColor;
+  stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round;
 }
 .billy-financial-nav-copy{
   display:flex;flex-direction:column;gap:4px;flex:1;min-width:0;
@@ -290,7 +291,7 @@ html[data-billy-mobile="1"] body.billy-functions-revealed .simple-home .simple-q
 }
 .billy-financial-nav-badge{
   color:#c6cbcf;background:#313438;padding:2px 7px;
-  border-radius:6px;font-size:11px;font-weight:660;min-width:23px;text-align:center;
+  border-radius:9px;font-size:11px;font-weight:660;min-width:23px;text-align:center;
 }
 .billy-financial-detail{
   gap:13px;
@@ -342,9 +343,9 @@ html[data-billy-mobile="1"] body.billy-functions-revealed .simple-home .simple-q
   .billy-financial-summary .billy-financial-kicker{font-size:9px}
   .billy-financial-summary .billy-financial-period{font-size:10px}
   .billy-financial-nav{gap:6px}
-  .billy-financial-nav-row{min-height:66px;padding:12px!important;gap:11px}
-  .billy-financial-nav-icon{flex-basis:30px;height:30px}
-  .billy-financial-nav-icon svg{width:16px;height:16px}
+  .billy-financial-nav-row{min-height:72px;padding:12px 14px!important;gap:12px}
+  .billy-financial-nav-icon{flex:0 0 40px;width:40px;height:40px}
+  .billy-financial-nav-icon svg{width:18px;height:18px}
   .billy-financial-nav-copy strong{font-size:12px}
   .billy-financial-nav-copy small{font-size:10px}
   #billyFinancialInsightsSection{padding:13px!important}
