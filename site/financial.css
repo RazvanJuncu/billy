@@ -401,13 +401,16 @@ html[data-billy-mobile="1"] body.billy-functions-revealed .simple-home .simple-q
 /* Financial circle hub v2 — use the actual Uploaded Documents app layout,
    not a rounded icon inside a horizontal card. Detail submenus stay rows. */
 .billy-financial-landing > .billy-financial-nav{
-  display:flex;flex-wrap:wrap;justify-content:center;align-items:flex-start;
-  gap:25px 17px;max-width:650px;margin:29px auto 0;width:100%;
+  /* Explicit grid: the base .billy-financial-nav is flex-direction:column.
+     The previous flex-wrap rule never overrode that, stacking all four apps. */
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  justify-items:center;align-items:start;
+  gap:25px 20px;max-width:475px;margin:29px auto 0;width:100%;
 }
 .billy-financial-landing .billy-financial-nav-row{
   display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
-  position:relative;flex:0 0 132px;width:132px;min-height:0;
-  padding:8px!important;gap:12px;
+  position:relative;flex:none;width:100%;max-width:180px;min-width:0;
+  min-height:178px;padding:8px!important;gap:12px;
   background:transparent!important;border:0!important;
   border-radius:18px!important;text-align:center;
   box-shadow:none;transition:none;
@@ -449,7 +452,7 @@ html[data-billy-mobile="1"] body.billy-functions-revealed .simple-home .simple-q
 }
 .billy-financial-landing .billy-financial-nav-arrow{display:none}
 .billy-financial-landing .billy-financial-nav-badge{
-  position:absolute;top:6px;right:7px;
+  position:absolute;top:5px;right:calc(50% - 66px);
   display:inline-grid;place-items:center;
   width:auto;min-width:23px;height:23px;padding:0 6px;
   border-radius:999px;background:#3a3d41;
@@ -457,10 +460,13 @@ html[data-billy-mobile="1"] body.billy-functions-revealed .simple-home .simple-q
 }
 @media(max-width:750px){
   .billy-financial-landing > .billy-financial-nav{
-    max-width:450px;gap:24px 12px;margin:25px auto 0;
+    max-width:410px;gap:22px 12px;margin:25px auto 0;
   }
   .billy-financial-landing .billy-financial-nav-row{
-    width:125px;flex-basis:125px;gap:11px;
+    width:100%;max-width:170px;min-height:162px;gap:11px;
+  }
+  .billy-financial-landing .billy-financial-nav-badge{
+    right:calc(50% - 57px);
   }
   .billy-financial-landing .billy-financial-nav-icon{
     width:90px;height:90px;flex-basis:90px;
@@ -471,10 +477,13 @@ html[data-billy-mobile="1"] body.billy-functions-revealed .simple-home .simple-q
 }
 @media(max-width:430px){
   .billy-financial-landing > .billy-financial-nav{
-    max-width:320px;gap:19px 14px;margin-top:20px;
+    max-width:320px;gap:20px 14px;margin-top:20px;
   }
   .billy-financial-landing .billy-financial-nav-row{
-    width:128px;flex-basis:128px;padding:6px!important;
+    width:100%;max-width:150px;min-height:150px;padding:6px!important;
+  }
+  .billy-financial-landing .billy-financial-nav-badge{
+    right:calc(50% - 52px);
   }
   .billy-financial-landing .billy-financial-nav-icon{
     width:83px;height:83px;flex-basis:83px;
