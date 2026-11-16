@@ -184,7 +184,7 @@ test("Billy's large circular hub is preserved and PWA CSS/JS caches are refreshe
  assert.match(css,/\.billy-financial-landing \.billy-financial-nav-icon\{[^}]*width:106px;height:106px/);
  assert.match(css,/\.billy-financial-landing \.billy-financial-nav-arrow\{display:none\}/);
  assert.match(css,/\.simple-financial > \.simple-heading\[hidden\]\{display:none!important\}/);
- assert.match(html,/financial\.css\?v=1\.8\.0/);
- assert.match(html,/financial\.js\?v=1\.8\.0/);
- assert.match(read("site/sw.js"),/v114-financial-cross-photo/);
+ assert.match(html,/financial\.css\?v=1\.9\.0/);
+ assert.match(html,/financial\.js\?v=1\.9\.0/);
+ assert.match(read("site/sw.js"),/v115-financial-reconciliation/);
 });
