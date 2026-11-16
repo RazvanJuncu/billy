@@ -387,6 +387,7 @@
     $("billyFinancialInsightsSection").hidden=section!=="insights";
     $("billyFinancialExpenseResults").hidden=section!=="expenses";
     // Linked and unmatched receipts are shown together, without an intermediate page.
+    $("billyFinancialReconciliationPanel").hidden=section!=="payments";
     $("billyFinancialLinkedPanel").hidden=section!=="payments";
     $("billyFinancialUnmatchedPanel").hidden=section!=="payments";
     $("billyFinancialSectionTitle").textContent={
@@ -403,6 +404,7 @@
     renderFinancialAttention();
     renderExpenseLedger();
     renderUnmatchedPayments();
+    window.BillyFinancialReconciliation?.render?.(state.data,refresh);
     renderNavigation();
   }
   function renderIntegrity(){
