@@ -69,6 +69,8 @@
   let editingId=null;
   const opsList=()=>Array.isArray(state.data?.ledger)?state.data.ledger:[];
   const issuesList=()=>Array.isArray(state.data?.attention)?state.data.attention:[];
+  const matchSuggestions=()=>Array.isArray(state.data?.match_suggestions)?
+    state.data.match_suggestions:[];
   const statusText=(stateName)=>({
     payment_confirmed:"Payment confirmed",
     payment_linked:"Payment linked",
@@ -122,6 +124,11 @@
       if(issue.kind==="missing_financial_fields"&&issue.can_review){
         actions.append(createButton("Review","billy-financial-subtle",
           ()=>{editingId=issue.id;renderReviewEditor();}));
+      }
+      if(issue.kind==="unmatched_payment"&&matchSuggestions()
+          .some(pair=>pair.payment_document_id===issue.id)){
+        actions.append(createButton("Review match","billy-financial-subtle",
+          ()=>enterSection("payments")));
       }
       item.append(left,actions);container.append(item);
     }
@@ -295,6 +302,58 @@
       const actions=make("div","billy-financial-row-actions");
       actions.append(createButton("Open","billy-financial-subtle",
         event=>void openDocument(item.id,event.currentTarget)));
+      const proposal=matchSuggestions().find(pair=>pair.payment_document_id===item.id);
+      if(proposal){
+        copy.append(make("small","billy-financial-match-hint",
+          "Potential invoice · "+proposal.vendor+" · exact date and amount"));
+        actions.append(createButton("Review match","billy-financial-subtle",()=>{
+          const previous=row.querySelector(".billy-financial-proposal");
+          if(previous){previous.remove();return;}
+          const panel=make("div","billy-financial-proposal");
+          const detail=make("p","",
+            "Separate uploads · "+proposal.vendor+" · "+
+            money(proposal.amount_minor,proposal.currency)+" · "+
+            proposal.expense_date+". Matching vendor, amount, currency and date.");
+          const warning=make("p","",
+            "Check both originals before linking. A POS slip is evidence, not a second expense.");
+          const buttons=make("div","billy-financial-proposal-actions");
+          buttons.append(createButton("View invoice","billy-financial-subtle",
+            event=>void openDocument(proposal.expense_document_id,event.currentTarget)));
+          buttons.append(createButton("View slip","billy-financial-subtle",
+            event=>void openDocument(proposal.payment_document_id,event.currentTarget)));
+          const feedback=make("p","billy-financial-match-feedback","");
+          feedback.setAttribute("role","status");
+          const confirm=createButton("Confirm link","billy-financial-match-confirm",async()=>{
+            if(!window.confirm("Associate this POS slip with the invoice? Verify the originals first. This does not add a new expense."))return;
+            confirm.disabled=true;feedback.textContent="Saving link…";
+            try{
+              if(!window.BillyAccounts?.active?.())throw Error("Sign in to link payments");
+              const headers=await window.BillyAccounts.sessionHeaders();
+              const api=window.BILLY_AUTH_CONFIG?.apiUrl;
+              if(!api)throw Error("Financial service unavailable");
+              const response=await fetch(api+"/api/vision/financial-link",{
+                method:"POST",cache:"no-store",
+                headers:{"Content-Type":"application/json",...headers},
+                body:JSON.stringify({
+                  expense_document_id:proposal.expense_document_id,
+                  payment_document_id:proposal.payment_document_id
+                })
+              });
+              const result=await response.json();
+              if(!response.ok||result.linked!==true)
+                throw Error(result.detail||"The documents could not be linked");
+              await refresh();
+            }catch(error){
+              feedback.textContent=error?.message||"Could not save payment link";
+              confirm.disabled=false;
+            }
+          });
+          buttons.append(confirm);
+          buttons.append(createButton("Cancel","billy-financial-subtle",()=>panel.remove()));
+          panel.append(detail,warning,buttons,feedback);
+          row.append(panel);
+        }));
+      }
       row.append(copy,actions);host.append(row);
     }
   }
