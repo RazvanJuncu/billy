@@ -89,6 +89,8 @@ function mockBackend(opts={}) {
     if(url.pathname.endsWith("/billy_vendors")||
        url.pathname.endsWith("/billy_vendor_aliases"))
       return new Response("[]",{status:200});
+    if(url.pathname.endsWith("/billy_financial_allocations"))
+      return new Response("[]",{status:200});
     if(url.pathname.endsWith("/billy_financial_links")){
       if(init.method==="POST"){
         const item={...JSON.parse(init.body),
