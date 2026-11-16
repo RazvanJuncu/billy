@@ -233,7 +233,7 @@ test("Cross-photo matcher rejects ambiguous invoices, duplicated slips, active l
 });
 test("Cross-photo matching exposes operator-only suggestions and no automatic creation endpoint",()=>{
   const backend=read("supabase/functions/billy-vision/index.ts");
-  assert.match(backend,/match_suggestions:matchSuggestions/);
+  assert.match(backend,/match_suggestions:safeSuggestions/);
   assert.match(backend,/\.filter\(row=>row\.owner_id===principal\.user_id\)/);
   assert.match(backend,/const snapshot=await crossPhotoSnapshot\(principal\)/);
   assert.match(backend,/if\(!proposal\)return error\("No unique, verifiable payment match/);
@@ -254,5 +254,5 @@ test("Billy Payments presents inline pair evidence, source previews and explicit
   assert.match(finance,/\/api\/vision\/financial-link/);
   assert.match(finance,/await refresh\(\)/);
   assert.match(css,/\.billy-financial-proposal\{/);
-  assert.match(read("site/index.html"),/financial\.js\?v=1\.8\.0/);
+  assert.match(read("site/index.html"),/financial\.js\?v=1\.9\.0/);
 });
