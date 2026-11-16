@@ -533,3 +533,39 @@ html[data-billy-mobile="1"] body.billy-functions-revealed .simple-home .simple-q
     transform:none;box-shadow:none;
   }
 }
+
+/* Financial 3B.2 — compact in-place reconciliation. No extra dashboard pages. */
+#billyFinancialReconciliationPanel[hidden]{display:none!important}
+.billy-financial-reconciliation-note{
+  font-size:10px;color:#999fa4;line-height:1.6;margin:0;
+}
+.billy-financial-reconcile-row{grid-template-columns:minmax(0,1fr) auto}
+.billy-financial-reconcile-history,
+.billy-financial-reconcile-form{
+  grid-column:1/-1;display:flex;flex-direction:column;gap:8px;
+  border-top:1px solid #34383c;padding-top:11px;min-width:0;
+}
+.billy-financial-reconcile-history-row{
+  display:flex;justify-content:space-between;gap:12px;align-items:center;
+  font-size:11px;color:#cbd0d3;min-height:31px;
+}
+.billy-financial-reconcile-form{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:10px;
+}
+.billy-financial-reconcile-form label{display:flex;flex-direction:column;gap:6px;
+  font-size:11px;color:#bfc4c7}
+.billy-financial-reconcile-form input,.billy-financial-reconcile-form select{
+  border:0!important;border-radius:8px!important;
+  min-height:38px;padding:8px 10px!important;
+  font-size:12px!important;color:#e9ebed!important;background:#303336!important;
+}
+.billy-financial-reconcile-form label[hidden]{display:none!important}
+.billy-financial-reconcile-form > p,.billy-financial-reconcile-form > div{
+  grid-column:1/-1
+}
+.billy-financial-reconcile-form > p{
+  font-size:10px;line-height:1.55;color:#9ba2a6;margin:0;
+}
+@media(max-width:560px){
+  .billy-financial-reconcile-form{grid-template-columns:1fr}
+}
