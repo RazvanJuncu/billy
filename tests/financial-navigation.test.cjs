@@ -82,114 +82,109 @@ const financialData={
  operational_counts:{expenses:3,missing_date:1,unmatched_payments:1,duplicate_expenses_excluded:2},
  counts:{linked:1,confirmed:0,unverified:1},partial:false
 };
-test("Financial homepage shows compact summary and routes, not expanded chart or ledger",async()=>{
+
+test("Financial home keeps circular navigation and hides empty attention",async()=>{
  const {window,at}=mockApp(financialData);
  await window.BillyFinancial.refresh();
  assert.equal(at("billyFinancialLanding").hidden,false);
  assert.equal(at("billyFinancialDetail").hidden,true);
- assert.equal(at("billyFinancialAttentionNav").hidden,false);
+ assert.equal(at("billyFinancialPageTitle").hidden,false);
  assert.equal(at("billyFinancialAttentionBadge").textContent,"2");
- assert.match(at("billyFinancialPeriod").textContent,/dated expenses/);
- assert.equal(at("billyFinancialInsightsSection").hidden,true);
+ assert.equal(at("billyFinancialAttentionNav").hidden,false);
  assert.equal(at("billyFinancialExpenseResults").hidden,true);
  assert.equal(at("billyFinancialLinkedPanel").hidden,true);
+ const empty=mockApp({...financialData,attention:[]});
+ await empty.window.BillyFinancial.refresh();
+ assert.equal(empty.at("billyFinancialAttentionNav").hidden,true);
 });
-test("Expenses navigate by vendor and aircraft, maintain filters and return one level at a time",async()=>{
+test("Expenses opens the ledger in one tap and filters directly by aircraft, vendor and search",async()=>{
  const {window,at,click}=mockApp(financialData);
  await window.BillyFinancial.refresh();
  click("billyFinancialExpensesNav");
- assert.equal(at("billyFinancialExpensePaths").hidden,false);
- assert.equal(at("billyFinancialDetail").hidden,false);
- click("billyFinancialByVendor");
- assert.equal(at("billyFinancialExpenseGroups").hidden,false);
- const groups=at("billyFinancialExpenseGroups").children;
- assert.equal(groups.length,2);
- groups.find(group=>group.textContent.includes("Victor Hotel")).click();
  assert.equal(at("billyFinancialExpenseResults").hidden,false);
- assert.equal(at("billyFinancialVendor").value,"Victor Hotel");
+ assert.equal(at("billyFinancialLedger").children.length,3);
+ assert.equal(at("billyFinancialPageTitle").hidden,true);
+ assert.equal(at("billyFinancialSectionTitle").textContent,"Expenses");
+ assert.equal(at("billyFinancialSectionBack").backLabel.textContent,"Financial");
+ at("billyFinancialVendor").value="Victor Hotel";
+ at("billyFinancialVendor").listeners.change({target:{value:"Victor Hotel"}});
  assert.equal(at("billyFinancialLedger").children.length,2);
- assert.equal(window.BillyFinancial.back(),true);
- assert.equal(at("billyFinancialExpenseGroups").hidden,false);
- assert.equal(window.BillyFinancial.back(),true);
- assert.equal(at("billyFinancialExpensePaths").hidden,false);
+ at("billyFinancialAircraft").value="YR-WNT";
+ at("billyFinancialAircraft").listeners.change({target:{value:"YR-WNT"}});
+ assert.equal(at("billyFinancialLedger").children.length,1);
+ at("billyFinancialSearch").value="not found";
+ at("billyFinancialSearch").listeners.input({target:{value:"not found"}});
+ assert.match(at("billyFinancialLedger").textContent,/No expenses match these filters/);
  assert.equal(window.BillyFinancial.back(),true);
  assert.equal(at("billyFinancialLanding").hidden,false);
+ assert.equal(at("billyFinancialPageTitle").hidden,false);
  assert.equal(window.BillyFinancial.back(),false);
- click("billyFinancialExpensesNav");
- click("billyFinancialByAircraft");
- const aircraftGroups=at("billyFinancialExpenseGroups").children;
- aircraftGroups.find(group=>group.textContent.includes("Unassigned aircraft")).click();
- assert.equal(at("billyFinancialExpenseResults").hidden,false);
- assert.equal(at("billyFinancialLedger").children.length,1);
- assert.match(at("billyFinancialSectionTitle").textContent,/Unassigned aircraft/);
 });
-test("Payments drill down to linked/unmatched lists and keep open actions available",async()=>{
+test("Payments opens linked and unmatched evidence together without extra menu pages",async()=>{
  const {window,at,click}=mockApp(financialData);
  await window.BillyFinancial.refresh();
  click("billyFinancialPaymentsNav");
- assert.equal(at("billyFinancialPaymentPaths").hidden,false);
- click("billyFinancialLinkedPayments");
+ assert.equal(at("billyFinancialSectionTitle").textContent,"Payments");
  assert.equal(at("billyFinancialLinkedPanel").hidden,false);
- assert.equal(at("billyFinancialLinks").children.length,1);
- window.BillyFinancial.back();
- click("billyFinancialUnmatchedPayments");
  assert.equal(at("billyFinancialUnmatchedPanel").hidden,false);
+ assert.equal(at("billyFinancialLinks").children.length,1);
  assert.equal(at("billyFinancialUnmatchedList").children.length,1);
  assert.match(at("billyFinancialUnmatchedList").textContent,/Other merchant/);
+ assert.match(at("billyFinancialLinks").textContent,/Payment evidence linked/);
+ assert.equal(window.BillyFinancial.back(),true);
+ assert.equal(at("billyFinancialLanding").hidden,false);
 });
-test("Insights owns the only graph; attention appears only for real exceptions",async()=>{
+test("Attention still opens an audited correction editor and Insights keeps the chart",async()=>{
  const {window,at,click}=mockApp(financialData);
  await window.BillyFinancial.refresh();
- click("billyFinancialInsightsNav");
- assert.equal(at("billyFinancialInsightsSection").hidden,false);
- assert.equal(at("billyFinancialChart").children.length,5);
- assert.equal(at("billyFinancialInsightCurrency").value,"EUR");
- window.BillyFinancial.home();
  click("billyFinancialAttentionNav");
  assert.equal(at("billyFinancialAttentionSection").hidden,false);
  assert.equal(at("billyFinancialAttentionList").children.length,2);
- const attention=at("billyFinancialAttentionList").children[0];
- const review=attention.children[1].children.find(child=>child.textContent==="Review");
+ const review=at("billyFinancialAttentionList").children[0].children[1].children
+  .find(child=>child.textContent==="Review");
  review.click();
  assert.equal(at("billyFinancialReviewEditor").hidden,false);
- const data={...financialData,attention:[]};
- const empty=mockApp(data);
- await empty.window.BillyFinancial.refresh();
- assert.equal(empty.at("billyFinancialAttentionNav").hidden,true);
- assert.equal(empty.at("billyFinancialLanding").hidden,false);
+ window.BillyFinancial.back();
+ click("billyFinancialInsightsNav");
+ assert.equal(at("billyFinancialChart").children.length,5);
+ assert.equal(at("billyFinancialInsightCurrency").value,"EUR");
+ assert.match(html,/<details class="billy-financial-integrity"/);
+ assert.match(html,/<summary class="billy-financial-integrity-summary"/);
+ assert.doesNotMatch(html,/<details[^>]*\sopen(?:\s|>)/);
 });
-test("Financial navigation uses a single source of approved data, with no invented finance actions",()=>{
+test("Financial routes preserve one approved-data source and authenticated preview",()=>{
  for(const id of ["billyFinancialAttentionNav","billyFinancialExpensesNav",
-  "billyFinancialPaymentsNav","billyFinancialInsightsNav","billyFinancialByAircraft",
-  "billyFinancialByVendor","billyFinancialAllExpenses","billyFinancialLinkedPayments",
-  "billyFinancialUnmatchedPayments","billyFinancialInsightCurrency","billyFinancialSectionBack"]){
-   assert.equal(ids.filter(value=>value===id).length,1,"Missing or duplicated "+id);
+  "billyFinancialPaymentsNav","billyFinancialInsightsNav",
+  "billyFinancialExpenseResults","billyFinancialVendor","billyFinancialAircraft",
+  "billyFinancialPeriodFilter","billyFinancialSearch","billyFinancialSectionBack",
+  "billyFinancialLinkedPanel","billyFinancialUnmatchedPanel",
+  "billyFinancialIntegrityRefresh","billyFinancialPageTitle"]){
+  assert.equal(ids.filter(value=>value===id).length,1,id);
  }
- assert.ok(html.indexOf('id="billyFinancialLanding"')<
-   html.indexOf('id="billyFinancialDetail"'));
- assert.match(css,/\.billy-financial-landing\[hidden\]/);
+ for(const removed of ["billyFinancialExpensePaths","billyFinancialExpenseGroups",
+  "billyFinancialByAircraft","billyFinancialByVendor","billyFinancialAllExpenses",
+  "billyFinancialPaymentPaths","billyFinancialLinkedPayments","billyFinancialUnmatchedPayments"]){
+  assert.doesNotMatch(html,new RegExp(removed));
+  assert.doesNotMatch(app,new RegExp(removed));
+ }
  assert.match(app,/function renderExpenseLedger\(/);
  assert.match(app,/function renderFinancialAttention\(/);
  assert.match(app,/function renderUnmatchedPayments\(/);
- assert.match(app,/function chartBars\(/);
- assert.match(simple,/window\.BillyFinancial\?\.back\?\.\(\)/);
  assert.match(app,/\/api\/vision\/financial-review/);
+ assert.match(app,/\/api\/vision\/assistant-source/);
+ assert.match(app,/\/api\/vision\/financial/);
+ assert.match(simple,/window\.BillyFinancial\?\.back\?\.\(\)/);
  assert.doesNotMatch(app,/\.innerHTML\s*=/);
  assert.doesNotMatch(html,/billyFinancialMiniChart|billyFinancialMiniCurrency/);
 });
-
-test("Financial landing matches Uploaded Documents' large circular app navigation",()=>{
+test("Billy's large circular hub is preserved and PWA CSS/JS caches are refreshed",()=>{
  const archive=read("site/simple.css");
  assert.match(archive,/\.billy-hub-grid\{display:grid/);
- assert.match(archive,/\.billy-hub-circle\{[^}]*width:106px;height:106px/);
  assert.match(css,/\.billy-financial-landing > \.billy-financial-nav\{[^}]*display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
- assert.doesNotMatch(css,/\.billy-financial-landing > \.billy-financial-nav\{[^}]*display:flex/);
- assert.match(css,/\.billy-financial-landing \.billy-financial-nav-row\{[^}]*min-height:178px/);
- assert.match(css,/\.billy-financial-landing \.billy-financial-nav-row\{[^}]*flex-direction:column/);
  assert.match(css,/\.billy-financial-landing \.billy-financial-nav-icon\{[^}]*width:106px;height:106px/);
- assert.match(css,/\.billy-financial-landing \.billy-financial-nav-icon svg\{[^}]*width:42px;height:42px/);
- assert.match(css,/\.billy-financial-landing \.billy-financial-nav-copy\{[^}]*text-align:center/);
  assert.match(css,/\.billy-financial-landing \.billy-financial-nav-arrow\{display:none\}/);
- assert.match(html,/financial\.css\?v=1\.6\.1/);
- assert.match(read("site/sw.js"),/v112-financial-circle-grid/);
+ assert.match(css,/\.simple-financial > \.simple-heading\[hidden\]\{display:none!important\}/);
+ assert.match(html,/financial\.css\?v=1\.7\.0/);
+ assert.match(html,/financial\.js\?v=1\.7\.0/);
+ assert.match(read("site/sw.js"),/v113-financial-direct-workspaces/);
 });
