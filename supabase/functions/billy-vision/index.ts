@@ -2556,7 +2556,7 @@ function financialIntegrityReport(operations,proofs,activeLinks,audit,partial){
     financialMissing+unmatched);
   // Planned work is explicitly NOT validated by this release.
   add("cross_photo","Different-photo matching","not_tested",
-    "Cross-photo duplicate and invoice/payment matching is not implemented.");
+    "Unique separate-photo pairs can be proposed for operator confirmation; live coverage and accuracy are not yet independently validated.");
   add("partial_refund","Partial payments & refunds","not_tested",
     "Split payments, credit notes, refunds and bank reconciliation are not implemented.");
   const counts={pass:0,attention:0,fail:0,incomplete:0,not_tested:0};
@@ -2608,6 +2608,88 @@ async function financialEvidenceRows(principal){
   }
   return {rows,partial:true};
 }
+// Stage 3B.1: suggestions ONLY for two independent approved uploads.
+// No fuzzy matching, guessed vendors, model confidence or automatic links.
+// Both sides must be unique in the current complete financial snapshot.
+function crossPhotoCandidate(expense,payment){
+  if(!expense||!payment||expense.state!=="approved"||payment.state!=="approved"||
+     expense.parent_document_id||payment.parent_document_id||
+     financialProfile(payment)!=="payment_slip"||
+     ["fuel_release","payment_slip","supplier_statement","generic_document"]
+       .includes(financialProfile(expense)))return null;
+  const leftHash=String(expense.source_sha256||"").toLowerCase();
+  const rightHash=String(payment.source_sha256||"").toLowerCase();
+  if(!/^[a-f0-9]{64}$/.test(leftHash)||!/^[a-f0-9]{64}$/.test(rightHash)||
+     leftHash===rightHash)return null;
+  const expenseAmount=assistantMoney(expense),paymentAmount=assistantMoney(payment);
+  if(!expenseAmount||!paymentAmount||expenseAmount.minor<=0||
+     expenseAmount.minor!==paymentAmount.minor||
+     expenseAmount.currency!==paymentAmount.currency)return null;
+  const expenseDate=financialDay(expense),paymentDate=financialDay(payment);
+  if(!expenseDate||!paymentDate||expenseDate!==paymentDate)return null;
+  const vendor=vendorKey(assistantValue(expense,"vendor"));
+  if(!vendor||vendor!==vendorKey(assistantValue(payment,"vendor")))return null;
+  const outcome=financialTransactionStatus(payment);
+  if(outcome==="failed")return null;
+  return {
+    expense_document_id:expense.id,payment_document_id:payment.id,
+    owner_id:expense.created_by,vendor:assistantValue(expense,"vendor"),
+    expense_date:expenseDate,payment_date:paymentDate,
+    currency:expenseAmount.currency,amount_minor:expenseAmount.minor,
+    payment_result:outcome==="confirmed"?"confirmed":"unverified",
+    evidence:{version:"1.1",relation:"separate_uploads",same_photo:false,
+      source_hashes_different:true,vendor_exact:true,amount_equal:true,
+      currency_equal:true,date_equal:true,date:expenseDate,
+      unique_candidate:true,operator_confirmed_relation:true}
+  };
+}
+function crossPhotoSuggestions(expenses,payments,activeLinks,revokedLinks=[]){
+  const usedExpenses=new Set(activeLinks.map(row=>row.expense_document_id));
+  const usedPayments=new Set(activeLinks.map(row=>row.payment_document_id));
+  const revoked=new Set(revokedLinks.map(row=>
+    row.expense_document_id+"|"+row.payment_document_id));
+  const possible=[];
+  for(const expense of expenses){
+    if(usedExpenses.has(expense.id))continue;
+    for(const payment of payments){
+      if(usedPayments.has(payment.id))continue;
+      if(revoked.has(expense.id+"|"+payment.id))continue;
+      const proposal=crossPhotoCandidate(expense,payment);
+      if(proposal)possible.push(proposal);
+    }
+  }
+  const invoiceCounts=new Map(),paymentCounts=new Map();
+  for(const row of possible){
+    invoiceCounts.set(row.expense_document_id,
+      (invoiceCounts.get(row.expense_document_id)||0)+1);
+    paymentCounts.set(row.payment_document_id,
+      (paymentCounts.get(row.payment_document_id)||0)+1);
+  }
+  return possible.filter(row=>
+    invoiceCounts.get(row.expense_document_id)===1&&
+    paymentCounts.get(row.payment_document_id)===1);
+}
+async function crossPhotoSnapshot(principal){
+  const [{rows,partial},proofs,active,revoked]=await Promise.all([
+    assistantRows(principal),financialEvidenceRows(principal),
+    database(principal,"GET","billy_financial_links",{
+      select:"expense_document_id,payment_document_id",
+      organization_id:"eq."+principal.organization_id,state:"eq.active",limit:"500"
+    }),
+    database(principal,"GET","billy_financial_links",{
+      select:"expense_document_id,payment_document_id",
+      organization_id:"eq."+principal.organization_id,state:"eq.revoked",limit:"500"
+    })
+  ]);
+  if(partial||proofs.partial||active.length>=500||revoked.length>=500)
+    return {complete:false,suggestions:[]};
+  const today=assistantDay();
+  const canonical=financialOperations(rows,proofs.rows,active,today,principal.user_id);
+  if(canonical.records_truncated)return {complete:false,suggestions:[]};
+  return {complete:true,
+    suggestions:crossPhotoSuggestions(canonical.canonical,proofs.rows,active,revoked)};
+}
+
 async function financialReview(req,principal){
   let data;
   try{const raw=await req.text();if(raw.length>1100)throw Error("Too large");
@@ -2715,13 +2797,24 @@ async function financialLink(req,principal){
       !UUID_FORMAT.test(input.expense_document_id||"")||
       !UUID_FORMAT.test(input.payment_document_id||""))
     return error("Invalid financial document references.",400);
-  const proposal=await financialSuggestion(principal,input.expense_document_id);
-  if(!proposal||proposal.expense_document_id!==input.expense_document_id||
-     proposal.payment_document_id!==input.payment_document_id)
-    return error("No unique, verifiable payment match is available.",409);
+  const samePhoto=await financialSuggestion(principal,input.expense_document_id);
+  let proposal=null;
+  if(samePhoto&&samePhoto.expense_document_id===input.expense_document_id&&
+     samePhoto.payment_document_id===input.payment_document_id){
+    proposal={expense_document_id:samePhoto.expense_document_id,
+      payment_document_id:samePhoto.payment_document_id,owner_id:samePhoto.owner_id,
+      ...samePhoto.proof};
+  }else{
+    // Recompute on the server immediately before linking. An old UI suggestion
+    // is not authorization; missing/ambiguous/revoked pairs fail closed.
+    const snapshot=await crossPhotoSnapshot(principal);
+    if(snapshot.complete)proposal=snapshot.suggestions.find(row=>
+      row.expense_document_id===input.expense_document_id&&
+      row.payment_document_id===input.payment_document_id)||null;
+  }
+  if(!proposal)return error("No unique, verifiable payment match is available.",409);
   if(proposal.owner_id!==principal.user_id)
     return error("Only the uploading operator may link this payment.",403);
-  const proof=proposal.proof;
   const rows=await database(principal,"POST","billy_financial_links",{
     select:"id"
   },{
@@ -2729,9 +2822,9 @@ async function financialLink(req,principal){
     expense_document_id:proposal.expense_document_id,
     payment_document_id:proposal.payment_document_id,
     state:"active",match_method:"operator_verified",
-    payment_result:proof.payment_result,
-    currency:proof.currency,amount_minor:proof.amount_minor,
-    evidence:{...proof.evidence,operator_confirmed_relation:true}
+    payment_result:proposal.payment_result,
+    currency:proposal.currency,amount_minor:proposal.amount_minor,
+    evidence:{...proposal.evidence,operator_confirmed_relation:true}
   });
   if(rows.length!==1)return error("Payment link could not be saved.",409);
   return json({linked:true,link_id:rows[0].id});
@@ -2761,11 +2854,20 @@ async function financialGet(principal,req){
     order:"created_at.desc",limit:"100"
   });
   const ops=financialOperations(rows,proofs.rows,links,today,principal.user_id);
+  const incomplete=partial||proofs.partial||links.length>=100||ops.records_truncated;
+  const revoked=incomplete?[]:await database(principal,"GET","billy_financial_links",{
+    select:"expense_document_id,payment_document_id",
+    organization_id:"eq."+principal.organization_id,state:"eq.revoked",limit:"500"
+  });
+  const matchSuggestions=incomplete||revoked.length>=500?[]:
+    crossPhotoSuggestions(ops.canonical,proofs.rows,links,revoked)
+      .filter(row=>row.owner_id===principal.user_id).slice(0,50)
+      .map(({owner_id,payment_result,evidence,...publicSuggestion})=>publicSuggestion);
   const audit=await financialAuditEvents(principal,ops.canonical);
   const integrity=financialIntegrityReport(ops,proofs.rows,links,audit,
-    partial||proofs.partial||links.length>=100||ops.records_truncated);
+    incomplete);
   return json({trend:ops.trend,ledger:ops.ledger,attention:ops.attention,
-    operational_counts:ops.counts,integrity,
+    operational_counts:ops.counts,integrity,match_suggestions:matchSuggestions,
     linked_payments:links,counts:{
       linked:links.length,confirmed:links.filter(x=>x.payment_result==="confirmed").length,
       unverified:links.filter(x=>x.payment_result!=="confirmed").length
