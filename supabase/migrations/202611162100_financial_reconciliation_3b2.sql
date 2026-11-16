@@ -118,6 +118,9 @@ begin
     select sum(amount_minor) from public.billy_financial_links
     where organization_id=new.organization_id and expense_document_id=new.expense_document_id
       and state='active'),0);
+  if new.method='on_account' and used_amount>=expected_amount then
+    raise exception 'A fully covered invoice cannot be marked on account';
+  end if;
   if used_amount+new.amount_minor>expected_amount then
     raise exception 'Allocated payments exceed the approved invoice amount';
   end if;
