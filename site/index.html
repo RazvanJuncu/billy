@@ -21,7 +21,7 @@
   <link rel="stylesheet" href="./accounts.css?v=0.7.0">
   <link rel="stylesheet" href="./document-type.css?v=0.6.0">
   <link rel="stylesheet" href="./simple.css?v=2.4.9">
-  <link rel="stylesheet" href="./financial.css?v=1.6.1">
+  <link rel="stylesheet" href="./financial.css?v=1.7.0">
   <link rel="stylesheet" href="./nested-mitosis.css?v=0.3.0">
   <link rel="stylesheet" href="./intelligence-assistant.css?v=0.3.4">
   <link rel="stylesheet" href="./multi-documents.css?v=1.0.0">
@@ -52,7 +52,7 @@
   <script src="./documents-index.js?v=1.9.1" defer></script>
   <script src="./original-archive.js?v=1.1.0" defer></script>
   <script src="./document-preview.js?v=1.5.2" defer></script>
-  <script src="./financial.js?v=1.4.0" defer></script>
+  <script src="./financial.js?v=1.7.0" defer></script>
   <script src="./simple.js?v=2.2.4" defer></script>
   <script src="./piggybank-hud.js?v=1.0.0" defer></script>
   <script src="./intelligence-assistant.js?v=0.3.0" defer></script>
@@ -247,7 +247,7 @@
         </section>
 
         <section class="simple-financial simple-screen" id="simpleFinancial" aria-label="Financial" hidden>
-          <h1 class="simple-heading">Financial</h1>
+          <h1 id="billyFinancialPageTitle" class="simple-heading">Financial</h1>
           <div id="billyFinancialLanding" class="billy-financial-landing">
             <div class="billy-financial-summary">
               <div class="billy-financial-dash-top">
@@ -299,28 +299,12 @@
             <h2 id="billyFinancialSectionTitle" class="billy-financial-detail-title"></h2>
             <section class="billy-financial-section" id="billyFinancialAttentionSection" aria-label="Financial attention" hidden>
               <div class="billy-financial-section-head">
-                <h3>Needs attention <span id="billyFinancialAttentionCount"></span></h3>
-                <span class="billy-financial-section-sub">Only exceptions that need a decision</span>
+                <span class="billy-financial-section-sub"><strong id="billyFinancialAttentionCount">0</strong> documents need review</span>
               </div>
               <div id="billyFinancialAttentionList" class="billy-financial-attention-list"></div>
               <div id="billyFinancialReviewEditor" class="billy-financial-review-editor" hidden></div>
             </section>
             <section class="billy-financial-section" id="billyFinancialExpensesSection" aria-label="Expenses" hidden>
-              <div id="billyFinancialExpensePaths" class="billy-financial-subnav">
-                <button id="billyFinancialByAircraft" class="billy-financial-nav-row" type="button">
-                  <span class="billy-financial-nav-copy"><strong>By aircraft</strong><small>Explore expenses by registration</small></span>
-                  <span class="billy-financial-nav-arrow" aria-hidden="true">›</span>
-                </button>
-                <button id="billyFinancialByVendor" class="billy-financial-nav-row" type="button">
-                  <span class="billy-financial-nav-copy"><strong>By vendor</strong><small>Browse expenses by supplier</small></span>
-                  <span class="billy-financial-nav-arrow" aria-hidden="true">›</span>
-                </button>
-                <button id="billyFinancialAllExpenses" class="billy-financial-nav-row" type="button">
-                  <span class="billy-financial-nav-copy"><strong>All expenses</strong><small>Search and filter the complete ledger</small></span>
-                  <span class="billy-financial-nav-arrow" aria-hidden="true">›</span>
-                </button>
-              </div>
-              <div id="billyFinancialExpenseGroups" class="billy-financial-subnav" hidden></div>
               <div id="billyFinancialExpenseResults" hidden>
                 <div class="billy-financial-section-head">
                   <span id="billyFinancialLedgerCount" class="billy-financial-section-sub">Approved records</span>
@@ -340,22 +324,18 @@
               </div>
             </section>
             <section class="billy-financial-section" id="billyFinancialPaymentsSection" aria-label="Payments" hidden>
-              <div id="billyFinancialPaymentPaths" class="billy-financial-subnav">
-                <button id="billyFinancialLinkedPayments" class="billy-financial-nav-row" type="button">
-                  <span class="billy-financial-nav-copy"><strong>Linked payments</strong>
-                    <small id="billyFinancialLinksCaption">Payment evidence associated with expenses</small></span>
-                  <span class="billy-financial-nav-arrow" aria-hidden="true">›</span>
-                </button>
-                <button id="billyFinancialUnmatchedPayments" class="billy-financial-nav-row" type="button">
-                  <span class="billy-financial-nav-copy"><strong>Unmatched payment slips</strong>
-                    <small id="billyFinancialUnmatchedCaption">Payments requiring reconciliation</small></span>
-                  <span class="billy-financial-nav-arrow" aria-hidden="true">›</span>
-                </button>
-              </div>
-              <div id="billyFinancialLinkedPanel" class="billy-financial-links" hidden>
+              <div id="billyFinancialLinkedPanel" class="billy-financial-payment-panel" hidden>
+                <div class="billy-financial-section-head">
+                  <h3>Linked payment evidence</h3>
+                  <span id="billyFinancialLinksCaption" class="billy-financial-section-sub">Linked receipts</span>
+                </div>
                 <div id="billyFinancialLinks" class="billy-financial-links"></div>
               </div>
-              <div id="billyFinancialUnmatchedPanel" hidden>
+              <div id="billyFinancialUnmatchedPanel" class="billy-financial-payment-panel" hidden>
+                <div class="billy-financial-section-head">
+                  <h3>Unmatched payment slips</h3>
+                  <span id="billyFinancialUnmatchedCaption" class="billy-financial-section-sub">Receipts without an associated expense</span>
+                </div>
                 <div id="billyFinancialUnmatchedList" class="billy-financial-attention-list"></div>
               </div>
             </section>
@@ -369,19 +349,23 @@
               <div class="billy-financial-full-chart" id="billyFinancialChart" role="img" aria-label="Weekly approved expenses"></div>
               <p class="billy-financial-disclaimer">Approved document amounts only. Payment slips are not new expenses.
                 Invoice dates are used when service dates are unavailable. Currencies are never combined.</p>
-              <div class="billy-financial-integrity" aria-label="Financial integrity checks">
-                <div class="billy-financial-integrity-head">
-                  <div>
-                    <h3>Integrity checks</h3>
-                    <p id="billyFinancialIntegritySummary" role="status">Not checked</p>
+              <details class="billy-financial-integrity" aria-label="Financial integrity checks">
+                <summary class="billy-financial-integrity-summary">
+                  <span class="billy-financial-integrity-head">
+                    <strong>Integrity checks</strong>
+                    <span id="billyFinancialIntegritySummary" role="status">Not checked</span>
+                  </span>
+                </summary>
+                <div class="billy-financial-integrity-body">
+                  <div class="billy-financial-integrity-controls">
+                    <button id="billyFinancialIntegrityRefresh" class="billy-financial-subtle"
+                      type="button">Recheck</button>
                   </div>
-                  <button id="billyFinancialIntegrityRefresh" class="billy-financial-subtle"
-                    type="button">Recheck</button>
+                  <div id="billyFinancialIntegrityChecks" class="billy-financial-integrity-checks"></div>
+                  <p class="billy-financial-integrity-note">Read-only checks on approved documents.
+                    Not a substitute for accounting approval. Unimplemented workflows are shown as not tested.</p>
                 </div>
-                <div id="billyFinancialIntegrityChecks" class="billy-financial-integrity-checks"></div>
-                <p class="billy-financial-integrity-note">Read-only checks on approved documents.
-                  Not a substitute for accounting approval. Unimplemented workflows are shown as not tested.</p>
-              </div>
+              </details>
             </section>
             <p id="billyFinancialCoverage" class="billy-financial-coverage" hidden></p>
           </div>
