@@ -2558,7 +2558,7 @@ function financialIntegrityReport(operations,proofs,activeLinks,audit,partial){
   add("cross_photo","Different-photo matching","not_tested",
     "Unique separate-photo pairs can be proposed for operator confirmation; live coverage and accuracy are not yet independently validated.");
   add("partial_refund","Partial payments & refunds","not_tested",
-    "Split payments, credit notes, refunds and bank reconciliation are not implemented.");
+    "Operator-reported partial allocations are supported; refunds, credit notes, bank feeds and independently confirmed settlements remain unverified.");
   const counts={pass:0,attention:0,fail:0,incomplete:0,not_tested:0};
   for(const item of checks)counts[item.status]++;
   const status=counts.fail?"investigate":
@@ -2829,6 +2829,122 @@ async function financialLink(req,principal){
   if(rows.length!==1)return error("Payment link could not be saved.",409);
   return json({linked:true,link_id:rows[0].id});
 }
+// Financial Reconciliation 3B.2. Coverage is evidence, not an accounting assertion.
+// POS links and operator-reported methods contribute to coverage; an account flag is unpaid.
+function financialCoverage(ledger,links,allocations){
+  const byExpenseLinks=new Map(),byExpenseManual=new Map();
+  for(const link of links){
+    if(!byExpenseLinks.has(link.expense_document_id))byExpenseLinks.set(link.expense_document_id,[]);
+    byExpenseLinks.get(link.expense_document_id).push(link);
+  }
+  for(const allocation of allocations){
+    if(allocation.state!=="active")continue;
+    if(!byExpenseManual.has(allocation.expense_document_id))
+      byExpenseManual.set(allocation.expense_document_id,[]);
+    byExpenseManual.get(allocation.expense_document_id).push(allocation);
+  }
+  return ledger.map(expense=>{
+    const proof=byExpenseLinks.get(expense.id)||[];
+    const reported=byExpenseManual.get(expense.id)||[];
+    const proof_minor=proof.reduce((sum,row)=>sum+Number(row.amount_minor||0),0);
+    const confirmed_proof_minor=proof.reduce((sum,row)=>
+      sum+(row.payment_result==="confirmed"?Number(row.amount_minor||0):0),0);
+    const reported_minor=reported.reduce((sum,row)=>
+      sum+(row.method==="on_account"?0:Number(row.amount_minor||0)),0);
+    const amount=Number.isSafeInteger(expense.amount_minor)&&expense.amount_minor>0?
+      expense.amount_minor:null;
+    const covered=proof_minor+reported_minor;
+    const remaining_minor=amount===null?null:Math.max(0,amount-covered);
+    const on_account=reported.some(row=>row.method==="on_account");
+    const status=amount===null?"missing_amount":
+      covered>amount?"overallocated":
+      remaining_minor===0?
+        (reported_minor>0||confirmed_proof_minor!==proof_minor?
+          "covered_reported":"covered_by_confirmed_pos"):
+      covered>0?"partial":on_account?"on_account":"unclassified";
+    return {expense_document_id:expense.id,vendor:expense.vendor,
+      amount_minor:amount,currency:expense.currency,
+      proof_minor,confirmed_proof_minor,reported_minor,
+      covered_minor:covered,remaining_minor,on_account,status,
+      can_review:expense.can_review,
+      allocations:reported.map(row=>({
+        id:row.id,method:row.method,amount_minor:row.amount_minor,
+        currency:row.currency,created_at:row.created_at,
+        can_revoke:row.created_by===expense.viewer_id || expense.can_review
+      }))
+    };
+  });
+}
+async function financialAllocate(req,principal){
+  let input;
+  try{
+    const raw=await req.text();
+    if(raw.length>500)throw Error("Oversized allocation");
+    input=JSON.parse(raw);
+  }catch{return error("Invalid financial allocation request.",400);}
+  if(!input||typeof input!=="object"||Array.isArray(input)||
+     Object.keys(input).sort().join(",")!=="amount_minor,expense_document_id,method"||
+     !UUID_FORMAT.test(input.expense_document_id||"")||
+     !["bank_transfer","cash","other","on_account"].includes(input.method)||
+     !Number.isSafeInteger(input.amount_minor)||
+     input.amount_minor<0||input.amount_minor>1000000000000||
+     (input.method==="on_account" ? input.amount_minor!==0 : input.amount_minor===0))
+    return error("Invalid payment method or allocation amount.",400);
+  const owned=await database(principal,"GET","document_records",{
+    select:"id,created_by,state,parent_document_id,reviewed_data,review_metadata",
+    id:"eq."+input.expense_document_id,organization_id:"eq."+principal.organization_id,limit:"1"
+  });
+  const document=owned[0];
+  if(!document||document.created_by!==principal.user_id||
+     document.state!=="approved"||document.parent_document_id||
+     ["fuel_release","payment_slip","supplier_statement","generic_document"].includes(financialProfile(document)))
+    return error("Only the approved expense owner can reconcile this invoice.",403);
+  const money=assistantMoney(document);
+  if(!money||money.minor<=0)return error("Verify invoice amount and currency first.",409);
+  try{
+    const created=await database(principal,"POST","billy_financial_allocations",{
+      select:"id"
+    },{
+      organization_id:principal.organization_id,expense_document_id:document.id,
+      created_by:principal.user_id,method:input.method,
+      amount_minor:input.amount_minor,currency:money.currency,state:"active"
+    });
+    if(created.length!==1)return error("Allocation could not be saved.",409);
+    return json({saved:true,allocation_id:created[0].id});
+  }catch{
+    return error("Allocation conflicts with existing payment evidence or invoice balance. Refresh and review.",409);
+  }
+}
+async function financialRevokeAllocation(req,principal){
+  let input;
+  try{
+    const raw=await req.text();if(raw.length>250)throw Error("Oversized");
+    input=JSON.parse(raw);
+  }catch{return error("Invalid revocation request.",400);}
+  if(!input||typeof input!=="object"||Array.isArray(input)||
+     Object.keys(input).length!==1||!UUID_FORMAT.test(input.allocation_id||""))
+    return error("Invalid allocation reference.",400);
+  const current=await database(principal,"GET","billy_financial_allocations",{
+    select:"id,expense_document_id,created_by,state",
+    id:"eq."+input.allocation_id,organization_id:"eq."+principal.organization_id,
+    state:"eq.active",limit:"1"
+  });
+  if(current.length!==1)return error("Allocation unavailable or already revoked.",404);
+  const own=await database(principal,"GET","document_records",{
+    select:"id,created_by",id:"eq."+current[0].expense_document_id,
+    organization_id:"eq."+principal.organization_id,limit:"1"
+  });
+  if(own.length!==1||own[0].created_by!==principal.user_id||
+     current[0].created_by!==principal.user_id)
+    return error("Only the expense owner can revoke a reported allocation.",403);
+  const updated=await database(principal,"PATCH","billy_financial_allocations",{
+    select:"id",id:"eq."+input.allocation_id,
+    organization_id:"eq."+principal.organization_id,state:"eq.active"
+  },{state:"revoked",revoked_by:principal.user_id});
+  if(updated.length!==1)return error("Allocation changed; refresh and retry.",409);
+  return json({revoked:true,allocation_id:updated[0].id});
+}
+
 async function financialGet(principal,req){
   const id=new URL(req.url).searchParams.get("record_id");
   if(id!==null){
@@ -2863,15 +2979,30 @@ async function financialGet(principal,req){
     crossPhotoSuggestions(ops.canonical,proofs.rows,links,revoked)
       .filter(row=>row.owner_id===principal.user_id).slice(0,50)
       .map(({owner_id,payment_result,evidence,...publicSuggestion})=>publicSuggestion);
+  const allocations=await database(principal,"GET","billy_financial_allocations",{
+    select:"id,expense_document_id,created_by,method,amount_minor,currency,state,created_at",
+    organization_id:"eq."+principal.organization_id,state:"eq.active",
+    order:"created_at.desc",limit:"500"
+  });
+  const reconciliation=financialCoverage(ops.ledger,links,allocations);
+  const allocationsPartial=allocations.length>=500;
+  // Never suggest a duplicate POS association that would exceed a previously
+  // reported transfer/cash settlement. The DB also prevents this on write.
+  const available=new Map(reconciliation.map(row=>[row.expense_document_id,row]));
+  const safeSuggestions=matchSuggestions.filter(row=>{
+    const target=available.get(row.expense_document_id);
+    return target && target.remaining_minor!==null &&
+      target.remaining_minor>=row.amount_minor;
+  });
   const audit=await financialAuditEvents(principal,ops.canonical);
   const integrity=financialIntegrityReport(ops,proofs.rows,links,audit,
-    incomplete);
+    incomplete||allocationsPartial);
   return json({trend:ops.trend,ledger:ops.ledger,attention:ops.attention,
-    operational_counts:ops.counts,integrity,match_suggestions:matchSuggestions,
-    linked_payments:links,counts:{
+    operational_counts:ops.counts,integrity,match_suggestions:safeSuggestions,
+    reconciliation,linked_payments:links,counts:{
       linked:links.length,confirmed:links.filter(x=>x.payment_result==="confirmed").length,
       unverified:links.filter(x=>x.payment_result!=="confirmed").length
-    },partial:partial||proofs.partial||links.length>=100||ops.records_truncated});
+    },partial:partial||proofs.partial||links.length>=100||ops.records_truncated||allocationsPartial});
 }
 async function financialUnlink(req,principal){
   let input;
@@ -3508,16 +3639,18 @@ Deno.serve(async req=>{
   const path=new URL(req.url).pathname;
   // Supabase may present the public path, function-local path, or a slug-prefixed path.
   // Match only known routes regardless of which valid prefix the edge runtime preserves.
-  const routes=["/api/vision/financial","/api/vision/financial-review","/api/vision/financial-link","/api/vision/financial-unlink","/api/vision/health","/api/vision/extract","/api/vision/recheck","/api/vision/approve","/api/vision/records","/api/vision/delete","/api/vision/original","/api/vision/document-map","/api/vision/organization","/api/vision/assistant","/api/vision/assistant-source"];
+  const routes=["/api/vision/financial","/api/vision/financial-allocation","/api/vision/financial-allocation-revoke","/api/vision/financial-review","/api/vision/financial-link","/api/vision/financial-unlink","/api/vision/health","/api/vision/extract","/api/vision/recheck","/api/vision/approve","/api/vision/records","/api/vision/delete","/api/vision/original","/api/vision/document-map","/api/vision/organization","/api/vision/assistant","/api/vision/assistant-source"];
   const suffix=routes.find(route=>path===route||path.endsWith("/billy-vision"+route));
   if(!suffix)return error("Not found.",404);
-  if(req.method!==(suffix==="/api/vision/financial-review"||suffix==="/api/vision/financial-link"||suffix==="/api/vision/financial-unlink"||suffix==="/api/vision/document-map"||suffix==="/api/vision/extract"||suffix==="/api/vision/recheck"||suffix==="/api/vision/approve"||suffix==="/api/vision/organization"&&req.method==="POST"||suffix==="/api/vision/assistant"||suffix==="/api/vision/delete"||suffix==="/api/vision/original"&&req.method==="POST"?"POST":"GET"))return error("Method not allowed.",405);
+  if(req.method!==(suffix==="/api/vision/financial-allocation"||suffix==="/api/vision/financial-allocation-revoke"||suffix==="/api/vision/financial-review"||suffix==="/api/vision/financial-link"||suffix==="/api/vision/financial-unlink"||suffix==="/api/vision/document-map"||suffix==="/api/vision/extract"||suffix==="/api/vision/recheck"||suffix==="/api/vision/approve"||suffix==="/api/vision/organization"&&req.method==="POST"||suffix==="/api/vision/assistant"||suffix==="/api/vision/delete"||suffix==="/api/vision/original"&&req.method==="POST"?"POST":"GET"))return error("Method not allowed.",405);
   try{
     const authStarted=(typeof performance==="undefined"?Date.now():performance.now());
     const principal=await trusted(req);
     const authenticationMs=(typeof performance==="undefined"?Date.now():performance.now())-authStarted;
     if(!principal)return error("Sign in to an approved Billy team first.",401);
     if(suffix==="/api/vision/financial")return financialGet(principal,req);
+    if(suffix==="/api/vision/financial-allocation")return financialAllocate(req,principal);
+    if(suffix==="/api/vision/financial-allocation-revoke")return financialRevokeAllocation(req,principal);
     if(suffix==="/api/vision/financial-review")return financialReview(req,principal);
     if(suffix==="/api/vision/financial-link")return financialLink(req,principal);
     if(suffix==="/api/vision/financial-unlink")return financialUnlink(req,principal);
