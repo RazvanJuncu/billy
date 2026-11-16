@@ -36,11 +36,13 @@ function mount(){
     canonicalDate:raw=>({status:"ok",value:raw}),
     assistantRecordDate:r=>({date:r.review_metadata?.normalization?.approved?.values?.issue_date}),
     assistantValue:(r,k)=>k==="vendor"?r.reviewed_data.supplier_name:"",
+    vendorKey:raw=>String(raw||"").trim().toUpperCase(),
     database:async()=>{throw Error("No fake DB installed");},
   };
   vm.runInNewContext(source.slice(start,end)+
     "\nthis.match=samePhotoCandidate;this.reconcile=reconcileSamePhoto;"+
-    "this.trend=financialTrend;this.status=financialTransactionStatus;",sandbox);
+    "this.trend=financialTrend;this.status=financialTransactionStatus;"+
+    "this.crossCandidate=crossPhotoCandidate;this.crossSuggestions=crossPhotoSuggestions;",sandbox);
   return sandbox;
 }
 test("P0 Payment Slip 1.1 extracts only masked last four, transaction status and reference",()=>{
@@ -174,4 +176,83 @@ test("Financial UI shows only approved backend money and permits evidence open/u
   assert.match(preview,/verified\?"Paid":"Payment linked"/);
   assert.match(preview,/Open slip/);
   assert.match(preview,/Link payment/);
+});
+
+test("Stage 3B.1 matches independent uploads only with exact monetary, date and vendor evidence",()=>{
+  const x=mount();
+  const invoice=record(INVOICE,"handling_invoice");
+  const slip=record(PAYMENT,"payment_slip");
+  slip.source_sha256="b".repeat(64);
+  const match=x.crossCandidate(invoice,slip);
+  assert.ok(match);
+  assert.equal(match.evidence.same_photo,false);
+  assert.equal(match.evidence.unique_candidate,true);
+  assert.equal(match.payment_result,"unverified");
+  assert.equal(match.currency,"EUR");
+  assert.equal(match.amount_minor,36720);
+  assert.equal(match.owner_id,"operator-1");
+  assert.equal(match.evidence.operator_confirmed_relation,true);
+  assert.equal(x.crossCandidate(invoice,{...slip,source_sha256:invoice.source_sha256}),null,
+    "Copies of a photo cannot masquerade as separate sources");
+  assert.equal(x.crossCandidate(invoice,{...slip,parent_document_id:INVOICE}),null);
+  const wrongDate=record(PAYMENT,"payment_slip","367.20","EUR","2026-11-10");
+  wrongDate.source_sha256="b".repeat(64);
+  assert.equal(x.crossCandidate(invoice,wrongDate),null);
+  const wrongVendor=record(PAYMENT,"payment_slip");
+  wrongVendor.source_sha256="b".repeat(64);
+  wrongVendor.reviewed_data.supplier_name="Another vendor";
+  assert.equal(x.crossCandidate(invoice,wrongVendor),null);
+  const wrongMoney=record(PAYMENT,"payment_slip","367.21");
+  wrongMoney.source_sha256="b".repeat(64);
+  assert.equal(x.crossCandidate(invoice,wrongMoney),null);
+  const failed=record(PAYMENT,"payment_slip");
+  failed.source_sha256="b".repeat(64);
+  failed.reviewed_data.transaction_status="DECLINED";
+  assert.equal(x.crossCandidate(invoice,failed),null);
+});
+test("Cross-photo matcher rejects ambiguous invoices, duplicated slips, active links and revoked pairs",()=>{
+  const x=mount();
+  const invoice=record(INVOICE,"handling_invoice");
+  const slip=record(PAYMENT,"payment_slip");
+  slip.source_sha256="b".repeat(64);
+  assert.equal(x.crossSuggestions([invoice],[slip],[]).length,1);
+  assert.equal(x.crossSuggestions([invoice],[slip],
+    [{expense_document_id:INVOICE,payment_document_id:PAYMENT}]).length,0);
+  assert.equal(x.crossSuggestions([invoice],[slip],[],
+    [{expense_document_id:INVOICE,payment_document_id:PAYMENT}]).length,0);
+  const copyInvoice=record(id("d"),"handling_invoice");
+  copyInvoice.source_sha256="d".repeat(64);
+  const copySlip=record(PAYMENT2,"payment_slip");
+  copySlip.source_sha256="c".repeat(64);
+  assert.equal(x.crossSuggestions([invoice,copyInvoice],[slip],[]).length,0,
+    "One POS cannot be silently assigned to one of two plausible invoices");
+  assert.equal(x.crossSuggestions([invoice],[slip,copySlip],[]).length,0,
+    "Two plausible slips cannot both be attached to one invoice");
+  slip.reviewed_data.transaction_status="Approved";
+  assert.equal(x.crossCandidate(invoice,slip).payment_result,"confirmed");
+});
+test("Cross-photo matching exposes operator-only suggestions and no automatic creation endpoint",()=>{
+  const backend=read("supabase/functions/billy-vision/index.ts");
+  assert.match(backend,/match_suggestions:matchSuggestions/);
+  assert.match(backend,/\.filter\(row=>row\.owner_id===principal\.user_id\)/);
+  assert.match(backend,/const snapshot=await crossPhotoSnapshot\(principal\)/);
+  assert.match(backend,/if\(!proposal\)return error\("No unique, verifiable payment match/);
+  assert.match(backend,/Only the uploading operator may link this payment/);
+  assert.match(backend,/match_method:"operator_verified"/);
+  assert.match(backend,/state:"eq.revoked"/);
+  assert.doesNotMatch(backend,/autoLinkCrossPhoto\(/);
+});
+test("Billy Payments presents inline pair evidence, source previews and explicit confirm",()=>{
+  const finance=read("site/financial.js");
+  const css=read("site/financial.css");
+  assert.match(finance,/function renderUnmatchedPayments\(/);
+  assert.match(finance,/Potential invoice/);
+  assert.match(finance,/Review match/);
+  assert.match(finance,/View invoice/);
+  assert.match(finance,/View slip/);
+  assert.match(finance,/window\.confirm\("Associate this POS slip/);
+  assert.match(finance,/\/api\/vision\/financial-link/);
+  assert.match(finance,/await refresh\(\)/);
+  assert.match(css,/\.billy-financial-proposal\{/);
+  assert.match(read("site/index.html"),/financial\.js\?v=1\.8\.0/);
 });

@@ -115,6 +115,25 @@ html[data-billy-mobile="1"] body.billy-functions-revealed .simple-home .simple-q
 .billy-preview-financial-action:disabled{opacity:.5;cursor:wait}
 .billy-preview-financial-unavailable{font-size:11px;color:#acb2b6}
 
+/* Cross-photo evidence is an inline review, never another navigation level. */
+.billy-financial-match-hint{color:#cad0d2!important}
+.billy-financial-proposal{
+  grid-column:1/-1;display:flex;flex-direction:column;gap:9px;
+  border-top:1px solid #414548;padding:12px 0 2px;min-width:0;
+}
+.billy-financial-proposal p{
+  margin:0;color:#cbd0d3;font-size:11px;line-height:1.55;
+}
+.billy-financial-proposal p + p{color:#929a9f}
+.billy-financial-proposal-actions{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+.billy-financial-match-confirm{
+  border:0!important;border-radius:7px!important;min-height:32px;
+  background:#e5e7e8!important;color:#16191b!important;
+  padding:7px 11px!important;font-size:11px!important;font-weight:650;cursor:pointer;
+}
+.billy-financial-match-confirm:disabled{opacity:.5;cursor:default}
+.billy-financial-match-feedback{color:#cfd4d7!important;min-height:0}
+
 /* Financial Operations P1.1 / P1.2. Focus on actionable records, not decorative KPI tiles. */
 .billy-financial-section{
   background:#1b1d1f;border-radius:16px;padding:22px 25px;
