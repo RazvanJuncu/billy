@@ -11,13 +11,14 @@
     {registration:"YR-NKA",model:"Cirrus SF50",photo:null},
     {registration:"YR-BIG",model:"Raytheon Beechjet 400A",photo:null}
   ];
-  const views=["All","Aircraft","Services","Airports","Vendors"];
+  const views=["All","Aircraft","Services","Airports","Vendors","Flights"];
   const glyphs={
     All:["M8 3h11a2 2 0 0 1 2 2v12","M5 7h11a2 2 0 0 1 2 2v11H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z","M7 12h7","M7 16h7"],
     Aircraft:["M12 2l3 8 7 4v3l-9-3v5l3 2v2l-4-1-4 1v-2l3-2v-5l-9 3v-3l7-4z"],
     Services:["M3 7l9-4 9 4-9 4z","M3 12l9 4 9-4","M3 17l9 4 9-4"],
     Airports:["M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0z","M12 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"],
-    Vendors:["M20.6 13.1l-7.5 7.5a2 2 0 0 1-2.8 0L3 13.3V4h9.3l8.3 8.3a1 1 0 0 1 0 .8z","M8 8h.01"]
+    Vendors:["M20.6 13.1l-7.5 7.5a2 2 0 0 1-2.8 0L3 13.3V4h9.3l8.3 8.3a1 1 0 0 1 0 .8z","M8 8h.01"],
+    Flights:["M4 4h16v4a3 3 0 0 0 0 6v6H4v-6a3 3 0 0 0 0-6V4z","M12 4v3","M12 10v4","M12 17v3"]
   };
   const make=(tag,cls,content)=>{
     const node=document.createElement(tag);

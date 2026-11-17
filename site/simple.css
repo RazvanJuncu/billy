@@ -1407,3 +1407,20 @@ body[data-billy-screen="uploaded"] #simpleUploaded .billy-hub-symbol{
   background:#474b4f!important;
 }
 @media(max-width:500px){.billy-preview-duplicate{flex-wrap:wrap}.billy-preview-duplicate-open{margin-left:38px}}
+
+/* Flights archive: evidence-only grouping, aircraft filter and quiet route detail. */
+#simpleUploaded .billy-doc-flight-aircraft{
+  flex:0 1 195px;min-width:145px;min-height:45px;padding:0 33px 0 13px;
+  background:#222426!important;color:#f2f2f2!important;border:0!important;
+  border-radius:10px!important;font:inherit;font-size:12px!important;cursor:pointer;
+}
+#simpleUploaded .billy-doc-flight-aircraft[hidden]{display:none!important}
+#simpleUploaded .billy-doc-flight-aircraft:focus-visible{outline:2px solid #85888b;outline-offset:2px}
+#simpleUploaded .billy-doc-flight-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:4px;text-align:left}
+#simpleUploaded .billy-doc-flight-copy strong{font-size:13px;font-weight:640;color:#f0f0f0;overflow-wrap:anywhere}
+#simpleUploaded .billy-doc-flight-copy small{font-size:11px;color:#aeb1b5;font-weight:450;letter-spacing:0;overflow-wrap:anywhere}
+@media(max-width:600px){
+  #simpleUploaded[data-billy-doc-view="Flights"] .billy-doc-tools{flex-wrap:wrap}
+  #simpleUploaded[data-billy-doc-view="Flights"] .billy-doc-search{flex:1 1 calc(100% - 57px)}
+  #simpleUploaded[data-billy-doc-view="Flights"] .billy-doc-flight-aircraft{flex:1 1 100%;order:3}
+}

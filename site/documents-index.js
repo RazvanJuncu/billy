@@ -38,19 +38,47 @@
     }
     return svg;
   }
-  const modes=["All","Aircraft","Services","Airports","Vendors"];
-  const state={mode:"Home",aircraft:null,query:"",descending:true,records:[],host:null,list:null,navigation:null,opened:new Set()};
+  const modes=["All","Aircraft","Services","Airports","Vendors","Flights"];
+  const state={mode:"Home",aircraft:null,flightAircraft:"",query:"",descending:true,records:[],host:null,list:null,navigation:null,opened:new Set(),flightOptions:""};
   const el=(tag,cls,content)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(content!==undefined)n.textContent=content;return n;};
   const text=value=>typeof value==="string"?value.trim():"";
   const value=(data,...paths)=>{for(const p of paths){const v=data?.[p];if(text(v))return text(v);}return "";};
   const registration=raw=>{const s=text(raw).normalize("NFKC").replace(/[‐‑‒–-―]/g,"-").toUpperCase();const match=s.match(/^YR[-\s]?([A-Z0-9]{3})$/);return match?"YR-"+match[1]:s;};
+  // Future Skylegs integration can provide review_metadata.flight_context:
+  // {skylegs_flight_id,flight_number,flight_date,departure_icao,arrival_icao,aircraft_registration}.
+  // Never link unrelated invoices by aircraft, airport, or upload date alone.
+  const isoFlightDate=raw=>{
+    const match=text(raw).match(/^(\\d{4}-\\d{2}-\\d{2})(?:T.*)?$/);
+    if(!match)return "";
+    const stamp=Date.parse(match[1]+"T00:00:00Z");
+    return Number.isFinite(stamp)&&new Date(stamp).toISOString().slice(0,10)===match[1]?match[1]:"";
+  };
+  const flightContext=(record,d,m,norm,aircraft)=>{
+    const ctx=m.flight_context||record.flight_context||{};
+    const linked=m.flight_link||{};
+    const flightId=text(ctx.skylegs_flight_id)||text(ctx.flight_id)||
+      text(linked.skylegs_flight_id)||text(linked.flight_id);
+    const number=text(ctx.flight_number)||value(norm,"flight_number")||value(d,"flight_number");
+    const date=isoFlightDate(text(ctx.flight_date)||text(ctx.departure_date)||
+      value(norm,"flight_date","departure_date")||value(d,"flight_date","departure_date"));
+    const from=(text(ctx.departure_icao)||value(norm,"departure_icao","origin_icao")||
+      value(d,"departure_icao","origin_icao")).toUpperCase();
+    const to=(text(ctx.arrival_icao)||value(norm,"arrival_icao","destination_icao")||
+      value(d,"arrival_icao","destination_icao")).toUpperCase();
+    // A flight number is recurring; a document date is not a flight date.
+    // Until an explicit linked ID is present, require a real flight date
+    // and registration to avoid grouping separate legs into one flight.
+    const key=flightId?"id:"+flightId:
+      number&&date&&aircraft!=="Unassigned"?"observed:"+number.toUpperCase()+"|"+date+"|"+aircraft:"";
+    return {key,number,date,from,to,aircraft};
+  };
   const info=record=>{
     const d=record.reviewed_data||record.extracted_data||{};
     const m=record.review_metadata||{};
     const classification=m.classification||{};
     const norm=m.normalization?.approved?.values||m.normalization?.extracted?.values||{};
     const overrides=m.organization_overrides||{};
-    const aircraft=registration(text(overrides.aircraft)||value(norm,"aircraft_registration")||value(d,"aircraft_registration"));
+    const aircraft=registration(text(overrides.aircraft)||value(norm,"aircraft_registration")||value(d,"aircraft_registration")||text(m.flight_context?.aircraft_registration));
     const category=(text(overrides.service)||text(classification.expense_category)).toLowerCase();
     const profile=text(classification.profile);
     const airport=text(overrides.airport)||value(norm,"airport_icao")||value(d,"airport_icao","airport");
@@ -62,8 +90,13 @@
     const date=Date.parse(record.created_at||"");
     const amount=value(norm,"grand_total")||value(d,"grand_total");
     const currency=value(norm,"currency")||value(d,"currency");
-    const search=[value(d,"invoice_number","release_number","flight_number"),value(d,"supplier_tax_id","booking_reference"),value(d,"service_date","issue_date","delivery_date"),readVendor].join(" ");
-    return {aircraft:aircraft||"Unassigned",service,airport:airport.toUpperCase()||"Unassigned",vendor:vendor||"Unassigned",title,date:Number.isFinite(date)?date:0,amount:amount?(amount+" "+currency).trim():"",status:record.state==="approved"?"Approved":"Incomplete",search};
+    const flight=flightContext(record,d,m,norm,aircraft||"Unassigned");
+    const search=[value(d,"invoice_number","release_number","flight_number"),
+      value(d,"supplier_tax_id","booking_reference"),value(d,"service_date","issue_date","delivery_date"),
+      flight.number,flight.date,flight.from,flight.to,readVendor].join(" ");
+    return {aircraft:aircraft||"Unassigned",service,airport:airport.toUpperCase()||"Unassigned",
+      vendor:vendor||"Unassigned",title,date:Number.isFinite(date)?date:0,
+      amount:amount?(amount+" "+currency).trim():"",status:record.state==="approved"?"Approved":"Incomplete",search,flight};
   };
   function tag(node,record){
     node.dataset.docEntry="1";node.__billyDocument=info(record);
@@ -73,7 +106,7 @@
     node.__billyParentId=record.parent_document_id||null;
     if(button)button.prepend(serviceIcon(node.__billyParentId?"Receipt":node.__billyDocument.service));
   }
-  function session(node,item){node.dataset.docEntry="1";node.__billyDocument={aircraft:"Unassigned",service:"Unassigned",airport:"Unassigned",vendor:"Unassigned",title:item.file.name,date:Date.now(),status:"Session",amount:""};}
+  function session(node,item){node.dataset.docEntry="1";node.__billyDocument={aircraft:"Unassigned",service:"Unassigned",airport:"Unassigned",vendor:"Unassigned",title:item.file.name,date:Date.now(),status:"Session",amount:"",flight:{key:"",number:"",date:"",from:"",to:"",aircraft:"Unassigned"}};}
   function label(record){return info(record).title;}
   function install(list){
     state.list=list;
@@ -98,7 +131,11 @@
     search.addEventListener("input",()=>{state.query=search.value;refresh();});
     const sort=el("button","billy-doc-sort","↓");sort.type="button";sort.title="Newest first";sort.setAttribute("aria-label","Toggle date sorting");
     sort.addEventListener("click",()=>{state.descending=!state.descending;refresh();});
-    tools.append(search,sort);host.append(tabs,tools);list.before(host);state.host=host;
+    const flightAircraft=el("select","billy-doc-flight-aircraft");
+    flightAircraft.setAttribute("aria-label","Filter flights by aircraft");
+    flightAircraft.hidden=true;
+    flightAircraft.addEventListener("change",()=>{state.flightAircraft=flightAircraft.value;refresh();});
+    tools.append(search,flightAircraft,sort);host.append(tabs,tools);list.before(host);state.host=host;
     window.BillyDocumentsHub?.mount(list,host);
   }
   // Build family units before applying any category filter or search: a child
@@ -173,6 +210,22 @@
     tabs.forEach(t=>t.setAttribute("aria-pressed",String(t.dataset.mode===state.mode)));
     const sort=state.host.querySelector(".billy-doc-sort");sort.textContent=state.descending?"↓":"↑";sort.title=state.descending?"Newest first":"Oldest first";
     const families=groupFamilies(state.records);
+    const flightSelect=state.host.querySelector(".billy-doc-flight-aircraft");
+    if(flightSelect){
+      flightSelect.hidden=state.mode!=="Flights";
+      const options=["",...[...new Set(families.map(f=>f.root.__billyDocument?.aircraft||"Unassigned"))].sort((a,b)=>
+        a==="Unassigned"?1:b==="Unassigned"?-1:a.localeCompare(b))];
+      const signature=options.join("|");
+      if(signature!==state.flightOptions){
+        flightSelect.replaceChildren();
+        for(const value of options){
+          const option=el("option","",value||"All aircraft");
+          option.value=value;flightSelect.append(option);
+        }
+        state.flightOptions=signature;
+      }
+      flightSelect.value=state.flightAircraft;
+    }
     if(state.mode==="Attention"){
       list.replaceChildren();
       window.BillyDocumentsHub?.render(state,navigate);
@@ -194,25 +247,51 @@
       ?filtered.filter(family=>{
         const aircraft=family.root.__billyDocument.aircraft;
         return state.aircraft==="Unassigned"?!knownAircraft.has(aircraft):aircraft===state.aircraft;
-      }):filtered;
+      }):state.mode==="Flights"&&state.flightAircraft
+        ?filtered.filter(family=>family.root.__billyDocument.aircraft===state.flightAircraft):filtered;
     const groupKey=state.mode==="Aircraft"&&state.aircraft?"service":
-      {Services:"service",Airports:"airport",Vendors:"vendor"}[state.mode];
+      {Services:"service",Airports:"airport",Vendors:"vendor",Flights:"flight"}[state.mode];
     const fragment=document.createDocumentFragment();
     if(groupKey){
       const groups=new Map();
       matching.forEach(family=>{
         // Category is defined by the parent, never by its payment evidence.
-        const key=family.root.__billyDocument[groupKey]||"Unassigned";
+        const key=groupKey==="flight"?(family.root.__billyDocument.flight?.key||"__unlinked__"):
+          (family.root.__billyDocument[groupKey]||"Unassigned");
         if(!groups.has(key))groups.set(key,[]);
         groups.get(key).push(family);
       });
-      [...groups.keys()].sort((a,b)=>a==="Unassigned"?1:b==="Unassigned"?-1:a.localeCompare(b)).forEach(key=>{
+      [...groups.keys()].sort((a,b)=>{
+        if(a==="__unlinked__"||a==="Unassigned")return 1;
+        if(b==="__unlinked__"||b==="Unassigned")return -1;
+        if(groupKey==="flight"){
+          const dateA=groups.get(a)[0].root.__billyDocument.flight?.date||"";
+          const dateB=groups.get(b)[0].root.__billyDocument.flight?.date||"";
+          return dateB.localeCompare(dateA)||a.localeCompare(b);
+        }
+        return a.localeCompare(b);
+      }).forEach(key=>{
         const section=el("section","billy-doc-group");
         const groupId=groupKey+":"+key,expanded=state.opened.has(groupId);
         const header=el("button","billy-doc-group-title");header.type="button";header.setAttribute("aria-expanded",String(expanded));
-        const name=el("span","",key),count=el("span","billy-doc-count",String(groups.get(key).length)),chevron=el("span","billy-doc-chevron","›");
-        if(state.mode==="Services"||state.mode==="Aircraft")header.append(serviceIcon(key));
-        header.append(name,count,chevron);
+        const count=el("span","billy-doc-count",String(groups.get(key).length)),chevron=el("span","billy-doc-chevron","›");
+        if(groupKey==="flight"){
+          const flight=groups.get(key).map(f=>f.root.__billyDocument.flight)
+            .find(f=>f?.number||f?.from||f?.to)||groups.get(key)[0].root.__billyDocument.flight;
+          const copy=el("span","billy-doc-flight-copy");
+          copy.append(el("strong","",key==="__unlinked__"?"Not linked to a flight":
+            flight.number?"Flight "+flight.number:"Linked flight"));
+          if(key!=="__unlinked__"){
+            const details=[flight.date,flight.from&&flight.to?flight.from+" → "+flight.to:"",
+              flight.aircraft!=="Unassigned"?flight.aircraft:""].filter(Boolean);
+            if(details.length)copy.append(el("small","",details.join(" · ")));
+          }
+          header.append(copy,count,chevron);
+        }else{
+          const name=el("span","",key);
+          if(state.mode==="Services"||state.mode==="Aircraft")header.append(serviceIcon(key));
+          header.append(name,count,chevron);
+        }
         const content=el("div","billy-doc-group-content");content.hidden=!expanded;
         groups.get(key).forEach(family=>content.append(familyCard(family)));
         header.addEventListener("click",()=>{
@@ -240,6 +319,7 @@
   function navigate(mode,aircraft=null){
     state.mode=["Home","Attention",...modes].includes(mode)?mode:"Home";
     state.aircraft=state.mode==="Aircraft"?aircraft:null;
+    state.flightAircraft="";
     state.query="";
     state.opened.clear();
     const search=state.host?.querySelector(".billy-doc-search");
@@ -259,6 +339,7 @@
     // visit while the fresh cloud request is still in flight.
     state.records=[];
     state.navigation=null;
+    state.flightOptions="";
     // Opening the archive always starts at the hub, not the last drill-down.
     install(list);
     navigate("Home");
