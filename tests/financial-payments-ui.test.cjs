@@ -66,7 +66,7 @@ test("Payments has one direct workspace with JetRead-inspired workflow, Billy st
  assert.ok(order.every((x,i)=>i===0||x>order[i-1]),"New sections are in the intended hierarchy");
  assert.ok(page.indexOf('id="billyFinancialReportedPanel"')<
    page.indexOf('id="billyFinancialCardsPanel"'));
- assert.match(page,/financial-payments\.css\?v=1\.0\.0/);
+ assert.match(page,/financial-payments\.css\?v=1\.1\.0/);
  assert.match(page,/financial-reconciliation\.js\?v=2\.0\.0/);
  assert.match(finance,/billyFinancialPaidOnBillPanel/);
  assert.match(finance,/billyFinancialReportedPanel/);
@@ -85,4 +85,20 @@ test("No-slip selection is explicit, auditable, and reversible without auto-sett
  assert.match(ui,/window\.confirm/);
  assert.doesNotMatch(ui,/\.innerHTML\s*=/);
  assert.match(read("site/sw.js"),/v119-financial-ux-cleanup/);
+});
+
+test("Collapsed Payments is a compact, single-surface disclosure shelf",()=>{
+ const start=page.indexOf('class="billy-financial-payment-shelf"');
+ const end=page.indexOf('id="billyFinancialInsightsSection"',start);
+ assert.ok(start>0&&end>start);
+ const shelf=page.slice(start,end);
+ for(const id of ["billyFinancialPaidOnBillPanel","billyFinancialReportedPanel",
+  "billyFinancialCardsPanel","billyFinancialLinkedPanel","billyFinancialUnmatchedPanel"])
+  assert.match(shelf,new RegExp('id="'+id+'"'));
+ assert.match(css,/\.billy-financial-payment-shelf\{[^}]*background:#222628/);
+ assert.match(css,/\.billy-financial-payment-shelf > details \+ details/);
+ assert.match(css,/min-height:54px/);
+ assert.match(css,/details\[open\] > summary/);
+ assert.match(css,/details\[hidden\]\{display:none!important\}/);
+ assert.doesNotMatch(page,/billyFinancialSectionBack/);
 });
