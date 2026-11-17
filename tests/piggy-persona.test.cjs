@@ -21,6 +21,7 @@ test("Piggy speaks in natural, distinct Romanian and English pig-related voices"
   assert.equal(pig.detect("Acum arată-mi evoluția pe zile.","en"),"ro");
   assert.equal(pig.detect("Show me the spending by card.","ro"),"en");
   assert.equal(pig.detect("Cheltuieli pe furnizori.","en"),"ro");
+  assert.equal(pig.detect("Care sunt facturile noastre?","en"),"ro");
   assert.match(pig.get("welcomeTitle","en"),/ears/i);
   assert.match(pig.get("welcomeSubtitle","en"),/snout/i);
   assert.match(pig.get("welcomeSubtitle","ro"),/rât/i);
