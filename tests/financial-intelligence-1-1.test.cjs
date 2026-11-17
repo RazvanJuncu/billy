@@ -19,7 +19,11 @@ const begin=source.indexOf("// Financial Intelligence 1.1:");
 const stop=source.indexOf("function cleanDoc(value,type)",begin);
 assert.ok(begin>0&&stop>begin);
 vm.runInNewContext(source.slice(begin,stop)+
-  "\nthis.evidence=cardEvidenceStatus;this.paid=printedCardPayment;this.eligible=eligibleCardLast4;this.method=cardPaymentMethod;",helpers);
+  "\nthis.evidence=cardEvidenceStatus;",helpers);
+const paymentStart=source.indexOf("function cardPaymentMethod(");
+const paymentEnd=source.indexOf("function financialProfile(",paymentStart);
+vm.runInNewContext(source.slice(paymentStart,paymentEnd)+
+  "\nthis.paid=printedCardPayment;this.eligible=eligibleCardLast4;this.method=cardPaymentMethod;",helpers);
 const clear=text=>[{field_path:"card_last4",page:1,visual_clarity:"clear",transcription:text}];
 const seen=code=>({reviewed_data:{card_last4:code},review_metadata:{
   card_intelligence:{version:"1.1",last4_status:"ai_source_evidence"}}});
