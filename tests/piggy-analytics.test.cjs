@@ -184,8 +184,8 @@ test("Conversation sends previous typed plan and preserves legacy document assis
  assert.match(client,/result\.filter\?\.intent==="costs"/);
  assert.match(html,/piggy-analytics-hud\.js\?v=2\.0\.0/);
  assert.match(html,/piggybank-hud\.js\?v=1\.1\.0/);
- assert.match(html,/intelligence-assistant\.js\?v=0\.4\.1/);
- assert.match(read("site/sw.js"),/v124-piggy-followups/);
+ assert.match(html,/intelligence-assistant\.js\?v=0\.5\.0/);
+ assert.match(read("site/sw.js"),/v125-piggy-personality/);
  assert.doesNotMatch(client,/\.innerHTML\s*=|localStorage|sessionStorage/);
  assert.doesNotMatch(hud,/\.innerHTML\s*=|localStorage|sessionStorage/);
 });
