@@ -458,3 +458,31 @@ body[data-billy-screen="home"] .billy-preview-overlay{z-index:2100!important}
   .billy-ai-dock.is-backflipping .billy-ai-orbit,
   .billy-ai-dock.is-backflipping .billy-ai-orbit img{animation:none!important}
 }
+
+/* Piggy Intelligence 2.0 — custom analytics in the existing monochrome HUD. */
+.piggy-analytics-section{display:flex;flex-direction:column;gap:13px;min-width:0}
+.piggy-analytics-section-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.piggy-analytics-section-head h3{margin:0!important;font-size:14px!important;font-weight:660!important;color:#e9eced!important}
+.piggy-analytics-section-head span{font-size:10px;color:#acb3b6}
+.piggy-analytics-scope{display:flex;gap:6px;flex-wrap:wrap}
+.piggy-analytics-chip{border-radius:100px;background:#2b3033;color:#d8dfe0;padding:7px 10px;font-size:10px}
+.piggy-analytics-compare{color:#c3cdce;font-size:11px;line-height:1.5}
+.piggy-analytics-bar-row{padding:4px 0;display:flex;flex-direction:column;gap:7px}
+.piggy-analytics-bar-head{display:flex;gap:12px;align-items:baseline;justify-content:space-between;font-size:12px}
+.piggy-analytics-bar-head span{color:#c8cdd0;overflow-wrap:anywhere}
+.piggy-analytics-bar-head strong{white-space:nowrap;color:#f4f5f6;font-variant-numeric:tabular-nums}
+.piggy-analytics-bar-track{height:8px;background:#353b3e;border-radius:5px;overflow:hidden}
+.piggy-analytics-bar-fill{display:block;height:100%;background:#bbc7c5;border-radius:5px}
+.piggy-analytics-line{padding:11px;background:#272c2e;border-radius:11px}
+.piggy-analytics-line svg{display:block;width:100%;height:auto;max-height:240px}
+.piggy-analytics-axis{display:flex;justify-content:space-between;gap:12px;font-size:10px;color:#a3acb0}
+.piggy-analytics-table-row{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:11px 3px;border-bottom:1px solid #363b3f;font-size:12px}
+.piggy-analytics-table-row:last-child{border-bottom:0}
+.piggy-analytics-table-row span{overflow-wrap:anywhere}
+.piggy-analytics-table-row strong{font-variant-numeric:tabular-nums;white-space:nowrap}
+.piggy-analytics-muted{margin:0;color:#aeb5b8;font-size:11px;line-height:1.55}
+.piggy-analytics-alert{margin:0;border-radius:11px;background:#2c3032;padding:15px;color:#e4d3c4;font-size:13px;line-height:1.6}
+.piggy-analytics-coverage{background:#262b2e;padding:13px 16px;border-radius:11px;font-size:11px;color:#aeb7b9}
+.piggy-analytics-coverage summary{cursor:pointer;font-weight:630;color:#eef0f1}
+.piggy-analytics-coverage p{margin:10px 0 0;line-height:1.6}
+@media(max-width:640px){.piggy-analytics-section-head{align-items:flex-start;flex-direction:column}}
