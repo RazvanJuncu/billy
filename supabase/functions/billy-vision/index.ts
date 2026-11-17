@@ -242,7 +242,8 @@ function cardEvidenceStatus(doc,regions,operatorConfirmed=false){
   if(!/^\d{4}$/.test(digits||""))return "not_available";
   if(operatorConfirmed===true)return "operator_confirmed";
   const clear=Array.isArray(regions)&&regions.some(region=>{
-    if(region?.field_path!=="card_last4"||region.visual_clarity!=="clear")
+    if(region?.field_path!=="card_last4"||region.visual_clarity!=="clear"||
+       (Array.isArray(region.alternate_readings)&&region.alternate_readings.length))
       return false;
     const observed=String(region.transcription||"").trim();
     const chunks=observed.match(/\d+/g)||[];
