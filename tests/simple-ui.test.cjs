@@ -348,7 +348,7 @@ test("Artonomy footer shares header viewport gutter rather than homepage positio
   assert.match(css,/body\[data-billy-screen\] \.studio-header\{[\s\S]*?padding:0 max\(24px,5vw\)!important/);
   assert.match(css,/body\[data-billy-screen="home"\] \.billy-artonomy-credit\{[\s\S]*?left:max\(24px,5vw\)/);
   assert.doesNotMatch(css,/\.billy-artonomy-credit\{[\s\S]*?position:static/);
-  assert.match(html,/simple\.css\?v=2\.5\.2/);
+  assert.match(html,/simple\.css\?v=2\.5\.3/);
 });
 
 test("Flights icon asset is refreshed on the website and PWA",()=>{
