@@ -84,3 +84,47 @@
 .billy-reports-secondary-body{padding:0 17px 16px;display:flex;flex-direction:column;gap:12px}
 .billy-reports-secondary .billy-financial-integrity{border-top:0}
 .billy-reports-secondary .billy-financial-section-head{margin-top:8px}
+
+/* Reports 1.1: meaningful financial health is visible before the report filters. */
+.billy-reports-overview{
+  display:flex;flex-direction:column;gap:9px;min-width:0;margin-bottom:15px;
+}
+.billy-reports-overview-trend,.billy-reports-overview-integrity{
+  background:#262b2e;border-radius:13px;min-width:0;
+}
+.billy-reports-overview-trend{padding:18px 19px 14px;display:flex;flex-direction:column;gap:10px}
+.billy-reports-overview-trend .billy-financial-section-head h3{font-size:13px}
+.billy-reports-overview .billy-financial-full-chart{
+  min-height:148px;padding-top:7px;gap:11px
+}
+.billy-reports-overview .billy-financial-week-track{height:90px}
+.billy-reports-overview .billy-financial-week-value{font-size:10px}
+.billy-reports-overview-trend .billy-financial-disclaimer{
+  font-size:10px;line-height:1.5;margin:0;color:#a2aaae;max-width:none
+}
+.billy-reports-overview-integrity{padding:14px 19px}
+.billy-reports-overview-integrity .billy-financial-integrity{
+  border:0;margin:0;padding:0
+}
+.billy-reports-overview-integrity .billy-financial-integrity-head{
+  display:flex;flex-direction:row;align-items:center;gap:16px;flex-wrap:wrap
+}
+.billy-reports-overview-integrity .billy-financial-integrity-head span{
+  font-size:11px;color:#b4bcc0
+}
+.billy-reports-overview-integrity .billy-financial-integrity-summary{
+  min-height:29px
+}
+.billy-reports-overview-integrity .billy-financial-integrity-body{
+  border-top:1px solid #3b4144;margin-top:11px;padding-top:12px
+}
+.billy-reports-workspace{gap:13px}
+@media(max-width:600px){
+  .billy-reports-overview-trend{padding:13px 12px}
+  .billy-reports-overview-integrity{padding:12px}
+  .billy-reports-overview .billy-financial-full-chart{gap:6px;min-height:128px}
+  .billy-reports-overview .billy-financial-week-track{height:74px}
+  .billy-reports-overview-integrity .billy-financial-integrity-head{
+    align-items:flex-start;flex-direction:column;gap:5px
+  }
+}

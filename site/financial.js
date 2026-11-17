@@ -401,7 +401,6 @@
     $("billyFinancialSectionTitle").textContent={
       attention:"Needs attention",expenses:"Expenses",payments:"Payments",insights:"Reports"
     }[section];
-    $("billyFinancialSectionBack").querySelector("span").textContent="Financial";
     const coverage=$("billyFinancialCoverage");
     coverage.hidden=!state.data?.partial;
     coverage.textContent=state.data?.partial?
@@ -547,7 +546,6 @@
     ["billyFinancialInsightsNav","insights"]]){
     $(id).addEventListener("click",()=>enterSection(section));
   }
-  $("billyFinancialSectionBack").addEventListener("click",backInFinancial);
   $("billyFinancialIntegrityRefresh").addEventListener("click",async()=>{
     $("billyFinancialIntegritySummary").textContent="Checking approved records…";
     await refresh();

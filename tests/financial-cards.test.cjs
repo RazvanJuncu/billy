@@ -94,7 +94,7 @@ test("Card directory stores only masked digits, is team scoped, RLS secured and 
 test("Card UI stays inside Payments and cannot present imported JetRead totals",()=>{
  assert.match(html,/id="billyFinancialCardsPanel"/);
  assert.match(html,/financial-cards\.js\?v=1\.0\.0/);
- assert.match(html,/financial-cards\.css\?v=1\.1\.0/);
+ assert.match(html,/financial-cards\.css\?v=1\.2\.0/);
  assert.match(frontend,/No approved card evidence yet/);
  assert.match(frontend,/source transaction/);
  assert.match(frontend,/No balances or historical spending imported from JetRead/);
@@ -103,5 +103,5 @@ test("Card UI stays inside Payments and cannot present imported JetRead totals",
  assert.match(frontend,/assistant-source\?record_id=/);
  assert.doesNotMatch(frontend,/\.innerHTML\s*=/);
  assert.match(css,/\.billy-financial-cards-grid/);
- assert.match(read("site/sw.js"),/v118-reports-solid-cards/);
+ assert.match(read("site/sw.js"),/v119-financial-ux-cleanup/);
 });

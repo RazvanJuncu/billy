@@ -122,3 +122,63 @@
   .billy-financial-proof-summary{padding:12px}
   .billy-financial-proof-panel > .billy-financial-attention-list{padding:0 8px 9px}
 }
+
+/* Financial 2.1 — one compact, filled disclosure list instead of five separate boxes. */
+#billyFinancialPaymentsSection{gap:13px}
+.billy-financial-payment-shelf{
+  display:flex;flex-direction:column;gap:0;min-width:0;
+  background:#222628;border-radius:14px;overflow:hidden;
+}
+.billy-financial-payment-shelf > details{
+  display:block;border:0!important;border-radius:0!important;
+  background:transparent!important;margin:0!important;padding:0!important;
+  min-width:0;box-shadow:none!important;
+}
+.billy-financial-payment-shelf > details[hidden]{display:none!important}
+.billy-financial-payment-shelf > details + details{
+  border-top:1px solid #363b3e!important;
+}
+.billy-financial-payment-shelf .billy-financial-proof-summary,
+.billy-financial-payment-shelf .billy-financial-cards-summary{
+  display:flex;align-items:center;gap:12px;flex-wrap:nowrap;
+  min-height:54px;box-sizing:border-box;padding:14px 17px!important;
+  color:#f1f3f4;background:transparent!important;
+}
+.billy-financial-payment-shelf .billy-financial-proof-summary strong,
+.billy-financial-payment-shelf .billy-financial-cards-summary strong{
+  font-weight:650;font-size:12px;min-width:0;flex:1;
+}
+.billy-financial-payment-shelf .billy-financial-proof-summary span,
+.billy-financial-payment-shelf .billy-financial-cards-summary span{
+  font-size:10px;color:#9fa9ad;white-space:nowrap;margin-left:auto;
+}
+.billy-financial-payment-shelf .billy-financial-proof-summary::after,
+.billy-financial-payment-shelf .billy-financial-cards-summary::after{
+  margin-left:4px;color:#c0c8cb;flex:none;
+}
+.billy-financial-payment-shelf details[open] > summary{
+  background:#2b3033!important;
+}
+.billy-financial-payment-shelf details:not([open]) > summary:hover{
+  background:#2a2f32!important;
+}
+.billy-financial-payment-shelf .billy-financial-proof-panel > .billy-financial-reconciliation-note{
+  padding:12px 17px 7px;
+}
+.billy-financial-payment-shelf .billy-financial-proof-panel > .billy-financial-attention-list,
+.billy-financial-payment-shelf .billy-financial-proof-panel > .billy-financial-links{
+  padding:0 14px 15px;
+}
+.billy-financial-payment-shelf .billy-fcard-art{
+  border:0!important;
+}
+@media(max-width:600px){
+  .billy-financial-payment-shelf .billy-financial-proof-summary,
+  .billy-financial-payment-shelf .billy-financial-cards-summary{
+    min-height:50px;padding:12px!important;gap:8px;
+  }
+  .billy-financial-payment-shelf .billy-financial-proof-summary span,
+  .billy-financial-payment-shelf .billy-financial-cards-summary span{
+    font-size:9px;
+  }
+}

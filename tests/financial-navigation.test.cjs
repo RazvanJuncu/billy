@@ -23,7 +23,6 @@ class FakeElement{
   replaceChildren(...children){this.children=children;this._text="";}
   addEventListener(name,callback){this.listeners[name]=callback;}
   setAttribute(name,value){this.attributes[name]=value;}
-  querySelector(tag){return tag==="span"&&this.id==="billyFinancialSectionBack"?this.backLabel:null;}
   click(){this.listeners.click?.({target:this,currentTarget:this,preventDefault(){}});}
 }
 function mockApp(data){
@@ -35,8 +34,6 @@ function mockApp(data){
     const tag=html.slice(html.lastIndexOf("<",pos),html.indexOf(">",pos)+1);
     node.hidden=/\shidden(?:\s|>)/.test(tag);
   }
-  const back=all.get("billyFinancialSectionBack");
-  back.backLabel=new FakeElement("span");
   const document={
     body:{dataset:{billyScreen:"financial"}},
     getElementById:id=>all.get(id)||null,
@@ -105,7 +102,8 @@ test("Expenses opens the ledger in one tap and filters directly by aircraft, ven
  assert.equal(at("billyFinancialLedger").children.length,3);
  assert.equal(at("billyFinancialPageTitle").hidden,true);
  assert.equal(at("billyFinancialSectionTitle").textContent,"Expenses");
- assert.equal(at("billyFinancialSectionBack").backLabel.textContent,"Financial");
+ assert.doesNotMatch(html,/id="billyFinancialSectionBack"/);
+ assert.match(simple,/if\(now==="financial"&&window\.BillyFinancial\?\.back\?\.\(\)\)return/);
  at("billyFinancialVendor").value="Victor Hotel";
  at("billyFinancialVendor").listeners.change({target:{value:"Victor Hotel"}});
  assert.equal(at("billyFinancialLedger").children.length,2);
@@ -156,7 +154,7 @@ test("Financial routes preserve one approved-data source and authenticated previ
  for(const id of ["billyFinancialAttentionNav","billyFinancialExpensesNav",
   "billyFinancialPaymentsNav","billyFinancialInsightsNav",
   "billyFinancialExpenseResults","billyFinancialVendor","billyFinancialAircraft",
-  "billyFinancialPeriodFilter","billyFinancialSearch","billyFinancialSectionBack",
+  "billyFinancialPeriodFilter","billyFinancialSearch",
   "billyFinancialLinkedPanel","billyFinancialUnmatchedPanel",
   "billyFinancialIntegrityRefresh","billyFinancialPageTitle"]){
   assert.equal(ids.filter(value=>value===id).length,1,id);
@@ -185,6 +183,6 @@ test("Billy's large circular hub is preserved and PWA CSS/JS caches are refreshe
  assert.match(css,/\.billy-financial-landing \.billy-financial-nav-arrow\{display:none\}/);
  assert.match(css,/\.simple-financial > \.simple-heading\[hidden\]\{display:none!important\}/);
  assert.match(html,/financial\.css\?v=1\.9\.0/);
- assert.match(html,/financial\.js\?v=2\.1\.0/);
- assert.match(read("site/sw.js"),/v118-reports-solid-cards/);
+ assert.match(html,/financial\.js\?v=2\.2\.0/);
+ assert.match(read("site/sw.js"),/v119-financial-ux-cleanup/);
 });

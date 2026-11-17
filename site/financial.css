@@ -314,14 +314,6 @@ html[data-billy-mobile="1"] body.billy-functions-revealed .simple-home .simple-q
 .billy-financial-detail{
   gap:13px;
 }
-.billy-financial-back{
-  display:inline-flex;align-items:center;gap:7px;align-self:flex-start;
-  background:transparent!important;border:0!important;color:#b7bdc0!important;
-  border-radius:7px!important;padding:6px 0!important;
-  min-height:31px;cursor:pointer;font-size:14px!important;
-}
-.billy-financial-back:hover,.billy-financial-back:focus-visible{color:#fff!important}
-.billy-financial-back span{font-size:11px;font-weight:550}
 .billy-financial-detail-title{
   font-size:clamp(19px,2.5vw,24px);font-weight:660;line-height:1.25;
   letter-spacing:-.025em;margin:0 0 5px;

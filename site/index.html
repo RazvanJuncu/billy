@@ -22,9 +22,9 @@
   <link rel="stylesheet" href="./document-type.css?v=0.6.0">
   <link rel="stylesheet" href="./simple.css?v=2.4.9">
   <link rel="stylesheet" href="./financial.css?v=1.9.0">
-  <link rel="stylesheet" href="./financial-cards.css?v=1.1.0">
-  <link rel="stylesheet" href="./financial-reports.css?v=1.0.0">
-  <link rel="stylesheet" href="./financial-payments.css?v=1.0.0">
+  <link rel="stylesheet" href="./financial-cards.css?v=1.2.0">
+  <link rel="stylesheet" href="./financial-reports.css?v=1.1.0">
+  <link rel="stylesheet" href="./financial-payments.css?v=1.1.0">
   <link rel="stylesheet" href="./nested-mitosis.css?v=0.3.0">
   <link rel="stylesheet" href="./intelligence-assistant.css?v=0.3.4">
   <link rel="stylesheet" href="./multi-documents.css?v=1.0.0">
@@ -55,7 +55,7 @@
   <script src="./documents-index.js?v=1.9.1" defer></script>
   <script src="./original-archive.js?v=1.1.0" defer></script>
   <script src="./document-preview.js?v=1.5.2" defer></script>
-  <script src="./financial.js?v=2.1.0" defer></script>
+  <script src="./financial.js?v=2.2.0" defer></script>
   <script src="./financial-reports.js?v=1.0.0" defer></script>
   <script src="./financial-reconciliation.js?v=2.0.0" defer></script>
   <script src="./financial-cards.js?v=1.0.0" defer></script>
@@ -301,7 +301,6 @@
             </nav>
           </div>
           <div id="billyFinancialDetail" class="billy-financial-detail" hidden>
-            <button id="billyFinancialSectionBack" class="billy-financial-back" type="button">‹ <span>Financial</span></button>
             <h2 id="billyFinancialSectionTitle" class="billy-financial-detail-title"></h2>
             <section class="billy-financial-section" id="billyFinancialAttentionSection" aria-label="Financial attention" hidden>
               <div class="billy-financial-section-head">
@@ -338,6 +337,7 @@
                 <p class="billy-financial-reconciliation-note">A slip is not required for an invoice to count as an expense. Choose a method only when verified. On account remains unpaid.</p>
                 <div id="billyFinancialReconciliationList" class="billy-financial-attention-list"></div>
               </div>
+              <div class="billy-financial-payment-shelf" aria-label="Payment records and evidence">
               <details id="billyFinancialPaidOnBillPanel" class="billy-financial-proof-panel" hidden>
                 <summary class="billy-financial-proof-summary">
                   <strong>Paid by card on bill</strong>
@@ -380,8 +380,39 @@
                 </summary>
                 <div id="billyFinancialUnmatchedList" class="billy-financial-attention-list"></div>
               </details>
+              </div>
             </section>
             <section class="billy-financial-section" id="billyFinancialInsightsSection" aria-label="Reports" hidden>
+
+              <div class="billy-reports-overview" aria-label="Spending trends and financial integrity overview">
+                <div class="billy-reports-overview-trend">
+                  <div class="billy-financial-section-head">
+                    <h3>Spending trend · 30 days</h3>
+                    <label class="billy-financial-select-label">Currency
+                      <select id="billyFinancialInsightCurrency" aria-label="Insight chart currency"></select>
+                    </label>
+                  </div>
+                  <div class="billy-financial-full-chart" id="billyFinancialChart" role="img" aria-label="Weekly approved expenses"></div>
+                  <p class="billy-financial-disclaimer">Approved expenses only. Payment slips do not add expenses. Currencies remain separate.</p>
+                </div>
+                <div class="billy-reports-overview-integrity">
+                  <details class="billy-financial-integrity" aria-label="Financial integrity checks">
+                    <summary class="billy-financial-integrity-summary">
+                      <span class="billy-financial-integrity-head">
+                        <strong>Integrity checks</strong>
+                        <span id="billyFinancialIntegritySummary" role="status">Not checked</span>
+                      </span>
+                    </summary>
+                    <div class="billy-financial-integrity-body">
+                      <div class="billy-financial-integrity-controls">
+                        <button id="billyFinancialIntegrityRefresh" class="billy-financial-subtle" type="button">Recheck</button>
+                      </div>
+                      <div id="billyFinancialIntegrityChecks" class="billy-financial-integrity-checks"></div>
+                      <p class="billy-financial-integrity-note">Read-only checks on approved documents. Not a substitute for accounting approval. Unimplemented checks are not tested.</p>
+                    </div>
+                  </details>
+                </div>
+              </div>
               <div class="billy-reports-workspace">
                 <div class="billy-reports-head">
                   <strong>Approved expense reports</strong>
@@ -423,40 +454,6 @@
                 </div>
                 <p id="billyFinancialReportFootnote" class="billy-reports-note"></p>
               </div>
-              <details class="billy-financial-proof-panel billy-reports-secondary">
-                <summary class="billy-financial-proof-summary">
-                  <strong>Trends & integrity</strong>
-                  <span>Charts and internal checks</span>
-                </summary>
-                <div class="billy-reports-secondary-body">
-              <div class="billy-financial-section-head">
-                <h3>Approved expenses · 30 days</h3>
-                <label class="billy-financial-select-label">Currency
-                  <select id="billyFinancialInsightCurrency" aria-label="Insight chart currency"></select>
-                </label>
-              </div>
-              <div class="billy-financial-full-chart" id="billyFinancialChart" role="img" aria-label="Weekly approved expenses"></div>
-              <p class="billy-financial-disclaimer">Approved document amounts only. Payment slips are not new expenses.
-                Invoice dates are used when service dates are unavailable. Currencies are never combined.</p>
-              <details class="billy-financial-integrity" aria-label="Financial integrity checks">
-                <summary class="billy-financial-integrity-summary">
-                  <span class="billy-financial-integrity-head">
-                    <strong>Integrity checks</strong>
-                    <span id="billyFinancialIntegritySummary" role="status">Not checked</span>
-                  </span>
-                </summary>
-                <div class="billy-financial-integrity-body">
-                  <div class="billy-financial-integrity-controls">
-                    <button id="billyFinancialIntegrityRefresh" class="billy-financial-subtle"
-                      type="button">Recheck</button>
-                  </div>
-                  <div id="billyFinancialIntegrityChecks" class="billy-financial-integrity-checks"></div>
-                  <p class="billy-financial-integrity-note">Read-only checks on approved documents.
-                    Not a substitute for accounting approval. Unimplemented workflows are shown as not tested.</p>
-                </div>
-              </details>
-                </div>
-              </details>
             </section>
             <p id="billyFinancialCoverage" class="billy-financial-coverage" hidden></p>
           </div>
