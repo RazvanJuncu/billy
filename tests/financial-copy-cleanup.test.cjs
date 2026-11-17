@@ -87,7 +87,7 @@ test("PWA includes latest copy cleanup assets",()=>{
  assert.match(page,/financial-cards\.js\?v=1\.1\.0/);
  assert.match(page,/financial-payments\.css\?v=1\.2\.0/);
  const sw=read("site/sw.js");
- assert.match(sw,/v121-integrity-chevron/);
+ assert.match(sw,/v122-financial-intelligence-card-evidence/);
  assert.match(sw,/\.\/financial-categories\.js/);
  assert.match(sw,/financial-categories\\\.js/);
 });
