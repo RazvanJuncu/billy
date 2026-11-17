@@ -25,7 +25,7 @@ test("no slip does not exclude approved bills from the financial ledger",()=>{
  assert.doesNotMatch(finance,/if\(!item\.linked_payment_count\)return false/);
 });
 test("explicit card paid-on-bill is evidence, not an inference from digits alone",()=>{
- assert.match(backend,/const bill_card_evidence=\/\^\(\?:card/);
+ assert.match(backend,/const bill_card_evidence=printedCardPayment\(doc\)/);
  assert.match(backend,/transaction_status\|\|doc\.payment_status/);
  assert.match(backend,/bill_card_last4:bill_card_evidence\?bill_card_last4:null/);
  assert.match(backend,/bill_card_evidence:expense\.bill_card_evidence===true/);
