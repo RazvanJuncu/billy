@@ -1,5 +1,5 @@
 /* Card directory within Billy Payments; masked last four only. */
-.billy-financial-cards-panel{display:block;border:1px solid #303437;border-radius:14px;background:#17191b;overflow:hidden}
+.billy-financial-cards-panel{display:block;border:0;border-radius:14px;background:#1e2123;overflow:hidden}
 .billy-financial-cards-summary{display:flex;align-items:center;justify-content:space-between;
   flex-wrap:wrap;gap:8px;cursor:pointer;padding:17px 19px;list-style:none;color:#eff1f2}
 .billy-financial-cards-summary::-webkit-details-marker{display:none}
@@ -16,13 +16,11 @@
 .billy-fcard-art{position:relative;display:flex;flex-direction:column;justify-content:space-between;
   aspect-ratio:1.85;width:100%;min-height:96px;box-sizing:border-box;overflow:hidden;
   border-radius:12px;padding:13px 15px;
-  background:linear-gradient(148deg,#292d2a 0%,#111415 46%,#090b0c 100%);
-  border:1px solid #303535;transition:border-color .15s ease}
-.billy-fcard[data-selected="true"] .billy-fcard-art,
-.billy-fcard:hover .billy-fcard-art{border-color:#879189}
+  background:linear-gradient(150deg,#303631 0%,#171b1d 47%,#101213 100%);
+  border:0;transition:background .15s ease}
+.billy-fcard[data-selected="true"] .billy-fcard-art{background:linear-gradient(150deg,#454e49 0%,#27302d 47%,#1c2222 100%)}
+.billy-fcard:hover .billy-fcard-art{background-color:#292e30}
 .billy-fcard-kind{font-size:10px;line-height:1.2;font-weight:700;letter-spacing:.035em;color:#e7e9e8}
-.billy-fcard-chip{height:6px;width:27px;border-radius:8px;
-  background:linear-gradient(90deg,#97a883,#66785e);box-shadow:inset 0 1px 2px #d5e3c440}
 .billy-fcard-number{font-size:11px;letter-spacing:.065em;white-space:nowrap;color:#ccd0cc;font-variant-numeric:tabular-nums}
 .billy-fcard-holder{font-size:11px;font-weight:600;letter-spacing:.035em;color:#f6f7f6;overflow:hidden;text-overflow:ellipsis}
 .billy-fcard-amounts{display:flex;flex-direction:column;gap:3px;min-height:37px;align-items:flex-start}
@@ -61,3 +59,10 @@
  .billy-financial-cards-summary{padding:13px 12px}
 }
 @media(prefers-reduced-motion:reduce){.billy-fcard-art{transition:none}}
+
+/* All card surfaces are filled, not bordered. Focus ring remains for keyboard access. */
+.billy-financial-cards-body{padding-top:4px}
+.billy-fcard-art{box-shadow:none!important}
+.billy-fcard-art .billy-fcard-number{margin-top:12px}
+.billy-fcard-art .billy-fcard-holder{margin-top:9px}
+.billy-fcard-activity-head{border-top:0;background:#292e30;border-radius:10px;padding:12px}
