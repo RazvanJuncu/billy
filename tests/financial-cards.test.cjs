@@ -16,7 +16,9 @@ const doc=(id,profile,card,amount="100.00",currency="EUR",day="2026-11-14",sha="
  id,state:"approved",parent_document_id:null,source_sha256:sha.repeat(64),
  reviewed_data:{card_last4:card,supplier_name:"Aviation Supplier",payment_method:"card",
   transaction_status:"Approved",issue_date:day},
- review_metadata:{classification:{profile},normalization:{
+ review_metadata:{classification:{profile},
+  card_intelligence:{version:"1.1",last4_status:"ai_source_evidence"},
+  normalization:{
   approved:{values:{grand_total:Number(amount),currency,issue_date:day}}}}
 });
 const cards=[
@@ -104,4 +106,28 @@ test("Card UI stays inside Payments and cannot present imported JetRead totals",
  assert.doesNotMatch(frontend,/\.innerHTML\s*=/);
  assert.match(css,/\.billy-financial-cards-grid/);
  assert.match(read("site/sw.js"),/v121-integrity-chevron/);
+});
+
+test("Card spending rejects numbers without visible or operator-confirmed source proof",()=>{
+ const record=doc("legacy","payment_slip","2212");
+ delete record.review_metadata.card_intelligence;
+ const old=run([record]);
+ assert.equal(old.cards.find(x=>x.last4==="2212").transaction_count,0);
+ record.review_metadata.card_intelligence={version:"1.1",last4_status:"needs_operator_review"};
+ const uncertain=run([record]);
+ assert.equal(uncertain.cards.find(x=>x.last4==="2212").transaction_count,0);
+ record.review_metadata.card_intelligence.last4_status="operator_confirmed";
+ const approved=run([record]);
+ assert.equal(approved.cards.find(x=>x.last4==="2212").transaction_count,1);
+});
+test("VISA-paid invoice is eligible only with printed success status and verifiable card number",()=>{
+ const record=doc("billVisa","handling_invoice","9451","20.00","EUR","2026-11-14","e");
+ record.reviewed_data.payment_method="VISA";
+ record.reviewed_data.transaction_status="Paid";
+ assert.equal(run([],[record]).cards.find(x=>x.last4==="9451").transaction_count,1);
+ record.reviewed_data.transaction_status=null;
+ assert.equal(run([],[record]).cards.find(x=>x.last4==="9451").transaction_count,0);
+ record.reviewed_data.transaction_status="Paid";
+ record.review_metadata.card_intelligence.last4_status="needs_operator_review";
+ assert.equal(run([],[record]).cards.find(x=>x.last4==="9451").transaction_count,0);
 });
