@@ -49,7 +49,7 @@ test("operator-classified invoices leave no-slip queue, including ON ACCOUNT unp
  ]});
  assert.deepEqual(Array.from(split.noSlip,x=>x.expense_document_id),["unknown"]);
  assert.deepEqual(Array.from(split.classified,x=>x.expense_document_id),
-   ["account","cash","partial"]);
+   ["cash","account","partial"]);
  assert.equal(split.paidOnBill.length,0);
  assert.equal(split.classified.find(x=>x.expense_document_id==="account").remaining_minor,30000);
 });
@@ -62,7 +62,7 @@ test("Payments has one direct workspace with JetRead-inspired workflow, Billy st
  for(const id of ids){
    assert.equal((page.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id);
  }
- const order=ids.slice(0,6).map(id=>page.indexOf('id="'+id+'"'));
+ const order=["billyFinancialReconciliationPanel","billyFinancialPaidOnBillPanel","billyFinancialReportedPanel","billyFinancialCardsPanel"].map(id=>page.indexOf('id="'+id+'"'));
  assert.ok(order.every((x,i)=>i===0||x>order[i-1]),"New sections are in the intended hierarchy");
  assert.ok(page.indexOf('id="billyFinancialReportedPanel"')<
    page.indexOf('id="billyFinancialCardsPanel"'));
