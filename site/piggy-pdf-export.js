@@ -8,7 +8,7 @@
     ["https://cdn.jsdelivr.net/npm/pdfmake@0.2.23/build/pdfmake.min.js",
       "https://cdn.jsdelivr.net/npm/pdfmake@0.2.23/build/vfs_fonts.js"]
   ];
-  let enginePromise=null;
+  let enginePromise=null,fontsReady=false;
   const s=x=>x===undefined||x===null?"":String(x);
   const arr=x=>Array.isArray(x)?x:[];
   const n=x=>Number.isSafeInteger(x)?x:0;
@@ -243,15 +243,17 @@
     document.head.appendChild(node);
   });
   async function getEngine(){
-    if(window.pdfMake?.createPdf&&window.pdfMake?.vfs)return window.pdfMake;
+    if(window.pdfMake?.createPdf&&fontsReady)return window.pdfMake;
     if(enginePromise)return enginePromise;
     enginePromise=(async()=>{
       let lastError;
       for(const [core,fonts] of CDNS){
         try{
           if(!window.pdfMake?.createPdf)await addScript(core);
-          if(!window.pdfMake?.vfs)await addScript(fonts);
-          if(window.pdfMake?.createPdf&&window.pdfMake?.vfs)return window.pdfMake;
+          // pdfmake 0.2.23's addVirtualFileSystem registers fonts internally,
+          // without exposing a public .vfs property.
+          if(!fontsReady){await addScript(fonts);fontsReady=true;}
+          if(window.pdfMake?.createPdf&&fontsReady)return window.pdfMake;
         }catch(e){lastError=e;}
       }
       throw lastError||new Error("PDF engine unavailable");
@@ -262,8 +264,12 @@
     if(!result?.understood)throw new Error("No report to export");
     const engine=await getEngine();
     const blob=await new Promise((resolve,reject)=>{
-      try{engine.createPdf(buildDocument(result,question)).getBlob(resolve);}
-      catch(e){reject(e);}
+      const watchdog=setTimeout(()=>reject(new Error("PDF generation timed out")),90000);
+      try{
+        engine.createPdf(buildDocument(result,question)).getBlob(file=>{
+          clearTimeout(watchdog);resolve(file);
+        });
+      }catch(e){clearTimeout(watchdog);reject(e);}
     });
     if(!blob)throw new Error("PDF generation did not return a file");
     const url=URL.createObjectURL(blob),link=document.createElement("a");

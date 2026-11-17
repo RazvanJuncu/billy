@@ -178,7 +178,7 @@ test("Persona stays inside chat; HUD calculations and evidence remain untouched"
   assert.match(client,/panel\.classList\.remove\("is-sniffing"\)/);
   assert.match(html,/piggy-persona\.js\?v=1\.0\.2/);
   assert.match(html,/intelligence-assistant\.js\?v=0\.5\.1/);
-  assert.match(html,/intelligence-assistant\.css\?v=0\.5\.0/);
+  assert.match(html,/intelligence-assistant\.css\?v=0\.5\.1/);
   assert.match(css,/@keyframes billy-piggy-snuffle/);
   assert.match(css,/prefers-reduced-motion:reduce/);
   assert.match(sw,/billydpi-orbit-v\d+-[a-z0-9-]+/);

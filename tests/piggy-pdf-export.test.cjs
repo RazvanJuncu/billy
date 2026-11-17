@@ -78,3 +78,44 @@ test("Download entrypoint is client-side, version-pinned, and uses a PDF blob",(
   assert.doesNotMatch(source,/fetch\(|innerHTML|localStorage|sessionStorage/);
   assert.match(read("site/sw.js"),/"\.\/piggy-pdf-export\.js"/);
 });
+
+test("Async loader supports pdfmake 0.2 internal VFS registration and downloads PDF",async()=>{
+  const calls=[],downloads=[],window={};
+  const document={
+    head:{appendChild(el){
+      calls.push(el.src);
+      if(el.src.includes("/pdfmake.min.js"))
+        window.pdfMake={
+          addVirtualFileSystem:()=>{},
+          createPdf:definition=>{
+            assert.match(flatten(definition.content),/Card spending/);
+            return {getBlob:cb=>cb({type:"application/pdf"})};
+          }
+        };
+      // Deliberately no window.pdfMake.vfs property in version 0.2.
+      el.onload();
+    }},
+    createElement(tag){
+      return tag==="script"?{remove(){}}:{
+        href:"",download:"",hidden:false,click(){downloads.push(this.download);},
+        remove(){}
+      };
+    },
+    body:{appendChild(){}}
+  };
+  const scope={
+    document,window,Intl,Number,Date,Set,
+    URL:{createObjectURL:blob=>{assert.equal(blob.type,"application/pdf");return "blob:mock";},
+      revokeObjectURL:()=>{}},
+    setTimeout:()=>1,clearTimeout:()=>{}
+  };
+  vm.runInNewContext(source,scope);
+  const result={understood:true,analytics:true,language:"en",
+    plan:{kind:"card_spending",group_by:"vendor"},groups:[],notes:[]};
+  const downloaded=await window.PiggyPDFExport.download(result,"Card spending");
+  assert.match(downloaded,/^Billy-Piggybank-Report-\d{4}-\d{2}-\d{2}\.pdf$/);
+  assert.equal(downloads.length,1);
+  assert.equal(calls.length,2,"Only core and virtual fonts should load");
+  await window.PiggyPDFExport.download(result,"Card spending");
+  assert.equal(calls.length,2,"Reusing the loaded engine");
+});
