@@ -73,7 +73,7 @@ test("Blocked queries export limitations, never invented amounts",()=>{
 });
 test("Download entrypoint is client-side, version-pinned, and uses a PDF blob",()=>{
   assert.match(source,/cdnjs\.cloudflare\.com\/ajax\/libs\/pdfmake\/0\.2\.23/);
-  assert.match(source,/getBlob\(resolve\)/);
+  assert.match(source,/getBlob\(file=>/);
   assert.match(source,/URL\.createObjectURL\(blob\)/);
   assert.doesNotMatch(source,/fetch\(|innerHTML|localStorage|sessionStorage/);
   assert.match(read("site/sw.js"),/"\.\/piggy-pdf-export\.js"/);
