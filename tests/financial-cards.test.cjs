@@ -36,6 +36,10 @@ const sandbox={
  financialProfile:r=>r.review_metadata?.classification?.profile||"",
  Date,Number,Map,Set,Intl
 };
+const helpersStart=backend.indexOf("function cardPaymentMethod(");
+const helpersEnd=backend.indexOf("function financialProfile(",helpersStart);
+assert.ok(helpersStart>0&&helpersEnd>helpersStart);
+vm.runInNewContext(backend.slice(helpersStart,helpersEnd),sandbox);
 vm.runInNewContext(backend.slice(start,end)+"\nthis.spend=cardTransactions;",sandbox);
 const run=(proofs,roots=[],links=[])=>sandbox.spend(cards,proofs,roots,links,"2026-11-17");
 test("Approved POS is attributed by exact last four; no FX conversion or fake totals",()=>{
