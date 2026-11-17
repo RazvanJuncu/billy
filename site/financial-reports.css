@@ -80,3 +80,7 @@
  .billy-reports-groupby button{padding:8px 10px!important}
 }
 @media(prefers-reduced-motion:reduce){.billy-reports-row{transition:none}}
+
+.billy-reports-secondary-body{padding:0 17px 16px;display:flex;flex-direction:column;gap:12px}
+.billy-reports-secondary .billy-financial-integrity{border-top:0}
+.billy-reports-secondary .billy-financial-section-head{margin-top:8px}
