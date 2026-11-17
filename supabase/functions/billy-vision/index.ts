@@ -4003,7 +4003,7 @@ async function piggyInterpret(question,previous,day){
       "x-goog-api-key":providerKey()},
     body:JSON.stringify({contents:[{role:"user",parts:[{text:prompt}]}],
       generationConfig:{responseMimeType:"application/json",
-        responseJsonSchema:PIGGY_PLAN_SCHEMA,maxOutputTokens:650},store:false}),
+        responseJsonSchema:PIGGY_PLAN_SCHEMA,maxOutputTokens:1100},store:false}),
     signal:AbortSignal.timeout(55000)
   });
   if(!response.ok)throw Error("Analytics planner unavailable");
