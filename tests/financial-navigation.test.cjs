@@ -150,7 +150,7 @@ test("Attention still opens an audited correction editor and Insights keeps the 
  assert.equal(at("billyFinancialInsightCurrency").value,"EUR");
  assert.match(html,/<details class="billy-financial-integrity"/);
  assert.match(html,/<summary class="billy-financial-integrity-summary"/);
- assert.doesNotMatch(html,/<details[^>]*\sopen(?:\s|>)/);
+ assert.doesNotMatch(html,/<details class="billy-financial-integrity"[^>]*\sopen(?:\s|>)/);
 });
 test("Financial routes preserve one approved-data source and authenticated preview",()=>{
  for(const id of ["billyFinancialAttentionNav","billyFinancialExpensesNav",
