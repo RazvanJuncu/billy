@@ -3033,9 +3033,9 @@ async function financialRevokeAllocation(req,principal){
 
 // Card spending 1.0: source-grounded approved POS transactions. Never expose
 // full card details, assume invoices are paid, or convert currencies.
-function cardTransactions(cards,proofs,roots,links,day){
+function cardTransactions(cards,proofs,roots,links,day,windowDays=30,perCardLimit=25){
   const end=new Date(day+"T00:00:00Z");
-  const start=new Date(end.getTime()-29*86400000).toISOString().slice(0,10);
+  const start=new Date(end.getTime()-(windowDays-1)*86400000).toISOString().slice(0,10);
   const known=new Map(cards.map(card=>[card.last4,card]));
   const groups=new Map(cards.map(card=>[card.id,{
     ...card,totals:[],transactions:[],transaction_count:0
@@ -3073,6 +3073,12 @@ function cardTransactions(cards,proofs,roots,links,day){
     const row=groups.get(entry.id);
     const tx={id:record.id,date,amount_minor:money.minor,currency:money.currency,
       vendor:assistantValue(record,"vendor")||"Unassigned",
+      category:assistantValue(record,"category")||"other",
+      airport:assistantValue(record,"airport")||null,
+      aircraft:assistantValue(record,"registration")||null,
+      flight_number:assistantValue(record,"flight")||null,
+      card_id:entry.id,card_last4:entry.last4,
+      card_holder:entry.holder_label,card_display_currency:entry.display_currency,
       source:sourceType,
       settlement:financialTransactionStatus(record)==="confirmed"?
         "source_confirmed":"not_independently_verified"};
@@ -3109,7 +3115,7 @@ function cardTransactions(cards,proofs,roots,links,day){
         currency:key.slice(row.id.length+1),total_minor
       })).sort((a,b)=>a.currency.localeCompare(b.currency));
     row.transactions.sort((a,b)=>b.date.localeCompare(a.date)||a.id.localeCompare(b.id));
-    row.transactions=row.transactions.slice(0,25);
+    if(perCardLimit>0)row.transactions=row.transactions.slice(0,perCardLimit);
   }
   return {cards:[...groups.values()].sort((a,b)=>
       a.holder_label.localeCompare(b.holder_label)||a.last4.localeCompare(b.last4)),
