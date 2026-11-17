@@ -60,7 +60,7 @@
       );
       const amounts=node("span","billy-fcard-amounts");
       if(!card.transaction_count)
-        amounts.append(node("span","billy-fcard-unavailable","No approved card evidence yet"));
+        amounts.append(node("span","billy-fcard-unavailable","No activity"));
       else{
         for(const total of card.totals)
           amounts.append(node("strong","",money(total.total_minor,total.currency)));
@@ -152,14 +152,7 @@
         activity.append(row);
       }
     }
-    $("billyFinancialCardNote").textContent=data?
-      "Evidence-based totals by transaction currency; no BNR conversion. "+
-      (data.partial?"Archive incomplete — totals may be partial. ":"")+
-      (data.without_card||data.unknown_card?
-        (data.without_card||0)+" slips without card number · "+
-        (data.unknown_card||0)+" unregistered card numbers. ":"")+
-      "No balances or historical spending imported from JetRead.":
-      "Card spending is calculated from approved Billy documents only.";
+    if(data?.partial)count.textContent+=" · Partial archive";
   }
   async function refresh(){
     if(loading)return loading;
