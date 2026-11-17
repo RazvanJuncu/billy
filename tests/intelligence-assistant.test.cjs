@@ -133,8 +133,8 @@ test("Home-only animated bubble displays verified breakdown and allows opening s
   assert.match(html,/id="billyAssistantLaunch"/);
   assert.match(html,/id="billyAssistantPanel"/);
   assert.match(html,/id="billyAssistantForm"/);
-  assert.match(html,/intelligence-assistant\.js\?v=0\.4\.1/);
-  assert.match(html,/intelligence-assistant\.css\?v=0\.4\.0/);
+  assert.match(html,/intelligence-assistant\.js\?v=0\.5\.0/);
+  assert.match(html,/intelligence-assistant\.css\?v=0\.5\.0/);
   assert.match(css,/body\[data-billy-screen="home"\] \.billy-ai-dock/);
   assert.match(css,/prefers-reduced-motion:reduce/);
   assert.match(ui,/window\.BillyAccounts\.sessionHeaders\(\)/);
@@ -147,7 +147,7 @@ test("Home-only animated bubble displays verified breakdown and allows opening s
 
 test("Billy assistant follows flat product UI, not a large stand-alone chat widget",()=>{
   assert.match(html,/class="billy-ai-head-mark" src="\.\/piggybank-mark\.svg"/);
-  assert.match(html,/Ask about costs, flights, or documents\./);
+  assert.match(html,/Costs, flights, documents\. I've got a snout for details\./);
   assert.doesNotMatch(html,/Answers use your team's approved documents\. Flight-level totals will need Skylegs/);
   assert.doesNotMatch(html,/Approved records · Operational insights/);
   assert.match(css,/height:min\(242px,calc\(100dvh - 108px\)\)/);
