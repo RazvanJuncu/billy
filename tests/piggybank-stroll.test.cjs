@@ -187,7 +187,7 @@ test("The sprite is decorative and leaves the launcher clickable",()=>{
   assert.match(html,/id="piggybankStroll" class="piggybank-stroll" aria-hidden="true"/);
   assert.match(html,/class="piggybank-stroll-mark" src="\.\/piggybank-mark\.svg"/);
   assert.match(html,/piggybank-stroll\.js\?v=1\.1\.0/);
-  assert.match(html,/intelligence-assistant\.css\?v=0\.3\.4/);
+  assert.match(html,/intelligence-assistant\.css\?v=0\.4\.0/);
   assert.match(css,/\.piggybank-stroll\{/);
   assert.match(css,/pointer-events:none/);
   assert.match(css,/@keyframes piggybank-bottom-stroll/);
