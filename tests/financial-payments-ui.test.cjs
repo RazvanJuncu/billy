@@ -84,5 +84,5 @@ test("No-slip selection is explicit, auditable, and reversible without auto-sett
  assert.match(ui,/Split payments are supported/);
  assert.match(ui,/window\.confirm/);
  assert.doesNotMatch(ui,/\.innerHTML\s*=/);
- assert.match(read("site/sw.js"),/v117-payment-method-workspace/);
+ assert.match(read("site/sw.js"),/v118-reports-solid-cards/);
 });

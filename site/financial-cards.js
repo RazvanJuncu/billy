@@ -55,7 +55,6 @@
       const visual=node("span","billy-fcard-art");
       visual.append(
         node("span","billy-fcard-kind",cardName(card)),
-        node("span","billy-fcard-chip",""),
         node("span","billy-fcard-number","••••  ••••  "+card.last4),
         node("span","billy-fcard-holder",card.holder_label)
       );
