@@ -4,6 +4,10 @@
 */
 // Stage 1/2: profiles are separate from invoice/fuel_release persistence types.
 const BASE_INVOICE_FIELDS = ["supplier_name","supplier_tax_id","customer_name","invoice_number","issue_date","due_date","currency","subtotal","vat_total","grand_total"];
+// Safe, nullable fields for card evidence visible on bills AND POS receipts.
+// The full PAN, expiry, IBAN and cardholder identity are never requested.
+const CARD_EVIDENCE_FIELDS = ["payment_method","card_last4","card_brand",
+  "transaction_reference","transaction_status"];
 const PROFILE_FIELDS = {
   fuel_invoice:["aircraft_registration","flight_number","airport_icao","service_date","fuel_quantity","fuel_unit","fuel_density"],
   handling_invoice:["aircraft_registration","flight_number","airport_icao","service_date"],
@@ -19,7 +23,8 @@ const PROFILE_FIELDS = {
   generic_invoice:[],generic_receipt:[],payment_slip:["card_last4","card_brand","transaction_reference",
     "transaction_status","terminal_id","payment_method"],supplier_statement:[],generic_document:[]
 };
-const INVOICE_FIELDS = [...BASE_INVOICE_FIELDS,...new Set(Object.values(PROFILE_FIELDS).flat())];
+const INVOICE_FIELDS = [...new Set([...BASE_INVOICE_FIELDS,
+  ...Object.values(PROFILE_FIELDS).flat(),...CARD_EVIDENCE_FIELDS])];
 const CATEGORIES = ["fuel","handling","taxi","city_tax","catering","hotel","pax_gifts","parking","crew_expenses","aircraft_supplies","other","unknown"];
 const PROFILE_NAMES = ["fuel_release",...Object.keys(PROFILE_FIELDS),"unknown"];
 const FORCED_CATEGORY = {
@@ -77,7 +82,8 @@ const ENTITY_HINTS = {type:"array",items:{type:"string",enum:[
   "supplier_name","operator_name","property_name","airport","airport_icao"
 ]}};
 const invoiceSchemaFor = profile => {
-  const fields=[...BASE_INVOICE_FIELDS,...(PROFILE_FIELDS[profile]||[])];
+  const fields=[...new Set([...BASE_INVOICE_FIELDS,
+    ...(PROFILE_FIELDS[profile]||[]),...CARD_EVIDENCE_FIELDS])];
   return {type:"object",properties:{...props(fields),
     lines:arraySchema(LINE_FIELDS,props(LINE_FIELDS)),
     notes:{type:"array",items:{type:"string"}},regions:EVIDENCE,
@@ -178,6 +184,20 @@ const INSTRUCTIONS =
   "For English documents use document_language='en' and english_translations=[]. " +
   "Never translate, modify or reformat proper names, registration numbers, invoice numbers, " +
   "dates, meter readings, currency codes, numeric values, quantities, brands or fuel grades. " +
+  "For every invoice or receipt, inspect only the PRIMARY document for printed payment evidence. "+
+  "When the document itself explicitly says CARD, VISA, MASTERCARD, REVOLUT, POS or other card method, "+
+  "put that visible method in payment_method; never infer the method from a bank logo, merchant name, or card digit alone. "+
+  "Extract card_last4 ONLY when exactly four trailing card digits are visibly attributable to a MASKED CARD NUMBER "+
+  "and NOT to a terminal ID, invoice number, bank account, date, reference or full unmasked PAN. "+
+  "Return digits only (for example 2212); return null if partially legible, multiple cards conflict or uncertain. "+
+  "Card brand and transaction_reference are separate, and only if actually printed. "+
+  "Return transaction_status only when the SAME PRIMARY document explicitly shows PAID, APPROVED, SUCCESS, "+
+  "COMPLETED, DECLINED, REFUNDED or equivalent printed transaction outcome; do not infer PAID from "+
+  "an invoice being approved by an operator, from printing a card last4, or from a generic payment method. "+
+  "For every extracted card_last4 include a region with field_path='card_last4', exact printed "+
+  "masked-card transcription, and correct visual_clarity. For uncertain card digits use null. "+
+  "For bills with physically overlaid POS slips, do NOT transfer card details or transaction status "+
+  "from the overlay to the underlying invoice. The overlaid slip will be extracted separately. "+
   "Never transcribe full card PANs, IBANs, cardholder names or expiration dates in notes or extracted card fields. " +
   "Do not invent missing wording. For uncertain translations, omit the entry, " +
   "leave the source wording and rely on operator verification. " +
