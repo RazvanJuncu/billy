@@ -2197,7 +2197,8 @@ async function organizeDocument(req,principal){
     organization_overrides:overrides});
 }
 
-// Financial Linking Engine P0:
+// Financial Linking Engine P0: strict same-photo matching, no independent
+// accounting effect from a POS slip, and no AI-generated confidence scores.
 function cardPaymentMethod(raw){
   const value=String(raw||"").normalize("NFKC").trim().toLowerCase()
     .replace(/\s+/g," ");
@@ -2216,8 +2217,6 @@ function eligibleCardLast4(record){
   return ["ai_source_evidence","operator_confirmed"].includes(quality)?
     digits:null;
 }
- strict same-photo matching, no independent
-// accounting effect from a POS slip, and no AI-generated confidence scores.
 function financialProfile(record){
   return String(record?.review_metadata?.classification?.profile||"");
 }
