@@ -24,7 +24,7 @@
   <link rel="stylesheet" href="./financial.css?v=1.9.0">
   <link rel="stylesheet" href="./financial-cards.css?v=1.2.0">
   <link rel="stylesheet" href="./financial-reports.css?v=1.1.0">
-  <link rel="stylesheet" href="./financial-payments.css?v=1.1.0">
+  <link rel="stylesheet" href="./financial-payments.css?v=1.2.0">
   <link rel="stylesheet" href="./nested-mitosis.css?v=0.3.0">
   <link rel="stylesheet" href="./intelligence-assistant.css?v=0.3.4">
   <link rel="stylesheet" href="./multi-documents.css?v=1.0.0">
@@ -55,10 +55,11 @@
   <script src="./documents-index.js?v=1.9.1" defer></script>
   <script src="./original-archive.js?v=1.1.0" defer></script>
   <script src="./document-preview.js?v=1.5.2" defer></script>
-  <script src="./financial.js?v=2.2.0" defer></script>
-  <script src="./financial-reports.js?v=1.0.0" defer></script>
-  <script src="./financial-reconciliation.js?v=2.0.0" defer></script>
-  <script src="./financial-cards.js?v=1.0.0" defer></script>
+  <script src="./financial-categories.js?v=1.0.0" defer></script>
+  <script src="./financial.js?v=2.3.0" defer></script>
+  <script src="./financial-reports.js?v=1.1.0" defer></script>
+  <script src="./financial-reconciliation.js?v=2.1.0" defer></script>
+  <script src="./financial-cards.js?v=1.1.0" defer></script>
   <script src="./simple.js?v=2.2.4" defer></script>
   <script src="./piggybank-hud.js?v=1.0.0" defer></script>
   <script src="./intelligence-assistant.js?v=0.3.0" defer></script>
@@ -311,9 +312,6 @@
             </section>
             <section class="billy-financial-section" id="billyFinancialExpensesSection" aria-label="Expenses" hidden>
               <div id="billyFinancialExpenseResults" hidden>
-                <div class="billy-financial-section-head">
-                  <span id="billyFinancialLedgerCount" class="billy-financial-section-sub">Approved records</span>
-                </div>
                 <div class="billy-financial-filters">
                   <input id="billyFinancialSearch" type="search" autocomplete="off"
                     placeholder="Search vendor, reference or flight" aria-label="Search expenses">
@@ -334,7 +332,6 @@
                   <h3>Bills without a POS slip</h3>
                   <span id="billyFinancialNoSlipCount" class="billy-financial-section-sub">Awaiting review</span>
                 </div>
-                <p class="billy-financial-reconciliation-note">A slip is not required for an invoice to count as an expense. Choose a method only when verified. On account remains unpaid.</p>
                 <div id="billyFinancialReconciliationList" class="billy-financial-attention-list"></div>
               </div>
               <div class="billy-financial-payment-shelf" aria-label="Payment records and evidence">
@@ -343,7 +340,6 @@
                   <strong>Paid by card on bill</strong>
                   <span id="billyFinancialPaidOnBillCount">0 bills</span>
                 </summary>
-                <p class="billy-financial-reconciliation-note">Only approved bills explicitly marked card-paid appear here. No separate POS slip is required; bank settlement remains unverified.</p>
                 <div id="billyFinancialPaidOnBillList" class="billy-financial-attention-list"></div>
               </details>
               <details id="billyFinancialReportedPanel" class="billy-financial-proof-panel" hidden>
@@ -351,7 +347,6 @@
                   <strong>Classified without a slip</strong>
                   <span id="billyFinancialReportedCount">0 bills</span>
                 </summary>
-                <p class="billy-financial-reconciliation-note">Operator-reported transfers, cash, other methods and on-account invoices. You can amend a classification through a reversible audit entry.</p>
                 <div id="billyFinancialReportedList" class="billy-financial-attention-list"></div>
               </details>
               <details id="billyFinancialCardsPanel" class="billy-financial-cards-panel" open>
@@ -363,7 +358,6 @@
                   <div id="billyFinancialCardGrid" class="billy-financial-cards-grid"></div>
                   <div id="billyFinancialCardControls" class="billy-financial-card-controls"></div>
                   <div id="billyFinancialCardActivity" class="billy-financial-card-activity"></div>
-                  <p id="billyFinancialCardNote" class="billy-financial-reconciliation-note">Card spending comes from approved Billy evidence only.</p>
                 </div>
               </details>
               <details id="billyFinancialLinkedPanel" class="billy-financial-proof-panel" hidden>

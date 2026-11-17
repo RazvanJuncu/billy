@@ -233,10 +233,6 @@
         String(value||"").toLocaleLowerCase("en-US").includes(search)))return false;
       return true;
     });
-    $("billyFinancialLedgerCount").textContent=
-      visible.length+" of "+rows.length+" approved expenses"+
-      ((state.data?.operational_counts?.duplicate_expenses_excluded||0)?
-        " · duplicates excluded":"");
     host.replaceChildren();
     if(state.error||!visible.length){
       host.append(make("p","billy-financial-empty",
@@ -247,9 +243,12 @@
       const row=make("div","billy-financial-expense-row");
       const identity=make("div","billy-financial-expense-identity");
       identity.append(make("strong","",item.vendor||"Unassigned"));
-      const context=[(item.profile||"").replaceAll("_"," "),item.aircraft,
-        item.date||"No document date"].filter(Boolean).join(" · ");
+      const context=[item.aircraft,item.date||"Date not available"]
+        .filter(Boolean).join(" · ");
       identity.append(make("small","",context));
+      const category=make("div","billy-financial-expense-category");
+      category.append(window.BillyFinancialCategories?.make?.(item.profile,item.category)||
+        make("span","billy-financial-category","EXPENSE"));
       const totals=make("div","billy-financial-expense-amount");
       totals.append(make("strong","",item.amount_minor!==null?
         money(item.amount_minor,item.currency):
@@ -261,7 +260,7 @@
       const actions=make("div","billy-financial-row-actions");
       actions.append(createButton("Open","billy-financial-subtle",
         event=>void openDocument(item.id,event.currentTarget)));
-      row.append(identity,totals,actions);host.append(row);
+      row.append(identity,category,totals,actions);host.append(row);
     }
     if(visible.length>150){
       host.append(make("p","billy-financial-coverage",

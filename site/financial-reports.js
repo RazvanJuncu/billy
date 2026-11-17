@@ -162,12 +162,10 @@
       if(expanded.has(group.name))showGroup(group,region);
       table.append(region);
     }
-    $("billyFinancialReportFootnote").textContent=
-      "Only approved Billy expenses; canonical records counted once. "+
-      "POS slips are not additional expenses. Fuel volume and mass appear "+
-      "only when source units and normalization support them. "+
-      "Currencies remain separate — no inferred RON conversion."+
-      (data?.partial?" The archive is incomplete; CSV export is disabled.":"");
+    const notice=$("billyFinancialReportFootnote");
+    notice.hidden=!data?.partial;
+    notice.textContent=data?.partial?
+      "Partial archive · CSV export unavailable":"";
   }
   function csvCell(value){
     const s=String(value??"");

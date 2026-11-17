@@ -66,15 +66,15 @@ test("Payments has one direct workspace with JetRead-inspired workflow, Billy st
  assert.ok(order.every((x,i)=>i===0||x>order[i-1]),"New sections are in the intended hierarchy");
  assert.ok(page.indexOf('id="billyFinancialReportedPanel"')<
    page.indexOf('id="billyFinancialCardsPanel"'));
- assert.match(page,/financial-payments\.css\?v=1\.1\.0/);
- assert.match(page,/financial-reconciliation\.js\?v=2\.0\.0/);
+ assert.match(page,/financial-payments\.css\?v=1\.2\.0/);
+ assert.match(page,/financial-reconciliation\.js\?v=2\.1\.0/);
  assert.match(finance,/billyFinancialPaidOnBillPanel/);
  assert.match(finance,/billyFinancialReportedPanel/);
  assert.match(css,/\.billy-payments-bill-row/);
  assert.match(css,/@media\(max-width:600px\)/);
 });
 test("No-slip selection is explicit, auditable, and reversible without auto-settlement",()=>{
- assert.match(ui,/Paid by  ⌄/);
+ assert.match(ui,/Paid by/);
  assert.match(ui,/function editor\(entry\)/);
  assert.match(ui,/financial-allocation"/);
  assert.match(ui,/financial-allocation-revoke"/);
@@ -84,7 +84,7 @@ test("No-slip selection is explicit, auditable, and reversible without auto-sett
  assert.match(ui,/Split payments are supported/);
  assert.match(ui,/window\.confirm/);
  assert.doesNotMatch(ui,/\.innerHTML\s*=/);
- assert.match(read("site/sw.js"),/v119-financial-ux-cleanup/);
+ assert.match(read("site/sw.js"),/v120-financial-copy-cleanup/);
 });
 
 test("Collapsed Payments is a compact, single-surface disclosure shelf",()=>{
