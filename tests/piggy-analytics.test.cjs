@@ -30,7 +30,7 @@ const scope={
 vm.runInNewContext(edge.slice(start,end)+
  "\nthis.plan=piggyPlan;this.select=piggySelect;this.report=piggyAnalyticsResult;"+
  "this.expenses=piggyAnalyticsExpenses;this.cards=piggyAnalyticsCards;"+
- "this.schema=PIGGY_PLAN_SCHEMA;",scope);
+ "this.schema=PIGGY_PLAN_SCHEMA;this.followup=piggyFollowup;",scope);
 const raw=(mod={})=>({
  intent:"report",language:"en",kind:"expenses",group_by:"vendor",chart:"auto",
  metric:"spend",compare_previous:false,start_date:null,end_date:null,
@@ -184,8 +184,92 @@ test("Conversation sends previous typed plan and preserves legacy document assis
  assert.match(client,/result\.filter\?\.intent==="costs"/);
  assert.match(html,/piggy-analytics-hud\.js\?v=2\.0\.0/);
  assert.match(html,/piggybank-hud\.js\?v=1\.1\.0/);
- assert.match(html,/intelligence-assistant\.js\?v=0\.4\.0/);
- assert.match(read("site/sw.js"),/v123-piggy-analytics/);
+ assert.match(html,/intelligence-assistant\.js\?v=0\.4\.1/);
+ assert.match(read("site/sw.js"),/v124-piggy-followups/);
  assert.doesNotMatch(client,/\.innerHTML\s*=|localStorage|sessionStorage/);
  assert.doesNotMatch(hud,/\.innerHTML\s*=|localStorage|sessionStorage/);
+});
+
+test("Reported user bug: Romanian day-trend follow-up preserves all 30-day vendor-report filters",()=>{
+ const first=scope.plan(raw({
+  language:"ro",group_by:"vendor",chart:"auto",
+  start_date:"2026-10-19",end_date:"2026-11-17",
+  vendor:"Air",airport:"LRCL",category:"handling"
+ }),"Grupează cheltuielile pe furnizori în ultimele 30 de zile.","2026-11-17");
+ const second=scope.followup("Acum arată-mi evoluția pe zile.",first,"2026-11-17");
+ assert.ok(second,"Short report edit must not need another AI call");
+ assert.equal(second.intent,"report");
+ assert.equal(second.group_by,"day");
+ assert.equal(second.chart,"line");
+ assert.equal(second.start_date,"2026-10-19");
+ assert.equal(second.end_date,"2026-11-17");
+ assert.equal(second.vendor,"Air");
+ assert.equal(second.airport,"LRCL");
+ assert.equal(second.category,"handling");
+ const r=scope.report(source([row("in-period","EUR",7500,{
+   vendor:"Air",airport:"LRCL",category:"handling"
+ })]),second,"2026-11-17");
+ assert.equal(r.visualization,"line");
+ assert.equal(r.groups[0].total_minor,7500);
+ assert.equal(r.plan.start_date,"2026-10-19");
+});
+test("Three successive chat messages re-group, trend and compare without losing context",()=>{
+ let p=scope.plan(raw({language:"ro",group_by:"vendor",
+  start_date:"2026-11-11",end_date:"2026-11-17"}),
+  "Grupează pe furnizori în ultimele 7 zile.","2026-11-17");
+ p=scope.followup("Acum arată-mi evoluția pe zile.",p,"2026-11-17");
+ assert.equal(p.group_by,"day");
+ p=scope.followup("Compară cu perioada precedentă.",p,"2026-11-17");
+ assert.equal(p.compare_previous,true);
+ assert.equal(p.group_by,"day");
+ assert.equal(p.chart,"line");
+ assert.equal(p.start_date,"2026-11-11");
+ p=scope.followup("Acum pe furnizori.",p,"2026-11-17");
+ assert.equal(p.group_by,"vendor");
+ assert.equal(p.chart,"bar");
+ assert.equal(p.compare_previous,true);
+ const result=scope.report(source([
+  row("current","EUR",2000,{date:"2026-11-16"}),
+  row("older","EUR",1000,{date:"2026-11-09"})
+ ]),p,"2026-11-17");
+ assert.equal(result.groups[0].total_minor,2000);
+ assert.equal(result.groups[0].previous_total_minor,1000);
+ assert.equal(result.groups[0].change_percent,100);
+});
+test("English follow-ups and bounded date changes use the prior typed plan",()=>{
+ const first=scope.plan(raw({group_by:"vendor",
+   start_date:"2026-11-11",end_date:"2026-11-17",
+   card_currency:"RON",kind:"card_spending"}),
+   "Show card spending by vendor for last week","2026-11-17");
+ const next=scope.followup("Now show daily trend",first,"2026-11-17");
+ assert.equal(next.group_by,"day");
+ assert.equal(next.chart,"line");
+ assert.equal(next.card_currency,"RON");
+ const days=scope.followup("Last 3 days",next,"2026-11-17");
+ assert.equal(days.start_date,"2026-11-15");
+ assert.equal(days.end_date,"2026-11-17");
+ assert.equal(days.kind,"card_spending");
+ assert.equal(days.card_currency,"RON");
+ const table=scope.followup("As a table",days,"2026-11-17");
+ assert.equal(table.chart,"table");
+});
+test("Non-trivial new questions and absent context still go to AI, never silently lose filters",()=>{
+ const original=scope.plan(raw({group_by:"vendor",
+  start_date:"2026-11-11",end_date:"2026-11-17"}),"Last 7 days","2026-11-17");
+ assert.equal(scope.followup("Acum arată-mi evoluția pe zile.",null,"2026-11-17"),null);
+ assert.equal(scope.followup("Arată-mi evoluția pe zile pentru zborurile către Cluj",
+   original,"2026-11-17"),null);
+ assert.equal(scope.followup("Show card spending for all flights to Zurich",
+   original,"2026-11-17"),null);
+ assert.equal(scope.followup("Schimbă și aeroportul, și moneda",
+   original,"2026-11-17"),null);
+ assert.equal(scope.followup("How is the weather?",
+   original,"2026-11-17"),null);
+});
+test("Follow-up endpoint bypasses unnecessary LLM calls while retaining access controls",()=>{
+ assert.match(edge,/function piggyFollowup\(question,previous,today\)/);
+ assert.match(edge,/plan=piggyFollowup\(question,input\.previous_plan\|\|null,today\)\|\|/);
+ assert.match(edge,/await piggyInterpret\(question,input\.previous_plan\|\|null,today\)/);
+ assert.match(edge,/const principal=await trusted\(req\)/);
+ assert.match(edge,/organization_id:"eq\."\+principal\.organization_id/);
 });

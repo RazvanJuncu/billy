@@ -242,7 +242,9 @@
       return;
     }
     setOpen(true);
-    window.PiggybankHUD?.hide(false);
+    // Keep the previous verified report visible while editing it. A failed
+    // follow-up must not erase the operator's last good HUD.
+    if(!lastAnalyticsPlan)window.PiggybankHUD?.hide(false);
     panel.classList.add("has-thread");
     const welcome=feed.querySelector(".billy-ai-welcome");
     if(welcome)welcome.hidden=true;
