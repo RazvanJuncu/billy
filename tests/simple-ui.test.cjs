@@ -225,7 +225,7 @@ test("Uploaded Documents defaults to a visual hub with no recent documents",()=>
   assert.match(index,/function start\(list\)/);
   assert.match(flow,/BillyDocumentsIndex\?\.start\?\.\(list\)/);
   assert.match(flow,/BillyDocumentsIndex\?\.back\?\.\(\)/);
-  assert.match(hub,/const views=\["All","Aircraft","Services","Airports","Vendors"\]/);
+  assert.match(hub,/const views=\["All","Aircraft","Services","Airports","Vendors","Flights"\]/);
   assert.match(hub,/billy-hub-circle/);
   assert.match(css,/#simpleUploaded\[data-billy-doc-view="Home"\] #simpleDocumentsList/);
   assert.match(hub,/if\(state.mode==="Home"\)/);
