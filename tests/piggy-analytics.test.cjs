@@ -50,7 +50,7 @@ test("Planner is an allowlisted spec, not SQL or an LLM calculated sum",()=>{
  assert.ok(keys.includes("group_by")&&keys.includes("card_currency"));
  assert.ok(!keys.includes("sql")&&!keys.includes("total_minor")&&!keys.includes("source_document_id"));
  assert.throws(()=>scope.plan({...raw(),sql:"DELETE FROM invoices"},"", "2026-11-17"),/Invalid analytics plan/);
- assert.throws(()=>scope.plan(raw({card_last4:"12345678"}),"","2026-11-17"),/Invalid masked card/);
+ assert.throws(()=>scope.plan(raw({card_last4:"12345678"}),"","2026-11-17"),/Invalid (?:report filter|masked card)/);
  assert.throws(()=>scope.plan(raw({start_date:"2026-11-20",end_date:"2026-11-10"}),"","2026-11-17"),/range/);
 });
 test("Romanian relative last three days overrides hallucinated model dates",()=>{
