@@ -147,7 +147,7 @@ test("Home-only animated bubble displays verified breakdown and allows opening s
 
 test("Billy assistant follows flat product UI, not a large stand-alone chat widget",()=>{
   assert.match(html,/class="billy-ai-head-mark" src="\.\/piggybank-mark\.svg"/);
-  assert.match(html,/Ask about costs, flights, or documents\./);
+  assert.match(html,/Costs, flights, documents\. I've got a snout for details\./);
   assert.doesNotMatch(html,/Answers use your team's approved documents\. Flight-level totals will need Skylegs/);
   assert.doesNotMatch(html,/Approved records · Operational insights/);
   assert.match(css,/height:min\(242px,calc\(100dvh - 108px\)\)/);
