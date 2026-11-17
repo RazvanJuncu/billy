@@ -7,7 +7,7 @@
   const catalogue={
     ro:{
       welcomeTitle:"Piggy e numai urechi.",
-      welcomeSubtitle:"Costuri, zboruri, documente — am rât pentru detalii.",
+      welcomeSubtitle:"Costuri, zboruri, documente. Am rât pentru detalii.",
       input:"Întreabă-l pe Piggy…",
       prompts:[
         {label:"Costuri pe furnizori",question:"Grupează cheltuielile pe furnizori în ultimele 30 de zile."},
@@ -51,7 +51,7 @@
     },
     en:{
       welcomeTitle:"Piggy's all ears.",
-      welcomeSubtitle:"Costs, flights, documents — I've got a snout for details.",
+      welcomeSubtitle:"Costs, flights, documents. I've got a snout for details.",
       input:"Ask Piggy anything…",
       prompts:[
         {label:"Spending by vendor",question:"Group expenses by vendor over the last 30 days."},
