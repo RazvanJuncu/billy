@@ -182,3 +182,57 @@
     font-size:9px;
   }
 }
+
+/* Financial copy cleanup — compact source-grounded categories on Expenses/Payments. */
+.billy-financial-category{
+  display:inline-flex;align-items:center;gap:6px;
+  color:#ccd1d3;letter-spacing:.035em;font-size:10px;
+  font-weight:660;line-height:1.4;white-space:nowrap;min-width:0
+}
+.billy-financial-category svg{
+  width:15px;height:15px;flex:none;display:block;color:#d8dddf
+}
+.billy-financial-expense-row{
+  grid-template-columns:minmax(0,1.4fr) minmax(120px,.6fr) minmax(100px,.55fr) auto;
+}
+.billy-financial-expense-category{display:flex;align-items:center;min-width:0}
+.billy-payments-bill-meta{
+  display:flex;align-items:center;flex-wrap:wrap;gap:5px 10px;min-width:0;
+}
+.billy-payments-bill-meta small{
+  color:#9ca5aa;font-size:10px;line-height:1.4;white-space:nowrap
+}
+/* Single consistent chevron built as an outline, not font glyphs. */
+.billy-financial-payment-shelf .billy-financial-proof-summary::after,
+.billy-financial-payment-shelf .billy-financial-cards-summary::after{
+  content:""!important;
+  box-sizing:border-box;width:8px;height:8px;
+  border:solid #bec6ca;border-width:0 1.7px 1.7px 0;
+  transform:rotate(45deg);transition:transform .17s ease;
+  margin:0 3px 4px 8px;flex:none;line-height:0
+}
+.billy-financial-payment-shelf details[open] > .billy-financial-proof-summary::after,
+.billy-financial-payment-shelf details[open] > .billy-financial-cards-summary::after{
+  content:""!important;transform:rotate(225deg);margin-top:7px;margin-bottom:0
+}
+.billy-payments-method-button{gap:8px}
+.billy-payments-method-button::after{
+  content:"";display:inline-block;box-sizing:border-box;width:6px;height:6px;
+  border:solid currentColor;border-width:0 1.5px 1.5px 0;
+  transform:rotate(45deg);margin:0 2px 3px 1px
+}
+@media(max-width:900px){
+  .billy-financial-expense-row{grid-template-columns:minmax(0,1fr) auto}
+  .billy-financial-expense-category{grid-column:1;grid-row:2}
+  .billy-financial-expense-amount{grid-column:2;grid-row:1 / 3}
+  .billy-financial-expense-row .billy-financial-row-actions{
+    grid-column:1/-1;justify-content:flex-end
+  }
+}
+@media(max-width:600px){
+  .billy-financial-category{font-size:9px;gap:5px}
+  .billy-financial-category svg{width:14px;height:14px}
+}
+@media(prefers-reduced-motion:reduce){
+  .billy-financial-payment-shelf summary::after{transition:none}
+}
