@@ -133,7 +133,7 @@ test("Home-only animated bubble displays verified breakdown and allows opening s
   assert.match(html,/id="billyAssistantLaunch"/);
   assert.match(html,/id="billyAssistantPanel"/);
   assert.match(html,/id="billyAssistantForm"/);
-  assert.match(html,/intelligence-assistant\.js\?v=0\.5\.0/);
+  assert.match(html,/intelligence-assistant\.js\?v=0\.5\.1/);
   assert.match(html,/intelligence-assistant\.css\?v=0\.5\.0/);
   assert.match(css,/body\[data-billy-screen="home"\] \.billy-ai-dock/);
   assert.match(css,/prefers-reduced-motion:reduce/);
