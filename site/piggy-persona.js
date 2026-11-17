@@ -100,7 +100,7 @@
     const value=String(text||"").normalize("NFKD")
       .replace(/[\u0300-\u036f]/g,"").toLowerCase();
     if(/[ăâîșşțţ]/i.test(String(text||"")))return "ro";
-    const rom=/\b(acum|arata|arata-mi|cheltuieli|cheltuit|costuri|zboruri|zbor|documente|document|grupeaza|furnizori|furnizor|cate|cati|cat|vreau|ultima|ultimele|ultimii|zile|zi|azi|salut|buna|groh|intreaba|perioada|precedenta|deci|pentru|afiseaza|raportul)\b/g;
+    const rom=/\b(acum|arata|arata-mi|cheltuieli|cheltuit|costuri|zboruri|zbor|documente|document|grupeaza|furnizori|furnizor|facturi|factura|bonuri|bani|care|sunt|avem|cuvinte|cate|cati|cat|vreau|ultima|ultimele|ultimii|zile|zi|azi|salut|buna|groh|intreaba|perioada|precedenta|deci|pentru|afiseaza|raportul)\b/g;
     const eng=/\b(now|show|me|spending|expenses|flight|flights|documents|document|group|vendor|vendors|how|many|what|please|costs|report|last|days|today|hello|hey|hi|oink|previous|period|compare|by|from)\b/g;
     const ro=(value.match(rom)||[]).length;
     const en=(value.match(eng)||[]).length;
