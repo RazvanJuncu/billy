@@ -3,6 +3,11 @@
 "use strict";
 const $ = id => document.getElementById(id);
 const invoiceFieldKeys = [["supplier_name","Supplier"],["supplier_tax_id","Supplier tax ID"],["customer_name","Customer"],["invoice_number","Invoice #"],["issue_date","Issue date"],["due_date","Due date"],["currency","Currency"],["subtotal","Subtotal"],["vat_total","VAT total"],["grand_total","Grand total"]];
+const paymentEvidenceFields=[
+  ["payment_method","Payment method"],["card_last4","Card ending"],
+  ["card_brand","Card brand"],["transaction_reference","Payment reference"],
+  ["transaction_status","Payment status"]
+];
 // Layouts share existing review, approval, evidence and CSV infrastructure.
 const receiptFields=[
   ["supplier_name","Vendor"],["invoice_number","Receipt reference"],
@@ -198,7 +203,10 @@ function render(result,endpoint,authHeaders,sourceFile=null){
  const selected=invoiceProfiles[classification?.profile]||invoiceProfiles.generic_invoice;
  profileTitle=documentType==="fuel_release"?"Fuel Release":selected.title;
  entryTitle=selected.entries;
- fieldKeys=documentType==="fuel_release"?fuelFieldKeys:selected.fields;
+ fieldKeys=documentType==="fuel_release"?fuelFieldKeys:[
+   ...selected.fields,
+   ...paymentEvidenceFields.filter(([key])=>!selected.fields.some(([existing])=>existing===key))
+ ];
  lineKeys=documentType==="fuel_release"?
    (source.handwritten_entries||[]).some(row=>row.english_label||row.english_translation)?
      translatedHandwritingKeys:handwritingKeys
