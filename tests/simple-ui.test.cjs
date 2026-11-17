@@ -329,10 +329,10 @@ test("Flight grouping uses explicit identifiers and cannot infer flights from up
   assert.equal(family[0].children[0],slip);
 });
 
-test("Flights uses a route icon and Artonomy stays understated",()=>{
+test("Flights uses a recognizable takeoff aircraft, not an abstract route, and Artonomy stays understated",()=>{
   const hub=read("site/documents-hub.js"),css=read("site/simple.css");
-  assert.match(hub,/Flights:\["M5 20a2/);
-  assert.doesNotMatch(hub,/Flights:\["M4 4h16v4/);
+  assert.match(hub,/Flights:\["M2 22h20","M6\.36 17\.4/);
+  assert.doesNotMatch(hub,/Flights:\["M5 20a2|Flights:\["M4 4h16v4/);
   assert.match(css,/font-size:9px;font-weight:500/);
   assert.match(css,/\.billy-artonomy-credit img\{display:block;width:85px/);
 });
@@ -349,4 +349,10 @@ test("Artonomy footer shares header viewport gutter rather than homepage positio
   assert.match(css,/body\[data-billy-screen="home"\] \.billy-artonomy-credit\{[\s\S]*?left:max\(24px,5vw\)/);
   assert.doesNotMatch(css,/\.billy-artonomy-credit\{[\s\S]*?position:static/);
   assert.match(html,/simple\.css\?v=2\.5\.2/);
+});
+
+test("Flights icon asset is refreshed on the website and PWA",()=>{
+  const html=read("site/index.html"),sw=read("site/sw.js");
+  assert.match(html,/documents-hub\.js\?v=1\.5\.2/);
+  assert.match(sw,/billydpi-orbit-v131-flights-plane-takeoff/);
 });
