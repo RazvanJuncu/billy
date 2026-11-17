@@ -253,25 +253,6 @@ function cardEvidenceStatus(doc,regions,operatorConfirmed=false){
   });
   return clear?"ai_source_evidence":"needs_operator_review";
 }
-function cardPaymentMethod(raw){
-  const value=String(raw||"").normalize("NFKC").trim().toLowerCase()
-    .replace(/\s+/g," ");
-  return /^(?:card|card payment|paid by card|bank card|credit card|debit card|pos|pos card|visa|visa debit|visa credit|mastercard|master card|maestro|amex|american express|revolut|carte|card bancar|plata cu cardul)$/.test(value);
-}
-function printedCardPayment(doc){
-  if(!cardPaymentMethod(doc?.payment_method))return false;
-  const status=String(doc?.transaction_status||doc?.payment_status||"")
-    .trim().toLowerCase();
-  return /^(?:paid|approved|successful|success|completed|accepted|settled)$/.test(status);
-}
-function eligibleCardLast4(record){
-  const digits=record?.reviewed_data?.card_last4;
-  if(typeof digits!=="string"||!/^\d{4}$/.test(digits))return null;
-  const quality=record?.review_metadata?.card_intelligence?.last4_status;
-  return ["ai_source_evidence","operator_confirmed"].includes(quality)?
-    digits:null;
-}
-
 function cleanDoc(value,type) {
   if (!value || typeof value!=="object" || Array.isArray(value)) throw Error("Invalid structured document.");
   const keys=type==="invoice"?INVOICE_FIELDS:FUEL_FIELDS;
@@ -2216,7 +2197,26 @@ async function organizeDocument(req,principal){
     organization_overrides:overrides});
 }
 
-// Financial Linking Engine P0: strict same-photo matching, no independent
+// Financial Linking Engine P0:
+function cardPaymentMethod(raw){
+  const value=String(raw||"").normalize("NFKC").trim().toLowerCase()
+    .replace(/\s+/g," ");
+  return /^(?:card|card payment|paid by card|bank card|credit card|debit card|pos|pos card|visa|visa debit|visa credit|mastercard|master card|maestro|amex|american express|revolut|carte|card bancar|plata cu cardul)$/.test(value);
+}
+function printedCardPayment(doc){
+  if(!cardPaymentMethod(doc?.payment_method))return false;
+  const status=String(doc?.transaction_status||doc?.payment_status||"")
+    .trim().toLowerCase();
+  return /^(?:paid|approved|successful|success|completed|accepted|settled)$/.test(status);
+}
+function eligibleCardLast4(record){
+  const digits=record?.reviewed_data?.card_last4;
+  if(typeof digits!=="string"||!/^\d{4}$/.test(digits))return null;
+  const quality=record?.review_metadata?.card_intelligence?.last4_status;
+  return ["ai_source_evidence","operator_confirmed"].includes(quality)?
+    digits:null;
+}
+ strict same-photo matching, no independent
 // accounting effect from a POS slip, and no AI-generated confidence scores.
 function financialProfile(record){
   return String(record?.review_metadata?.classification?.profile||"");
