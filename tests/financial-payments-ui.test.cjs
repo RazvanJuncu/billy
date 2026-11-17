@@ -67,7 +67,7 @@ test("Payments has one direct workspace with JetRead-inspired workflow, Billy st
  assert.ok(page.indexOf('id="billyFinancialReportedPanel"')<
    page.indexOf('id="billyFinancialCardsPanel"'));
  assert.match(page,/financial-payments\.css\?v=1\.2\.0/);
- assert.match(page,/financial-reconciliation\.js\?v=2\.0\.0/);
+ assert.match(page,/financial-reconciliation\.js\?v=2\.1\.0/);
  assert.match(finance,/billyFinancialPaidOnBillPanel/);
  assert.match(finance,/billyFinancialReportedPanel/);
  assert.match(css,/\.billy-payments-bill-row/);
