@@ -171,7 +171,10 @@
   let active=false;
   function show(result,question){
     if(!result?.understood)return false;
-    render(result,question);
+    if(result.analytics===true&&window.PiggyAnalyticsHUD?.render){
+      window.PiggyAnalyticsHUD.render(result,question,content,title,
+        hud.querySelector(".piggybank-hud-kicker"));
+    }else render(result,question);
     active=true;
     hud.hidden=false;
     backdrop.hidden=false;
