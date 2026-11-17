@@ -109,9 +109,9 @@
     const note=make("small","billy-payments-editor-note",
       "Split payments are supported. On account remains unpaid.");
     const actions=make("div","billy-payments-editor-actions");
-    const save=make("button","billy-financial-match-confirm","Save");
-    save.type="submit";
-    actions.append(save,button("Cancel","billy-financial-subtle",()=>{
+    const saveButton=make("button","billy-financial-match-confirm","Save");
+    saveButton.type="submit";
+    actions.append(saveButton,button("Cancel","billy-financial-subtle",()=>{
       editingId=null;render(activeData,activeRefresh);
     }));
     const feedback=make("p","billy-payments-inline-feedback","");
@@ -129,7 +129,7 @@
       void savePayment(minor);
     });
     async function savePayment(minor){
-      await save(method.value,minor,entry,save,feedback);
+      await save(method.value,minor,entry,saveButton,feedback);
     }
     return form;
   }
