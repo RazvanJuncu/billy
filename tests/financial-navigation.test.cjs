@@ -150,7 +150,7 @@ test("Attention still opens an audited correction editor and Insights keeps the 
  assert.equal(at("billyFinancialInsightCurrency").value,"EUR");
  assert.match(html,/<details class="billy-financial-integrity"/);
  assert.match(html,/<summary class="billy-financial-integrity-summary"/);
- assert.doesNotMatch(html,/<details[^>]*\sopen(?:\s|>)/);
+ assert.doesNotMatch(html,/<details class="billy-financial-integrity"[^>]*\sopen(?:\s|>)/);
 });
 test("Financial routes preserve one approved-data source and authenticated preview",()=>{
  for(const id of ["billyFinancialAttentionNav","billyFinancialExpensesNav",
@@ -186,5 +186,5 @@ test("Billy's large circular hub is preserved and PWA CSS/JS caches are refreshe
  assert.match(css,/\.simple-financial > \.simple-heading\[hidden\]\{display:none!important\}/);
  assert.match(html,/financial\.css\?v=1\.9\.0/);
  assert.match(html,/financial\.js\?v=1\.9\.0/);
- assert.match(read("site/sw.js"),/v115-financial-reconciliation/);
+ assert.match(read("site/sw.js"),/v116-financial-cards/);
 });

@@ -22,6 +22,7 @@
   <link rel="stylesheet" href="./document-type.css?v=0.6.0">
   <link rel="stylesheet" href="./simple.css?v=2.4.9">
   <link rel="stylesheet" href="./financial.css?v=1.9.0">
+  <link rel="stylesheet" href="./financial-cards.css?v=1.0.0">
   <link rel="stylesheet" href="./nested-mitosis.css?v=0.3.0">
   <link rel="stylesheet" href="./intelligence-assistant.css?v=0.3.4">
   <link rel="stylesheet" href="./multi-documents.css?v=1.0.0">
@@ -54,6 +55,7 @@
   <script src="./document-preview.js?v=1.5.2" defer></script>
   <script src="./financial.js?v=1.9.0" defer></script>
   <script src="./financial-reconciliation.js?v=1.0.0" defer></script>
+  <script src="./financial-cards.js?v=1.0.0" defer></script>
   <script src="./simple.js?v=2.2.4" defer></script>
   <script src="./piggybank-hud.js?v=1.0.0" defer></script>
   <script src="./intelligence-assistant.js?v=0.3.0" defer></script>
@@ -325,6 +327,20 @@
               </div>
             </section>
             <section class="billy-financial-section" id="billyFinancialPaymentsSection" aria-label="Payments" hidden>
+              <details id="billyFinancialCardsPanel" class="billy-financial-cards-panel" open>
+                <summary class="billy-financial-cards-summary">
+                  <strong>Spending by card</strong>
+                  <span id="billyFinancialCardCount">Loading card activity</span>
+                </summary>
+                <div class="billy-financial-cards-body">
+                  <div id="billyFinancialCardGrid" class="billy-financial-cards-grid"></div>
+                  <div id="billyFinancialCardControls" class="billy-financial-card-controls"></div>
+                  <div id="billyFinancialCardActivity" class="billy-financial-card-activity"></div>
+                  <p id="billyFinancialCardNote" class="billy-financial-reconciliation-note">
+                    Card spending comes from approved Billy evidence only.
+                  </p>
+                </div>
+              </details>
               <div id="billyFinancialReconciliationPanel" class="billy-financial-payment-panel" hidden>
                 <div class="billy-financial-section-head">
                   <h3>Reconciliation</h3>

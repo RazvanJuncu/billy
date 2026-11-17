@@ -2945,6 +2945,161 @@ async function financialRevokeAllocation(req,principal){
   return json({revoked:true,allocation_id:updated[0].id});
 }
 
+// Card spending 1.0: source-grounded approved POS transactions. Never expose
+// full card details, assume invoices are paid, or convert currencies.
+function cardTransactions(cards,proofs,roots,links,day){
+  const end=new Date(day+"T00:00:00Z");
+  const start=new Date(end.getTime()-29*86400000).toISOString().slice(0,10);
+  const known=new Map(cards.map(card=>[card.last4,card]));
+  const groups=new Map(cards.map(card=>[card.id,{
+    ...card,totals:[],transactions:[],transaction_count:0
+  }]));
+  const totals=new Map(),seen=new Set(),proofKeys=new Set();
+  let withoutCard=0,unknownCard=0,undated=0,unpriced=0,duplicateExcluded=0,billEntries=0;
+  const matchedInvoiceIds=new Set(links.map(link=>link.expense_document_id));
+  const rawLast4=record=>{
+    const raw=record?.reviewed_data?.card_last4;
+    return typeof raw==="string"&&/^\d{4}$/.test(raw)?raw:null;
+  };
+  const fingerprint=(record,card,money)=>{
+    const doc=record.reviewed_data||{};
+    const source=String(record.source_sha256||"").toLowerCase();
+    const ref=String(doc.transaction_reference||doc.payment_reference||"")
+      .trim().toUpperCase().slice(0,90);
+    const vendor=assistantValue(record,"vendor").trim().toUpperCase().slice(0,90);
+    if(ref)return "transaction|"+card+"|"+ref+"|"+money.currency+"|"+money.minor;
+    if(/^[0-9a-f]{64}$/.test(source))
+      return "source|"+source+"|"+card+"|"+money.currency+"|"+money.minor;
+    return "record|"+record.id;
+  };
+  const payments=proofs.filter(r=>r.state==="approved"&&financialProfile(r)==="payment_slip");
+  const add=(record,sourceType)=>{
+    const card=rawLast4(record);
+    const money=assistantMoney(record);
+    const date=assistantRecordDate(record).date;
+    if(!date){undated++;return;}
+    if(date<start||date>day)return;
+    if(!money||money.minor<=0){unpriced++;return;}
+    if(!card){withoutCard++;return;}
+    const entry=known.get(card);
+    if(!entry){unknownCard++;return;}
+    if(financialTransactionStatus(record)==="failed")return;
+    const key=fingerprint(record,card,money);
+    if(seen.has(key)){duplicateExcluded++;return;}
+    seen.add(key);
+    const row=groups.get(entry.id);
+    const tx={id:record.id,date,amount_minor:money.minor,currency:money.currency,
+      vendor:assistantValue(record,"vendor")||"Unassigned",
+      source:sourceType,
+      settlement:financialTransactionStatus(record)==="confirmed"?
+        "source_confirmed":"not_independently_verified"};
+    const amountKey=entry.id+"|"+money.currency;
+    totals.set(amountKey,(totals.get(amountKey)||0)+money.minor);
+    row.transactions.push(tx);
+    row.transaction_count++;
+    proofKeys.add([
+      card,date,money.currency,money.minor,tx.vendor.toUpperCase()
+    ].join("|"));
+  };
+  for(const payment of payments)add(payment,"pos_slip");
+  // Bills are eligible ONLY when the approved document explicitly states a
+  // card method AND confirmed payment. An invoice with card digits alone is
+  // not sufficient. Linked POS and identical POS evidence take precedence.
+  for(const invoice of roots){
+    if(invoice.state!=="approved"||invoice.parent_document_id||
+       matchedInvoiceIds.has(invoice.id)||financialProfile(invoice)==="payment_slip")
+      continue;
+    const doc=invoice.reviewed_data||{};
+    if(!/^(?:card|credit card|debit card|pos)$/i.test(
+        String(doc.payment_method||"").trim()))continue;
+    if(!/^(?:paid|approved|completed|successful|success)$/i.test(
+        String(doc.transaction_status||doc.payment_status||"").trim()))continue;
+    const card=rawLast4(invoice),money=assistantMoney(invoice);
+    const date=assistantRecordDate(invoice).date;
+    if(!card||!money||!date||date<start||date>day)continue;
+    const identity=[card,date,money.currency,money.minor,
+      (assistantValue(invoice,"vendor")||"Unassigned").toUpperCase()].join("|");
+    if(proofKeys.has(identity))continue;
+    if(known.has(card)){add(invoice,"paid_on_bill");billEntries++;}
+  }
+  for(const row of groups.values()){
+    row.totals=[...totals.entries()]
+      .filter(([key])=>key.startsWith(row.id+"|"))
+      .map(([key,total_minor])=>({
+        currency:key.slice(row.id.length+1),total_minor
+      })).sort((a,b)=>a.currency.localeCompare(b.currency));
+    row.transactions.sort((a,b)=>b.date.localeCompare(a.date)||a.id.localeCompare(b.id));
+    row.transactions=row.transactions.slice(0,25);
+  }
+  return {cards:[...groups.values()].sort((a,b)=>
+      a.holder_label.localeCompare(b.holder_label)||a.last4.localeCompare(b.last4)),
+    period_start:start,period_end:day,without_card:withoutCard,
+    unknown_card:unknownCard,excluded_undated:undated,
+    excluded_unpriced:unpriced,duplicates_excluded:duplicateExcluded,
+    paid_on_bill_entries:billEntries,
+    accounting_note:"Approved document evidence only. POS is not a new invoice expense. Currency totals are separate, and card statements/bank settlements are not verified."};
+}
+async function paymentCardsGet(principal){
+  const [cards,roots,proofs,links]=await Promise.all([
+    database(principal,"GET","billy_payment_cards",{
+      select:"id,last4,holder_label,display_currency,program_label,created_at",
+      organization_id:"eq."+principal.organization_id,active:"eq.true",
+      order:"holder_label.asc",limit:"200"
+    }),
+    assistantRows(principal),financialEvidenceRows(principal),
+    database(principal,"GET","billy_financial_links",{
+      select:"expense_document_id",organization_id:"eq."+principal.organization_id,
+      state:"eq.active",limit:"500"
+    })
+  ]);
+  const today=assistantDay();
+  const result=cardTransactions(cards,proofs.rows,roots.rows,links,today);
+  const partial=roots.partial||proofs.partial||links.length>=500||cards.length>=200;
+  return json({...result,partial,
+    can_manage:principal.role==="owner",
+    source:"approved_payment_evidence"});
+}
+async function paymentCardsPost(req,principal){
+  if(principal.role!=="owner")return error("Only a team owner can manage cards.",403);
+  let data;
+  try{
+    const raw=await req.text();if(raw.length>700)throw Error("Too large");
+    data=JSON.parse(raw);
+  }catch{return error("Invalid card request.",400);}
+  if(!data||typeof data!=="object"||Array.isArray(data))return error("Invalid card data.",400);
+  if(data.action==="add"){
+    if(Object.keys(data).sort().join(",")!=="action,display_currency,holder_label,last4,program_label"||
+       typeof data.last4!=="string"||!/^\d{4}$/.test(data.last4)||
+       typeof data.holder_label!=="string"||
+       !/^[\p{L}][\p{L} .'-]{1,79}$/u.test(data.holder_label.trim())||
+       data.holder_label.trim().length>80||
+       !(data.display_currency===null||data.display_currency==="EUR"||data.display_currency==="RON")||
+       !(data.program_label===null||
+         (typeof data.program_label==="string"&&/^[A-Za-z0-9 -]{2,25}$/.test(data.program_label))))
+      return error("Enter a holder, four digits, and the displayed currency.",400);
+    try{
+      const row=await database(principal,"POST","billy_payment_cards",{select:"id"},{
+        organization_id:principal.organization_id,created_by:principal.user_id,
+        last4:data.last4,holder_label:data.holder_label.trim(),
+        display_currency:data.display_currency,program_label:data.program_label,
+        active:true
+      });
+      if(row.length!==1)return error("Card could not be saved.",409);
+      return json({saved:true,id:row[0].id});
+    }catch{return error("Card could not be added. It may already exist.",409);}
+  }
+  if(data.action==="archive"&&Object.keys(data).sort().join(",")==="action,card_id"&&
+     UUID_FORMAT.test(data.card_id||"")){
+    const updated=await database(principal,"PATCH","billy_payment_cards",{
+      select:"id",id:"eq."+data.card_id,
+      organization_id:"eq."+principal.organization_id,active:"eq.true"
+    },{active:false,archived_by:principal.user_id});
+    if(updated.length!==1)return error("Card not available or already archived.",409);
+    return json({archived:true});
+  }
+  return error("Unsupported card action.",400);
+}
+
 async function financialGet(principal,req){
   const id=new URL(req.url).searchParams.get("record_id");
   if(id!==null){
@@ -3639,15 +3794,17 @@ Deno.serve(async req=>{
   const path=new URL(req.url).pathname;
   // Supabase may present the public path, function-local path, or a slug-prefixed path.
   // Match only known routes regardless of which valid prefix the edge runtime preserves.
-  const routes=["/api/vision/financial","/api/vision/financial-allocation","/api/vision/financial-allocation-revoke","/api/vision/financial-review","/api/vision/financial-link","/api/vision/financial-unlink","/api/vision/health","/api/vision/extract","/api/vision/recheck","/api/vision/approve","/api/vision/records","/api/vision/delete","/api/vision/original","/api/vision/document-map","/api/vision/organization","/api/vision/assistant","/api/vision/assistant-source"];
+  const routes=["/api/vision/cards","/api/vision/financial","/api/vision/financial-allocation","/api/vision/financial-allocation-revoke","/api/vision/financial-review","/api/vision/financial-link","/api/vision/financial-unlink","/api/vision/health","/api/vision/extract","/api/vision/recheck","/api/vision/approve","/api/vision/records","/api/vision/delete","/api/vision/original","/api/vision/document-map","/api/vision/organization","/api/vision/assistant","/api/vision/assistant-source"];
   const suffix=routes.find(route=>path===route||path.endsWith("/billy-vision"+route));
   if(!suffix)return error("Not found.",404);
-  if(req.method!==(suffix==="/api/vision/financial-allocation"||suffix==="/api/vision/financial-allocation-revoke"||suffix==="/api/vision/financial-review"||suffix==="/api/vision/financial-link"||suffix==="/api/vision/financial-unlink"||suffix==="/api/vision/document-map"||suffix==="/api/vision/extract"||suffix==="/api/vision/recheck"||suffix==="/api/vision/approve"||suffix==="/api/vision/organization"&&req.method==="POST"||suffix==="/api/vision/assistant"||suffix==="/api/vision/delete"||suffix==="/api/vision/original"&&req.method==="POST"?"POST":"GET"))return error("Method not allowed.",405);
+  if(req.method!==(suffix==="/api/vision/cards"&&req.method==="POST"||suffix==="/api/vision/financial-allocation"||suffix==="/api/vision/financial-allocation-revoke"||suffix==="/api/vision/financial-review"||suffix==="/api/vision/financial-link"||suffix==="/api/vision/financial-unlink"||suffix==="/api/vision/document-map"||suffix==="/api/vision/extract"||suffix==="/api/vision/recheck"||suffix==="/api/vision/approve"||suffix==="/api/vision/organization"&&req.method==="POST"||suffix==="/api/vision/assistant"||suffix==="/api/vision/delete"||suffix==="/api/vision/original"&&req.method==="POST"?"POST":"GET"))return error("Method not allowed.",405);
   try{
     const authStarted=(typeof performance==="undefined"?Date.now():performance.now());
     const principal=await trusted(req);
     const authenticationMs=(typeof performance==="undefined"?Date.now():performance.now())-authStarted;
     if(!principal)return error("Sign in to an approved Billy team first.",401);
+    if(suffix==="/api/vision/cards")
+      return req.method==="POST"?await paymentCardsPost(req,principal):await paymentCardsGet(principal);
     if(suffix==="/api/vision/financial")return financialGet(principal,req);
     if(suffix==="/api/vision/financial-allocation")return financialAllocate(req,principal);
     if(suffix==="/api/vision/financial-allocation-revoke")return financialRevokeAllocation(req,principal);

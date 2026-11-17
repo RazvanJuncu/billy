@@ -1,0 +1,63 @@
+/* Card directory within Billy Payments; masked last four only. */
+.billy-financial-cards-panel{display:block;border:1px solid #303437;border-radius:14px;background:#17191b;overflow:hidden}
+.billy-financial-cards-summary{display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:8px;cursor:pointer;padding:17px 19px;list-style:none;color:#eff1f2}
+.billy-financial-cards-summary::-webkit-details-marker{display:none}
+.billy-financial-cards-summary::after{content:"⌄";color:#9da5a9;font-size:17px}
+.billy-financial-cards-panel[open] .billy-financial-cards-summary::after{content:"⌃"}
+.billy-financial-cards-summary strong{font-size:14px;font-weight:650}
+.billy-financial-cards-summary span{font-size:11px;color:#a3aaaf;margin-left:auto}
+.billy-financial-cards-summary:focus-visible{outline:2px solid #c2c7ca;outline-offset:-3px}
+.billy-financial-cards-body{display:flex;flex-direction:column;gap:14px;padding:2px 19px 19px}
+.billy-financial-cards-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.billy-fcard{display:flex;flex-direction:column;gap:9px;min-width:0;text-align:left;
+  background:transparent!important;border:0!important;color:#fff!important;padding:0!important;cursor:pointer}
+.billy-fcard:focus-visible{outline:2px solid #aeb5b8;outline-offset:4px}
+.billy-fcard-art{position:relative;display:flex;flex-direction:column;justify-content:space-between;
+  aspect-ratio:1.85;width:100%;min-height:96px;box-sizing:border-box;overflow:hidden;
+  border-radius:12px;padding:13px 15px;
+  background:linear-gradient(148deg,#292d2a 0%,#111415 46%,#090b0c 100%);
+  border:1px solid #303535;transition:border-color .15s ease}
+.billy-fcard[data-selected="true"] .billy-fcard-art,
+.billy-fcard:hover .billy-fcard-art{border-color:#879189}
+.billy-fcard-kind{font-size:10px;line-height:1.2;font-weight:700;letter-spacing:.035em;color:#e7e9e8}
+.billy-fcard-chip{height:6px;width:27px;border-radius:8px;
+  background:linear-gradient(90deg,#97a883,#66785e);box-shadow:inset 0 1px 2px #d5e3c440}
+.billy-fcard-number{font-size:11px;letter-spacing:.065em;white-space:nowrap;color:#ccd0cc;font-variant-numeric:tabular-nums}
+.billy-fcard-holder{font-size:11px;font-weight:600;letter-spacing:.035em;color:#f6f7f6;overflow:hidden;text-overflow:ellipsis}
+.billy-fcard-amounts{display:flex;flex-direction:column;gap:3px;min-height:37px;align-items:flex-start}
+.billy-fcard-amounts strong{font-size:17px;font-weight:690;color:#e9eced;font-variant-numeric:tabular-nums}
+.billy-fcard-amounts small,.billy-fcard-unavailable{font-size:10px;line-height:1.45;color:#9da5a9}
+.billy-financial-card-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.billy-fcard-feedback{color:#d5bbb0;font-size:11px;line-height:1.5;margin:0}
+.billy-fcard-form{width:100%;display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px;align-items:end}
+.billy-fcard-form label{display:flex;flex-direction:column;gap:5px;font-size:11px;color:#aeb4b8;min-width:0}
+.billy-fcard-form input,.billy-fcard-form select{
+  min-width:0;min-height:37px;padding:8px 10px!important;border:0!important;
+  background:#2a2e30!important;color:#f1f2f3!important;border-radius:8px!important;font-size:12px!important}
+.billy-fcard-form .billy-fcard-feedback{grid-column:1/-1}
+.billy-financial-card-activity{display:flex;flex-direction:column;gap:5px;min-width:0}
+.billy-financial-card-activity:empty{display:none}
+.billy-fcard-activity-head{display:flex;justify-content:space-between;align-items:center;gap:9px;
+  border-top:1px solid #323739;padding-top:12px;color:#eaeced;font-size:12px}
+.billy-fcard-transaction{width:100%;display:flex;justify-content:space-between;gap:12px;align-items:center;
+  background:#25282a!important;border:0!important;border-radius:9px!important;padding:12px!important;
+  text-align:left;color:#e7e9eb!important;cursor:pointer}
+.billy-fcard-transaction:hover{background:#303436!important}
+.billy-fcard-transaction-info{display:flex;flex-direction:column;gap:3px;min-width:0}
+.billy-fcard-transaction-info strong{font-size:11px;font-weight:640;overflow-wrap:anywhere}
+.billy-fcard-transaction-info small{color:#a2a8ac;font-size:10px}
+.billy-fcard-transaction-amount{white-space:nowrap;font-size:12px;font-weight:650;font-variant-numeric:tabular-nums}
+@media(max-width:780px){
+ .billy-financial-cards-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .billy-fcard-form{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:490px){
+ .billy-financial-cards-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ .billy-fcard-art{padding:11px;min-height:92px;border-radius:10px}
+ .billy-fcard-holder,.billy-fcard-number{font-size:10px}
+ .billy-fcard-amounts strong{font-size:14px}
+ .billy-financial-cards-body{padding:2px 12px 14px}
+ .billy-financial-cards-summary{padding:13px 12px}
+}
+@media(prefers-reduced-motion:reduce){.billy-fcard-art{transition:none}}
