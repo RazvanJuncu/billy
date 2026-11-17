@@ -185,7 +185,7 @@ test("Conversation sends previous typed plan and preserves legacy document assis
  assert.match(html,/piggy-analytics-hud\.js\?v=2\.0\.0/);
  assert.match(html,/piggybank-hud\.js\?v=1\.1\.0/);
  assert.match(html,/intelligence-assistant\.js\?v=0\.5\.0/);
- assert.match(read("site/sw.js"),/v125-piggy-personality/);
+ assert.match(read("site/sw.js"),/billydpi-orbit-v\d+-[a-z0-9-]+/);
  assert.doesNotMatch(client,/\.innerHTML\s*=|localStorage|sessionStorage/);
  assert.doesNotMatch(hud,/\.innerHTML\s*=|localStorage|sessionStorage/);
 });

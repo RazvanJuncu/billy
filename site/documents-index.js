@@ -39,7 +39,7 @@
     return svg;
   }
   const modes=["All","Aircraft","Services","Airports","Vendors","Flights"];
-  const state={mode:"Home",aircraft:null,flightAircraft:"",query:"",descending:true,records:[],host:null,list:null,navigation:null,opened:new Set(),flightOptions:""};
+  const state={mode:"Home",aircraft:null,flightAircraft:"",query:"",descending:true,records:[],host:null,list:null,navigation:null,opened:new Set(),flightOptions:null};
   const el=(tag,cls,content)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(content!==undefined)n.textContent=content;return n;};
   const text=value=>typeof value==="string"?value.trim():"";
   const value=(data,...paths)=>{for(const p of paths){const v=data?.[p];if(text(v))return text(v);}return "";};
@@ -48,7 +48,7 @@
   // {skylegs_flight_id,flight_number,flight_date,departure_icao,arrival_icao,aircraft_registration}.
   // Never link unrelated invoices by aircraft, airport, or upload date alone.
   const isoFlightDate=raw=>{
-    const match=text(raw).match(/^(\\d{4}-\\d{2}-\\d{2})(?:T.*)?$/);
+    const match=text(raw).match(/^(\d{4}-\d{2}-\d{2})(?:T.*)?$/);
     if(!match)return "";
     const stamp=Date.parse(match[1]+"T00:00:00Z");
     return Number.isFinite(stamp)&&new Date(stamp).toISOString().slice(0,10)===match[1]?match[1]:"";
@@ -339,7 +339,7 @@
     // visit while the fresh cloud request is still in flight.
     state.records=[];
     state.navigation=null;
-    state.flightOptions="";
+    state.flightOptions=null;
     // Opening the archive always starts at the hub, not the last drill-down.
     install(list);
     navigate("Home");

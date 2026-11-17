@@ -178,7 +178,7 @@ test("Persona stays inside chat; HUD calculations and evidence remain untouched"
   assert.match(html,/intelligence-assistant\.css\?v=0\.5\.0/);
   assert.match(css,/@keyframes billy-piggy-snuffle/);
   assert.match(css,/prefers-reduced-motion:reduce/);
-  assert.match(sw,/v125-piggy-personality/);
+  assert.match(sw,/billydpi-orbit-v\d+-[a-z0-9-]+/);
   assert.match(sw,/\.\/piggy-persona\.js/);
   assert.doesNotMatch(personaSource,/\.innerHTML\s*=|localStorage|sessionStorage|fetch\(/);
 });

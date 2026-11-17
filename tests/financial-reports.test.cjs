@@ -94,7 +94,7 @@ test("Reports replaces Insights nav but preserves chart and integrity checks",()
  assert.match(css,/\.billy-reports-row/);
  assert.match(page,/financial-reports\.js\?v=1\.1\.0/);
  assert.match(page,/financial-reports\.css\?v=1\.1\.0/);
- assert.match(read("site/sw.js"),/v125-piggy-personality/);
+ assert.match(read("site/sw.js"),/billydpi-orbit-v\d+-[a-z0-9-]+/);
 });
 test("Card surfaces use solid shape and no decorative fake chip",()=>{
  assert.doesNotMatch(cardJS,/billy-fcard-chip/);

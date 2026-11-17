@@ -297,3 +297,34 @@ test("Flights is a sixth archive hub destination and the home alone credits Arto
   assert.match(read("site/sw.js"),/"\.\/artonomy-lockup\.svg"/);
   assert.match(read("site/artonomy-lockup.svg"),/viewBox="0 0 1467 320"/);
 });
+
+test("Flight grouping uses explicit identifiers and cannot infer flights from upload/service dates",()=>{
+  const vm=require("node:vm"),context={window:{},Date,Map,Set};
+  vm.runInNewContext(read("site/documents-index.js"),context);
+  const info=context.window.BillyDocumentsIndex.info;
+  const row=(d={},meta={})=>({
+    state:"approved",created_at:"2026-11-17T10:00:00Z",
+    reviewed_data:{aircraft_registration:"YR-WNT",...d},
+    review_metadata:{classification:{profile:"handling_invoice",expense_category:"handling"},...meta}
+  });
+  const linked=info(row({}, {flight_context:{
+    skylegs_flight_id:"sk-42",flight_number:"MJT42",flight_date:"2026-11-16",
+    departure_icao:"LRBS",arrival_icao:"LROP"}}));
+  assert.equal(linked.flight.key,"id:sk-42");
+  assert.equal(linked.flight.from,"LRBS");
+  assert.equal(linked.flight.to,"LROP");
+  const a=info(row({flight_number:"MJT42",flight_date:"2026-11-16"}));
+  const b=info(row({flight_number:"MJT42",flight_date:"2026-11-17"}));
+  const c=info(row({flight_number:"MJT42",flight_date:"2026-11-16",aircraft_registration:"YR-DSR"}));
+  assert.ok(a.flight.key);
+  assert.notEqual(a.flight.key,b.flight.key);
+  assert.notEqual(a.flight.key,c.flight.key);
+  assert.equal(info(row({flight_number:"MJT42",service_date:"2026-11-16"})).flight.key,"");
+  assert.equal(info(row({flight_number:"MJT42",flight_date:"invalid"})).flight.key,"");
+  const root={__billyRecordId:"root",__billyParentId:null};
+  const slip={__billyRecordId:"slip",__billyParentId:"root"};
+  const family=context.window.BillyDocumentsIndex.groupFamilies([root,slip]);
+  assert.equal(family.length,1);
+  assert.equal(family[0].root,root);
+  assert.equal(family[0].children[0],slip);
+});
