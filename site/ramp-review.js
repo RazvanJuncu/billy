@@ -17,7 +17,10 @@
     supplier_name:"Supplier",supplier_tax_id:"Supplier tax ID",
     customer_name:"Customer",invoice_number:"Invoice number",
     issue_date:"Issue date",due_date:"Due date",currency:"Currency",
-    subtotal:"Subtotal",vat_total:"Tax",grand_total:"Grand total"
+    subtotal:"Subtotal",vat_total:"Tax",grand_total:"Grand total",
+    payment_method:"Payment method",card_last4:"Card ending",
+    card_brand:"Card brand",transaction_reference:"Payment reference",
+    transaction_status:"Payment status"
   };
   // Category-specific fields are visible only when present, or when truly
   // required to process that expense. Optional context must not turn yellow.
@@ -72,7 +75,7 @@
     invoice:["invoice_number","supplier_name","grand_total"],
     fuel_release:["aircraft_registration","delivered_quantity","quantity_unit","delivery_date"]
   };
-  const highRisk=new Set(["grand_total","invoice_number","delivered_quantity","meter_start","meter_finish","aircraft_registration"]);
+  const highRisk=new Set(["grand_total","invoice_number","delivered_quantity","meter_start","meter_finish","aircraft_registration","card_last4","transaction_status"]);
   const severity={green:0,yellow:1,red:2};
   // External checks run autonomously on the backend during extraction.
   const labelFor=(path,type,doc,profile="generic_invoice")=>{
