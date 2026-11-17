@@ -428,7 +428,7 @@
     const action=(counts.fail||0)+(counts.attention||0);
     const unverified=(counts.not_tested||0)+(counts.incomplete||0);
     $("billyFinancialIntegritySummary").textContent=
-      checked+" checked · "+action+" need attention · "+unverified+" not verified";
+      checked+" checked · "+action+" "+(action===1?"needs":"need")+" attention · "+unverified+" not verified";
     const labels={pass:"Checked",attention:"Review",fail:"Investigate",
       incomplete:"Incomplete",not_tested:"Not tested"};
     for(const check of report.checks){
