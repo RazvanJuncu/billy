@@ -3898,6 +3898,78 @@ function piggyPlan(raw,question,today){
     card_currency:cc,card_last4:cardLast
   };
 }
+// Short conversational report modifications must not depend on a fresh
+// generative-model response. Use a validated prior plan and exact, bounded
+// editing commands, then rerun the same deterministic report engine.
+// Complex/new questions still go through the structured AI planner.
+function piggyFollowup(question,previous,today){
+  if(!previous||typeof previous!=="object"||Array.isArray(previous))return null;
+  let base;
+  try{base=piggyPlan(previous,"",today);}
+  catch{return null;}
+  if(base.intent!=="report")return null;
+  const text=String(question||"").normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g,"").toLowerCase()
+    .replace(/[.!?,;:]+$/g,"").trim().replace(/\s+/g," ");
+  const withoutLead=text.replace(/^(?:(?:si\s+)?acum|now|and now|ok|okay)\s+/,"");
+  const speech=withoutLead.replace(/^(?:arata-mi|arata|afiseaza|show me|show|display|vreau)\s+/,"");
+  const update=(changes)=>piggyPlan({...base,...changes,intent:"report"},question,today);
+
+  // "Acum arată-mi evoluția pe zile" / "show daily trend":
+  // retain period, supplier, category, aircraft and currency filters.
+  if(/^(?:evolutia|evolutie|trendul|trend|evolution|trends?|graficul evolutiei|evolutia cheltuielilor|spending trend)(?:\s+(?:cheltuielilor|spending))?\s+(?:(?:pe|by|per|over)\s+)?(?:zile|zi|days?|daily)$/.test(speech)||
+     /^(?:daily|day by day)\s+(?:trend|evolution|chart)$/.test(speech))
+    return update({group_by:"day",chart:"line"});
+
+  if(/^(?:compara(?:-le)?|compare(?: it| them)?)(?:\s+(?:cu|with|to))?\s+(?:perioada precedenta|perioada anterioara|intervalul anterior|previous period|preceding period)$/.test(withoutLead))
+    return update({compare_previous:true});
+
+  // Exact short grouping edits only: don't drop other constraints hidden
+  // inside a longer request (e.g. "... for a particular flight").
+  const groupSpeech=speech.replace(/^(?:grupeaza(?:-mi)?|group(?: it| them)?|group by|sort(?: it)?|regrupeaza)\s+/,"")
+    .replace(/^(?:cheltuielile|expenses|them|it)\s+/,"")
+    .replace(/^(?:pe|dupa|by|per)\s+/,"");
+  const groups={
+    "furnizori":"vendor","furnizor":"vendor","suppliers":"vendor",
+    "supplier":"vendor","vendors":"vendor","vendor":"vendor",
+    "categorii":"category","categorie":"category",
+    "categories":"category","category":"category",
+    "aeronave":"aircraft","aeronava":"aircraft","aircraft":"aircraft",
+    "aeroporturi":"airport","aeroport":"airport",
+    "airports":"airport","airport":"airport",
+    "carduri":"card","card":"card","cards":"card",
+    "luni":"month","luna":"month","months":"month","month":"month",
+    "zile":"day","zi":"day","days":"day","day":"day",
+    "monede":"currency","moneda":"currency",
+    "currencies":"currency","currency":"currency"
+  };
+  if(Object.hasOwn(groups,groupSpeech)){
+    const by=groups[groupSpeech];
+    if(by==="card"&&base.kind!=="card_spending")return null;
+    return update({group_by:by,chart:by==="day"||by==="month"?"line":"bar"});
+  }
+
+  // Bounded date changes, including the first day, never interpreting other
+  // text as a date filter or returning an unchecked relative range.
+  const timeSpeech=speech.replace(/^(?:doar|numai|pentru|for|in|pe|during|over)\s+/,"");
+  const match=timeSpeech.match(/^(?:ultimele|ultimii|last|past)\s+(\d{1,3})\s+(?:zile|days?)$/);
+  if(match){
+    const days=Number(match[1]);
+    if(days<1||days>366)return null;
+    return update({start_date:piggyShiftDay(today,1-days),end_date:today,
+      compare_previous:false});
+  }
+
+  const chartSpeech=speech.replace(/^(?:ca|as|as a|un|a|o)\s+/,"");
+  if(/^(?:tabel|table|tabular|in tabel|as table)$/.test(chartSpeech))
+    return update({chart:"table"});
+  if(/^(?:grafic cu bare|bare|bar chart|bar graph|bars)$/.test(chartSpeech))
+    return update({chart:"bar"});
+  if(/^(?:grafic linie|grafic liniar|line chart|line graph)$/.test(chartSpeech))
+    return update({chart:"line"});
+  return null;
+}
+
 async function piggyInterpret(question,previous,day){
   const prompt="You are the bounded Piggy report planner for Billy Aviation. "+
     "Return ONLY a JSON object matching the supplied schema; never supply numbers, sources, SQL or chart data. "+
@@ -4118,8 +4190,19 @@ async function piggyAnalyticsAsk(req,principal){
   const question=input.question.normalize("NFKC").trim();
   const today=assistantDay();
   let plan;
-  try{plan=await piggyInterpret(question,input.previous_plan||null,today);}
-  catch{return error("Piggy could not interpret this report. Please rephrase.",422);}
+  try{
+    // A short follow-up is a deterministic transformation of the last valid
+    // plan. No model call is necessary to switch to a day-by-day trend.
+    plan=piggyFollowup(question,input.previous_plan||null,today)||
+      await piggyInterpret(question,input.previous_plan||null,today);
+  }catch(e){
+    // Report the failure category, never the private question or its plan.
+    console.warn("piggy_analytics_planner_failure",
+      e instanceof SyntaxError?"invalid_json":
+      e instanceof Error&&e.message==="Analytics planner unavailable"?
+        "upstream_unavailable":"invalid_plan");
+    return error("Piggy could not interpret this report. Please rephrase.",422);
+  }
   if(plan.intent==="unknown")
     return json({understood:false,analytics:false,language:plan.language});
   // Never transform a request about flight DESTINATIONS into a financial
