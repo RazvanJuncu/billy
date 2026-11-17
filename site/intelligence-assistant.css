@@ -486,3 +486,57 @@ body[data-billy-screen="home"] .billy-preview-overlay{z-index:2100!important}
 .piggy-analytics-coverage summary{cursor:pointer;font-weight:630;color:#eef0f1}
 .piggy-analytics-coverage p{margin:10px 0 0;line-height:1.6}
 @media(max-width:640px){.piggy-analytics-section-head{align-items:flex-start;flex-direction:column}}
+
+/* Piggy character voice 1.0.
+   Chat may be playful; the financial HUD stays understated and unmodified. */
+.billy-ai-welcome-actions{
+  display:flex;flex-wrap:wrap;align-items:center;gap:7px;
+  margin-top:9px;max-width:100%;
+}
+.billy-ai-starter,.billy-ai-quick-action{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-height:31px;border:0!important;border-radius:10px!important;
+  padding:7px 11px!important;
+  background:#303336!important;color:#e3e7e8!important;
+  font-size:11px!important;font-weight:580!important;line-height:1.2;
+  text-align:left;cursor:pointer;
+  transition:background-color .15s ease,transform .15s ease;
+}
+.billy-ai-starter:hover,.billy-ai-quick-action:hover{
+  background:#42474a!important;transform:translateY(-1px);
+}
+.billy-ai-starter:focus-visible,.billy-ai-quick-action:focus-visible{
+  outline:2px solid #c7d0d2;outline-offset:2px;
+}
+.billy-ai-quick-actions{
+  display:flex;align-items:center;flex-wrap:wrap;gap:7px;
+  margin-top:10px;
+}
+.billy-ai-quick-action{
+  min-height:29px;font-size:10.5px!important;
+  background:#282d30!important;color:#cdd5d7!important;
+}
+.billy-ai-persona-intro{
+  font-size:12px;line-height:1.6;color:#e1e6e7;margin:0;
+}
+.billy-ai-error strong,.billy-ai-error span{
+  display:block;line-height:1.5;
+}
+.billy-ai-error strong{
+  font-weight:620;margin-bottom:5px;color:#f0dbd1;
+}
+.billy-ai-error span{color:#cebdb6}
+.billy-ai-panel.is-sniffing .billy-ai-head-mark{
+  transform-origin:50% 70%;
+  animation:billy-piggy-snuffle .8s ease-in-out infinite alternate;
+}
+@keyframes billy-piggy-snuffle{
+  0%{transform:rotate(-5deg) translateY(0)}
+  55%{transform:rotate(3deg) translateY(2px)}
+  100%{transform:rotate(-1deg) translateY(0)}
+}
+@media(prefers-reduced-motion:reduce){
+  .billy-ai-panel.is-sniffing .billy-ai-head-mark{animation:none!important}
+  .billy-ai-starter,.billy-ai-quick-action{transition:none!important}
+  .billy-ai-starter:hover,.billy-ai-quick-action:hover{transform:none!important}
+}
