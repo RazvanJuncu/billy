@@ -173,6 +173,22 @@
     }else{
       signal="no_evidence_low_risk";
     }
+    if(path==="card_last4"){
+      const digits=String(value||"").trim();
+      const clearSource=matches.some(region=>{
+        if(region.visual_clarity!=="clear"||
+           (region.alternate_readings||[]).length)return false;
+        const observed=String(region.transcription||"").trim();
+        const tokens=observed.match(/\d+/g)||[];
+        return tokens.length===1&&tokens[0]===digits&&
+          /(?:[•●*xX]{2,}|card|visa|mastercard|maestro|amex|revolut|carte)/i.test(observed);
+      });
+      if(!clearSource&&severity.yellow>severity[level]){
+        level="yellow";
+        signal="card_identity_needs_operator";
+        reason="Card digits have no clear masked-card source evidence. Confirm the original before assigning a card.";
+      }
+    }
     for(const warning of warnings) {
       const line=String(warning);
       // A correct arithmetic equality is a useful *consistency check*, not
