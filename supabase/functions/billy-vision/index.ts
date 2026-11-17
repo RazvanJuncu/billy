@@ -234,6 +234,43 @@ function cors(req) {
     "Access-Control-Max-Age":"3600","Vary":"Origin"
   }});
 }
+// Financial Intelligence 1.1: a masked card match requires visible source
+// evidence or an explicit field-level operator confirmation. An AI green segment
+// alone is not proof; never store the full PAN in metadata.
+function cardEvidenceStatus(doc,regions,operatorConfirmed=false){
+  const digits=typeof doc?.card_last4==="string"?doc.card_last4:null;
+  if(!/^\d{4}$/.test(digits||""))return "not_available";
+  if(operatorConfirmed===true)return "operator_confirmed";
+  const clear=Array.isArray(regions)&&regions.some(region=>{
+    if(region?.field_path!=="card_last4"||region.visual_clarity!=="clear")
+      return false;
+    const observed=String(region.transcription||"").trim();
+    const chunks=observed.match(/\d+/g)||[];
+    // A four-digit terminal ID or transaction reference is not a card.
+    const context=/(?:[•●*xX]{2,}|card|visa|mastercard|master card|maestro|amex|revolut|carte)/i.test(observed);
+    return context&&chunks.length===1&&chunks[0]===digits;
+  });
+  return clear?"ai_source_evidence":"needs_operator_review";
+}
+function cardPaymentMethod(raw){
+  const value=String(raw||"").normalize("NFKC").trim().toLowerCase()
+    .replace(/\s+/g," ");
+  return /^(?:card|card payment|paid by card|bank card|credit card|debit card|pos|pos card|visa|visa debit|visa credit|mastercard|master card|maestro|amex|american express|revolut|carte|card bancar|plata cu cardul)$/.test(value);
+}
+function printedCardPayment(doc){
+  if(!cardPaymentMethod(doc?.payment_method))return false;
+  const status=String(doc?.transaction_status||doc?.payment_status||"")
+    .trim().toLowerCase();
+  return /^(?:paid|approved|successful|success|completed|accepted|settled)$/.test(status);
+}
+function eligibleCardLast4(record){
+  const digits=record?.reviewed_data?.card_last4;
+  if(typeof digits!=="string"||!/^\d{4}$/.test(digits))return null;
+  const quality=record?.review_metadata?.card_intelligence?.last4_status;
+  return ["ai_source_evidence","operator_confirmed"].includes(quality)?
+    digits:null;
+}
+
 function cleanDoc(value,type) {
   if (!value || typeof value!=="object" || Array.isArray(value)) throw Error("Invalid structured document.");
   const keys=type==="invoice"?INVOICE_FIELDS:FUEL_FIELDS;
@@ -1563,7 +1600,8 @@ async function extract(req,principal,authMs=0){
     parent_document_id:parentId||null,relationship_type:parentId?"attached_document":null,
     extracted_data:fields,regions_data:regions,validation_warnings:warnings,
     translation_metadata:translation,
-    review_metadata:{classification,extraction_profile_version:"1.1",external_checks:externalChecks,
+    review_metadata:{classification,extraction_profile_version:"1.2",external_checks:externalChecks,
+      card_intelligence:{version:"1.1",last4_status:cardEvidenceStatus(fields,regions)},
       normalization:{version:NORMALIZATION_VERSION,extracted:normalized},
       date_visual_corrections:dateVisualCorrections,
       ...(nestedPrimary?{nested_primary:true}:{})},
@@ -1809,6 +1847,8 @@ async function approve(req,principal){
     source.review_metadata?.classification?.profile);
   const reviewMetadata={
     ...(source.review_metadata||{}),
+    card_intelligence:{version:"1.1",last4_status:cardEvidenceStatus(
+      checked,source.regions_data,operatorVerified.has("card_last4"))},
     not_on_document:absentPaths,manual_confirmations:confirmationClaims,
     origin:"operator_confirmation",
     verification_policy:"operator_final_no_ai_recheck",
@@ -2395,12 +2435,8 @@ function financialOperations(roots,evidence,links,today,viewerId=null){
     const paymentLinks=byExpense.get(rec.id)||[];
     // A card-paid bill is source evidence even when no separate POS slip exists.
     // Four visible digits alone do NOT prove payment.
-    const bill_card_evidence=/^(?:card|credit card|debit card|pos)$/i.test(
-      String(doc.payment_method||"").trim())&&
-      /^(?:paid|approved|completed|successful|success)$/i.test(
-        String(doc.transaction_status||doc.payment_status||"").trim());
-    const bill_card_last4=/^[0-9]{4}$/.test(String(doc.card_last4||""))?
-      String(doc.card_last4):null;
+    const bill_card_evidence=printedCardPayment(doc);
+    const bill_card_last4=eligibleCardLast4(rec);
     const payment_state=paymentLinks.some(x=>x.payment_result==="confirmed")?
       "payment_confirmed":paymentLinks.length?"payment_linked":"no_payment_proof";
     if(!paymentLinks.length)counts.no_payment_proof++;
@@ -3007,10 +3043,7 @@ function cardTransactions(cards,proofs,roots,links,day){
   const totals=new Map(),seen=new Set(),proofKeys=new Set();
   let withoutCard=0,unknownCard=0,undated=0,unpriced=0,duplicateExcluded=0,billEntries=0;
   const matchedInvoiceIds=new Set(links.map(link=>link.expense_document_id));
-  const rawLast4=record=>{
-    const raw=record?.reviewed_data?.card_last4;
-    return typeof raw==="string"&&/^\d{4}$/.test(raw)?raw:null;
-  };
+  const rawLast4=eligibleCardLast4;
   const fingerprint=(record,card,money)=>{
     const doc=record.reviewed_data||{};
     const source=String(record.source_sha256||"").toLowerCase();
@@ -3060,10 +3093,7 @@ function cardTransactions(cards,proofs,roots,links,day){
        matchedInvoiceIds.has(invoice.id)||financialProfile(invoice)==="payment_slip")
       continue;
     const doc=invoice.reviewed_data||{};
-    if(!/^(?:card|credit card|debit card|pos)$/i.test(
-        String(doc.payment_method||"").trim()))continue;
-    if(!/^(?:paid|approved|completed|successful|success)$/i.test(
-        String(doc.transaction_status||doc.payment_status||"").trim()))continue;
+    if(!printedCardPayment(doc))continue;
     const card=rawLast4(invoice),money=assistantMoney(invoice);
     const date=assistantRecordDate(invoice).date;
     if(!card||!money||!date||date<start||date>day)continue;
