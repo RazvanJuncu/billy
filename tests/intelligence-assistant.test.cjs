@@ -134,7 +134,7 @@ test("Home-only animated bubble displays verified breakdown and allows opening s
   assert.match(html,/id="billyAssistantPanel"/);
   assert.match(html,/id="billyAssistantForm"/);
   assert.match(html,/intelligence-assistant\.js\?v=0\.5\.1/);
-  assert.match(html,/intelligence-assistant\.css\?v=0\.5\.0/);
+  assert.match(html,/intelligence-assistant\.css\?v=0\.5\.1/);
   assert.match(css,/body\[data-billy-screen="home"\] \.billy-ai-dock/);
   assert.match(css,/prefers-reduced-motion:reduce/);
   assert.match(ui,/window\.BillyAccounts\.sessionHeaders\(\)/);
@@ -171,7 +171,7 @@ test("Piggybank identity and HUD use the official portal hierarchy",()=>{
   assert.match(html,/id="piggybankHudBackdrop"/);
   assert.match(html,/id="piggybankHud" class="piggybank-hud"/);
   assert.match(html,/id="piggybankHudClose"/);
-  assert.match(html,/piggybank-hud\.js\?v=1\.1\.0/);
+  assert.match(html,/piggybank-hud\.js\?v=1\.2\.0/);
   assert.match(mark,/<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg"/);
   assert.match(mark,/<title id="piggyTitle">Piggybank<\/title>/);
   assert.match(css,/\.piggybank-hud-backdrop\{/);

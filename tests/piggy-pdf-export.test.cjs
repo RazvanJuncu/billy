@@ -58,7 +58,7 @@ test("Analytics PDF preserves verified filters, chart data, sources and partial 
   assert.match(text,/100\.00/);
   assert.match(text,/150\.00/);
   assert.match(text,/Partial total/);
-  assert.match(text,/Source list is a preview/);
+  assert.match(text,/source list is a preview/i);
   assert.match(text,/Source coverage is partial/);
   assert.ok(definition.content.some(v=>Array.isArray(v.canvas)),
     "Timeline must export a real vector chart");
