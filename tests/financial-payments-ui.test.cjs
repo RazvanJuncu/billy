@@ -78,7 +78,7 @@ test("No-slip selection is explicit, auditable, and reversible without auto-sett
  assert.match(ui,/function editor\(entry\)/);
  assert.match(ui,/financial-allocation"/);
  assert.match(ui,/financial-allocation-revoke"/);
- assert.match(ui,/method==="on_account"\?0/);
+ assert.match(ui,/method\.value==="on_account"\?0/);
  assert.match(ui,/NOT bank verification/);
  assert.match(ui,/No payment will be marked as received/);
  assert.match(ui,/Split payments are supported/);
