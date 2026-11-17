@@ -399,7 +399,7 @@
     $("billyFinancialLinkedPanel").hidden=section!=="payments";
     $("billyFinancialUnmatchedPanel").hidden=section!=="payments";
     $("billyFinancialSectionTitle").textContent={
-      attention:"Needs attention",expenses:"Expenses",payments:"Payments",insights:"Insights"
+      attention:"Needs attention",expenses:"Expenses",payments:"Payments",insights:"Reports"
     }[section];
     $("billyFinancialSectionBack").querySelector("span").textContent="Financial";
     const coverage=$("billyFinancialCoverage");
@@ -481,7 +481,10 @@
       list.append(button);
     }
     renderFinancialOperations();
-    if(nav.section==="insights")renderIntegrity();
+    if(nav.section==="insights"){
+      renderIntegrity();
+      window.BillyFinancialReports?.render?.(state.data);
+    }
   }
   async function openDocument(id,button){
     const config=window.BILLY_AUTH_CONFIG||{};
