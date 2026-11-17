@@ -128,7 +128,7 @@
   function isGreeting(text){
     const value=String(text||"").normalize("NFKD")
       .replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();
-    return /^(?:(?:hi|hey|hello|salut|buna|neata|oink|groh)(?:[!,.\s]+(?:piggy|piggybank))?|(?:piggy|piggybank)[!,.\s]*(?:hi|hello|salut|oink|groh)?)[!?.\s]*$/.test(value);
+    return /^(?:(?:hi|hey|hello|salut|buna|neata|oink|groh(?:-groh)?)(?:[!,.\s]+(?:piggy|piggybank))?|(?:piggy|piggybank)[!,.\s]*(?:hi|hello|salut|oink|groh)?)[!?.\s]*$/.test(value);
   }
   function followups(result,language){
     const plan=result?.plan;
