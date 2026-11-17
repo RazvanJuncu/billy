@@ -3960,7 +3960,7 @@ function piggyFollowup(question,previous,today){
       compare_previous:false});
   }
 
-  const chartSpeech=speech.replace(/^(?:ca|as|as a|un|a|o)\s+/,"");
+  const chartSpeech=speech.replace(/^(?:as a|as|ca|un|a|o)\s+/,"");
   if(/^(?:tabel|table|tabular|in tabel|as table)$/.test(chartSpeech))
     return update({chart:"table"});
   if(/^(?:grafic cu bare|bare|bar chart|bar graph|bars)$/.test(chartSpeech))
