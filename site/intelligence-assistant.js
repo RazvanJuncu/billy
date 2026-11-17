@@ -10,6 +10,37 @@
     feed=$("billyAssistantFeed"),close=$("billyAssistantClose"),
     status=$("billyAssistantStatus"),submit=$("billyAssistantSend");
   let open=false,busy=false,lastQuestion="",pending=null,lastAnalyticsPlan=null;
+  const piggy=window.PiggyPersona;
+  let chatLanguage=piggy?.defaultLanguage(
+    typeof navigator!=="undefined"?navigator.language:"en")||"en";
+  const welcome=panel.querySelector(".billy-ai-welcome");
+  const welcomeTitle=welcome?.querySelector("strong");
+  const welcomeSubtitle=welcome?.querySelector("span");
+  const starters=$("billyAssistantSuggestions");
+  const piggyCopy=(key,lang=chatLanguage)=>piggy?.get(key,lang)||"";
+  const piggyLine=(key,lang=chatLanguage)=>piggy?.next(key,lang)||"";
+  const chooseLanguage=text=>piggy?.detect(text,chatLanguage)||chatLanguage;
+  function paintWelcome(lang=chatLanguage){
+    chatLanguage=lang==="ro"?"ro":"en";
+    if(welcomeTitle)welcomeTitle.textContent=piggyCopy("welcomeTitle");
+    if(welcomeSubtitle)welcomeSubtitle.textContent=piggyCopy("welcomeSubtitle");
+    input.placeholder=piggyCopy("input")||"Ask Piggy anything…";
+    if(!starters||!piggy)return;
+    starters.replaceChildren();
+    for(const example of piggy.prompts(chatLanguage)){
+      const chip=make("button","billy-ai-starter",example.label);
+      chip.type="button";
+      chip.addEventListener("click",()=>void ask(example.question));
+      starters.append(chip);
+    }
+  }
+  function chatError(message,lang){
+    const block=make("div","billy-ai-error");
+    const opener=piggyLine("errorIntro",lang);
+    if(opener)block.append(make("strong","",opener));
+    block.append(make("span","",message));
+    return block;
+  }
   const make=(tag,cls,content)=>{
     const el=document.createElement(tag);
     if(cls)el.className=cls;
@@ -96,14 +127,16 @@
     const t=(ro,en)=>lang==="ro"?ro:en;
     const wrapper=make("article","billy-ai-answer");
     if(!result.understood){
-      wrapper.append(make("p","billy-ai-note",result.detail||
-        t("Nu pot interpreta întrebarea.","I couldn't interpret that question.")));
+      wrapper.append(make("p","billy-ai-note",
+        piggyLine("misunderstood",lang)||t("Poți reformula?","Could you rephrase?")));
+      if(result.detail)wrapper.append(make("p","billy-ai-subtle",result.detail));
       return wrapper;
     }
     const f=result.filter||{},c=result.coverage||{};
     const qualifiers=[f.aircraft_registration,
       f.start_date?(f.start_date===f.end_date?f.start_date:f.start_date+" – "+f.end_date):null,
       f.expense_category||null].filter(Boolean);
+    wrapper.append(make("p","billy-ai-persona-intro",piggyLine("answer",lang)));
     wrapper.append(make("div","billy-ai-answer-kicker",
       t("Documente aprobate · Billy","Approved documents · Billy")));
     const heading=f.intent==="operations"?t("Operațiuni","Operations"):
@@ -151,7 +184,7 @@
       }
     }else{
       wrapper.append(make("p","billy-ai-empty",
-        t("Nu există sume validate pentru această selecție.",
+        piggyCopy("empty",lang)||t("Nu există sume validate pentru această selecție.",
           "No validated expenses found for this selection.")));
     }
     const ops=result.operations||{};
@@ -215,43 +248,58 @@
   function renderHudNotice(result,question){
     const lang=result.language==="ro"?"ro":"en";
     const wrapper=make("div","billy-ai-hud-notice");
-    const message=result.analytics===true?
-      (lang==="ro"?"Am construit raportul în HUD. Poți cere altă grupare, comparație sau perioadă.":
-        "Your report is in the HUD. Ask to regroup, compare or change the date range."):
-      (lang==="ro"
-        ?"Am deschis analiza cheltuielilor pe HUD. Acolo ai totalurile, categoriile, furnizorii și documentele justificative."
-        :"I've opened the expenses on your HUD. You can see the totals, breakdowns and supporting documents there.");
+    const message=result.blocked?piggyCopy("blocked",lang):
+      result.analytics===true?piggyLine("report",lang):piggyLine("legacyReport",lang);
     wrapper.append(make("p","",message));
     const reopen=make("button","piggybank-hud-chat-link",
-      lang==="ro"?"Vezi HUD-ul":"View HUD");
+      piggyCopy("hudButton",lang)||"Open HUD");
     reopen.type="button";
-    reopen.addEventListener("click",()=>{
-      window.PiggybankHUD?.show(result,question);
-    });
+    reopen.addEventListener("click",()=>{window.PiggybankHUD?.show(result,question);});
     wrapper.append(reopen);
+    // Follow-up prompts stay in chat; the underlying financial HUD is factual.
+    const followups=piggy?.followups(result,lang)||[];
+    if(followups.length){
+      const actions=make("div","billy-ai-quick-actions");
+      for(const suggestion of followups){
+        const chip=make("button","billy-ai-quick-action",suggestion.label);
+        chip.type="button";
+        chip.addEventListener("click",()=>void ask(suggestion.question));
+        actions.append(chip);
+      }
+      wrapper.append(actions);
+    }
     return wrapper;
   }
   async function ask(question){
     if(busy)return;
     const prompt=question.trim();
-    if(prompt.length<3||prompt.length>400){
-      status.textContent="Please enter 3–400 characters.";return;
+    const language=chooseLanguage(prompt);
+    paintWelcome(language);
+    const greeting=piggy?.isGreeting(prompt)===true;
+    if((prompt.length<3&&!greeting)||prompt.length>400){
+      status.textContent=piggyCopy("inputLimit");return;
+    }
+    if(greeting){
+      setOpen(true);panel.classList.add("has-thread");
+      if(welcome)welcome.hidden=true;
+      status.textContent="";input.value="";
+      say(prompt,"user");say(piggyLine("hello",language),"billy");
+      input.focus();return;
     }
     if(!window.BillyAccounts?.active?.()){
-      status.textContent="Sign in to an approved Billy team to ask about its documents.";
-      return;
+      status.textContent=piggyCopy("auth");return;
     }
     setOpen(true);
     // Keep the previous verified report visible while editing it. A failed
     // follow-up must not erase the operator's last good HUD.
     if(!lastAnalyticsPlan)window.PiggybankHUD?.hide(false);
     panel.classList.add("has-thread");
-    const welcome=feed.querySelector(".billy-ai-welcome");
     if(welcome)welcome.hidden=true;
     busy=true;submit.disabled=true;input.disabled=true;
+    panel.classList.add("is-sniffing");
     status.textContent="";input.value="";
     say(prompt,"user");
-    pending=say("Analyzing approved documents…","billy");
+    pending=say(piggyLine("loading",language),"billy");
     pending.querySelector(".billy-ai-bubble").classList.add("is-loading");
     try{
       const headers=await window.BillyAccounts.sessionHeaders();
@@ -271,8 +319,8 @@
         lastQuestion=prompt;
         if(window.PiggybankHUD?.show(analytics,prompt))
           pending.replaceChildren(renderHudNotice(analytics,prompt));
-        else pending.replaceChildren(make("div","billy-ai-error",
-          "The analytics HUD is unavailable."));
+        else pending.replaceChildren(chatError(
+          piggyCopy("hudUnavailable",language),language));
       }else{
         const response=await fetch(window.BILLY_AUTH_CONFIG.apiUrl+
           "/api/vision/assistant",{
@@ -292,13 +340,15 @@
         }
       }
     }catch(e){
-      pending.replaceChildren(make("div","billy-ai-error",
-        e.message||"Could not analyze the question. Please retry."));
+      pending.replaceChildren(chatError(
+        e.message||piggyCopy("errorRetry",language),language));
     }finally{
       busy=false;submit.disabled=false;input.disabled=false;pending=null;
+      panel.classList.remove("is-sniffing");
       feed.scrollTop=feed.scrollHeight;input.focus();
     }
   }
+  paintWelcome(chatLanguage);
   launch.addEventListener("click",()=>setOpen(!open));
   close.addEventListener("click",()=>setOpen(false));
   form.addEventListener("submit",event=>{
