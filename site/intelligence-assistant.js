@@ -9,7 +9,7 @@
   const form=$("billyAssistantForm"),input=$("billyAssistantInput"),
     feed=$("billyAssistantFeed"),close=$("billyAssistantClose"),
     status=$("billyAssistantStatus"),submit=$("billyAssistantSend");
-  let open=false,busy=false,lastQuestion="",pending=null;
+  let open=false,busy=false,lastQuestion="",pending=null,lastAnalyticsPlan=null;
   const make=(tag,cls,content)=>{
     const el=document.createElement(tag);
     if(cls)el.className=cls;
@@ -215,9 +215,12 @@
   function renderHudNotice(result,question){
     const lang=result.language==="ro"?"ro":"en";
     const wrapper=make("div","billy-ai-hud-notice");
-    const message=lang==="ro"
-      ?"Am deschis analiza cheltuielilor pe HUD. Acolo ai totalurile, categoriile, furnizorii și documentele justificative."
-      :"I've opened the expenses on your HUD. You can see the totals, breakdowns and supporting documents there.";
+    const message=result.analytics===true?
+      (lang==="ro"?"Am construit raportul în HUD. Poți cere altă grupare, comparație sau perioadă.":
+        "Your report is in the HUD. Ask to regroup, compare or change the date range."):
+      (lang==="ro"
+        ?"Am deschis analiza cheltuielilor pe HUD. Acolo ai totalurile, categoriile, furnizorii și documentele justificative."
+        :"I've opened the expenses on your HUD. You can see the totals, breakdowns and supporting documents there.");
     wrapper.append(make("p","",message));
     const reopen=make("button","piggybank-hud-chat-link",
       lang==="ro"?"Vezi HUD-ul":"View HUD");
@@ -250,21 +253,41 @@
     pending.querySelector(".billy-ai-bubble").classList.add("is-loading");
     try{
       const headers=await window.BillyAccounts.sessionHeaders();
-      const response=await fetch(window.BILLY_AUTH_CONFIG.apiUrl+
-        "/api/vision/assistant",{
+      // Universal analytics takes priority. Other requests retain the
+      // existing document and operations assistant without losing its behavior.
+      const analyticsResponse=await fetch(window.BILLY_AUTH_CONFIG.apiUrl+
+        "/api/vision/analytics",{
         method:"POST",headers:{"Content-Type":"application/json",...headers},
-        body:JSON.stringify({question:prompt,previous_question:lastQuestion}),
+        body:JSON.stringify({question:prompt,previous_plan:lastAnalyticsPlan}),
         cache:"no-store"
       });
-      const result=await response.json();
-      if(!response.ok)throw Error(result.detail||"Piggybank is unavailable.");
-      lastQuestion=prompt;
-      if(result.understood&&result.filter?.intent==="costs"&&
-        window.PiggybankHUD?.show(result,prompt)){
-        pending.replaceChildren(renderHudNotice(result,prompt));
+      const analytics=await analyticsResponse.json();
+      if(!analyticsResponse.ok)throw Error(
+        analytics.detail||"Piggy Analytics could not run this report.");
+      if(analytics.understood&&analytics.analytics===true){
+        lastAnalyticsPlan=analytics.plan||null;
+        lastQuestion=prompt;
+        if(window.PiggybankHUD?.show(analytics,prompt))
+          pending.replaceChildren(renderHudNotice(analytics,prompt));
+        else pending.replaceChildren(make("div","billy-ai-error",
+          "The analytics HUD is unavailable."));
       }else{
-        window.PiggybankHUD?.hide(false);
-        pending.replaceChildren(renderAnswer(result));
+        const response=await fetch(window.BILLY_AUTH_CONFIG.apiUrl+
+          "/api/vision/assistant",{
+          method:"POST",headers:{"Content-Type":"application/json",...headers},
+          body:JSON.stringify({question:prompt,previous_question:lastQuestion}),
+          cache:"no-store"
+        });
+        const result=await response.json();
+        if(!response.ok)throw Error(result.detail||"Piggybank is unavailable.");
+        lastQuestion=prompt;
+        if(result.understood&&result.filter?.intent==="costs"&&
+          window.PiggybankHUD?.show(result,prompt)){
+          pending.replaceChildren(renderHudNotice(result,prompt));
+        }else{
+          window.PiggybankHUD?.hide(false);
+          pending.replaceChildren(renderAnswer(result));
+        }
       }
     }catch(e){
       pending.replaceChildren(make("div","billy-ai-error",
