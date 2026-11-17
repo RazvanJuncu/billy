@@ -26,7 +26,7 @@
   <link rel="stylesheet" href="./financial-reports.css?v=1.1.0">
   <link rel="stylesheet" href="./financial-payments.css?v=1.2.0">
   <link rel="stylesheet" href="./nested-mitosis.css?v=0.3.0">
-  <link rel="stylesheet" href="./intelligence-assistant.css?v=0.5.0">
+  <link rel="stylesheet" href="./intelligence-assistant.css?v=0.5.1">
   <link rel="stylesheet" href="./multi-documents.css?v=1.0.0">
   <link rel="stylesheet" href="./quickscan.css?v=1">
   <link rel="stylesheet" href="./preloader.css?v=1.2.0">
@@ -62,7 +62,8 @@
   <script src="./financial-cards.js?v=1.1.0" defer></script>
   <script src="./simple.js?v=2.2.4" defer></script>
   <script src="./piggy-analytics-hud.js?v=2.0.0" defer></script>
-  <script src="./piggybank-hud.js?v=1.1.0" defer></script>
+  <script src="./piggy-pdf-export.js?v=1.0.0" defer></script>
+  <script src="./piggybank-hud.js?v=1.2.0" defer></script>
   <script src="./piggy-persona.js?v=1.0.2" defer></script>
   <script src="./intelligence-assistant.js?v=0.5.1" defer></script>
   <script src="./piggybank-stroll.js?v=1.1.0" defer></script>
@@ -815,10 +816,19 @@
         <span class="piggybank-hud-kicker">PIGGYBANK / FINANCIAL HUD</span>
         <h2 id="piggybankHudTitle">Expenses</h2>
       </div>
-      <button id="piggybankHudClose" type="button" class="piggybank-hud-close"
-        aria-label="Close financial HUD">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
-      </button>
+      <div class="piggybank-hud-head-actions">
+        <span id="piggybankHudExportStatus" class="piggybank-hud-export-status"
+          role="status" aria-live="polite" hidden></span>
+        <button id="piggybankHudDownloadPdf" type="button"
+          class="piggybank-hud-download" aria-label="Download PDF report">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M4 17v4h16v-4"/></svg>
+          <span class="piggybank-hud-download-label">Download PDF</span>
+        </button>
+        <button id="piggybankHudClose" type="button" class="piggybank-hud-close"
+          aria-label="Close financial HUD">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
     </header>
     <div id="piggybankHudContent" class="piggybank-hud-content"></div>
   </section>

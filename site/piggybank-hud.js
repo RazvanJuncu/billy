@@ -6,7 +6,8 @@
   const $=id=>document.getElementById(id);
   const hud=$("piggybankHud"),backdrop=$("piggybankHudBackdrop"),
     close=$("piggybankHudClose"),title=$("piggybankHudTitle"),
-    content=$("piggybankHudContent");
+    content=$("piggybankHudContent"),download=$("piggybankHudDownloadPdf"),
+    exportStatus=$("piggybankHudExportStatus");
   if(!hud||!backdrop||!close||!title||!content)return;
   const make=(tag,cls,value)=>{
     const el=document.createElement(tag);
@@ -168,13 +169,19 @@
     content.replaceChildren(body);
     content.scrollTop=0;
   }
-  let active=false;
+  let active=false,lastResult=null,lastQuestion="",exportBusy=false;
   function show(result,question){
     if(!result?.understood)return false;
     if(result.analytics===true&&window.PiggyAnalyticsHUD?.render){
       window.PiggyAnalyticsHUD.render(result,question,content,title,
         hud.querySelector(".piggybank-hud-kicker"));
     }else render(result,question);
+    lastResult=result;lastQuestion=question;
+    if(download){
+      const label=download.querySelector(".piggybank-hud-download-label");
+      if(label)label.textContent=result.language==="ro"?"Descarcă PDF":"Download PDF";
+    }
+    if(exportStatus){exportStatus.hidden=true;exportStatus.textContent="";}
     active=true;
     hud.hidden=false;
     backdrop.hidden=false;
@@ -190,6 +197,29 @@
       if(field&&!$("billyAssistantPanel")?.hidden)field.focus();
     }
   }
+  if(download)download.addEventListener("click",async()=>{
+    if(!active||exportBusy||!lastResult)return;
+    exportBusy=true;download.disabled=true;
+    const label=download.querySelector(".piggybank-hud-download-label");
+    const original=label?.textContent||"Download PDF";
+    if(label)label.textContent=lastResult.language==="ro"?"Se generează…":"Generating…";
+    if(exportStatus){exportStatus.hidden=true;exportStatus.textContent="";}
+    try{
+      if(!window.PiggyPDFExport?.download)throw new Error("PDF exporter missing");
+      await window.PiggyPDFExport.download(lastResult,lastQuestion);
+    }catch(error){
+      if(exportStatus){
+        exportStatus.textContent=lastResult.language==="ro"?
+          "Exportul PDF a eșuat. Verifică conexiunea și încearcă din nou.":
+          "PDF export failed. Check your connection and try again.";
+        exportStatus.hidden=false;
+      }
+      console.error("Piggy PDF export failed:",error);
+    }finally{
+      exportBusy=false;download.disabled=false;
+      if(label)label.textContent=original;
+    }
+  });
   close.addEventListener("click",()=>hide());
   backdrop.addEventListener("click",()=>hide());
   new MutationObserver(()=>{

@@ -108,3 +108,11 @@ test("Backdrop and close controls dismiss HUD without destroying the chat",()=>{
   assert.equal(ids.piggybankHud.hidden,true);
   assert.equal(ids.piggybankHudBackdrop.hidden,true);
 });
+
+test("Both HUD types expose the download button without a new backend calculation",()=>{
+  const html=fs.readFileSync(path.join(__dirname,"..","site/index.html"),"utf8");
+  assert.match(html,/id="piggybankHudDownloadPdf"/);
+  assert.match(html,/piggy-pdf-export\.js\?v=1\.0\.0/);
+  assert.match(source,/window\.PiggyPDFExport\.download\(lastResult,lastQuestion\)/);
+  assert.doesNotMatch(source,/api\/vision\/analytics[^\s]*export/);
+});
