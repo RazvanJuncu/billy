@@ -74,7 +74,7 @@ test("Payments has one direct workspace with JetRead-inspired workflow, Billy st
  assert.match(css,/@media\(max-width:600px\)/);
 });
 test("No-slip selection is explicit, auditable, and reversible without auto-settlement",()=>{
- assert.match(ui,/Paid by  ⌄/);
+ assert.match(ui,/Paid by/);
  assert.match(ui,/function editor\(entry\)/);
  assert.match(ui,/financial-allocation"/);
  assert.match(ui,/financial-allocation-revoke"/);
@@ -84,7 +84,7 @@ test("No-slip selection is explicit, auditable, and reversible without auto-sett
  assert.match(ui,/Split payments are supported/);
  assert.match(ui,/window\.confirm/);
  assert.doesNotMatch(ui,/\.innerHTML\s*=/);
- assert.match(read("site/sw.js"),/v119-financial-ux-cleanup/);
+ assert.match(read("site/sw.js"),/v120-financial-copy-cleanup/);
 });
 
 test("Collapsed Payments is a compact, single-surface disclosure shelf",()=>{
