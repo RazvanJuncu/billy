@@ -22,7 +22,8 @@
   <link rel="stylesheet" href="./document-type.css?v=0.6.0">
   <link rel="stylesheet" href="./simple.css?v=2.4.9">
   <link rel="stylesheet" href="./financial.css?v=1.9.0">
-  <link rel="stylesheet" href="./financial-cards.css?v=1.0.0">
+  <link rel="stylesheet" href="./financial-cards.css?v=1.1.0">
+  <link rel="stylesheet" href="./financial-reports.css?v=1.0.0">
   <link rel="stylesheet" href="./financial-payments.css?v=1.0.0">
   <link rel="stylesheet" href="./nested-mitosis.css?v=0.3.0">
   <link rel="stylesheet" href="./intelligence-assistant.css?v=0.3.4">
@@ -54,7 +55,8 @@
   <script src="./documents-index.js?v=1.9.1" defer></script>
   <script src="./original-archive.js?v=1.1.0" defer></script>
   <script src="./document-preview.js?v=1.5.2" defer></script>
-  <script src="./financial.js?v=2.0.0" defer></script>
+  <script src="./financial.js?v=2.1.0" defer></script>
+  <script src="./financial-reports.js?v=1.0.0" defer></script>
   <script src="./financial-reconciliation.js?v=2.0.0" defer></script>
   <script src="./financial-cards.js?v=1.0.0" defer></script>
   <script src="./simple.js?v=2.2.4" defer></script>
@@ -291,8 +293,8 @@
               </button>
               <button id="billyFinancialInsightsNav" class="billy-financial-nav-row" type="button">
                 <span class="billy-financial-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20V12m6 8V7m6 13V10m4 10V4M2 20h20"/></svg></span>
-                <span class="billy-financial-nav-copy"><strong>Insights</strong>
-                  <small>Spending trends and activity</small>
+                <span class="billy-financial-nav-copy"><strong>Reports</strong>
+                  <small>Group, filter and export expenses</small>
                 </span>
                 <span class="billy-financial-nav-arrow" aria-hidden="true">›</span>
               </button>
@@ -379,7 +381,54 @@
                 <div id="billyFinancialUnmatchedList" class="billy-financial-attention-list"></div>
               </details>
             </section>
-            <section class="billy-financial-section" id="billyFinancialInsightsSection" aria-label="Insights" hidden>
+            <section class="billy-financial-section" id="billyFinancialInsightsSection" aria-label="Reports" hidden>
+              <div class="billy-reports-workspace">
+                <div class="billy-reports-head">
+                  <strong>Approved expense reports</strong>
+                  <button id="billyFinancialReportExport" type="button" disabled>Export CSV</button>
+                </div>
+                <div class="billy-reports-controls">
+                  <span class="billy-reports-caption">Group by</span>
+                  <div class="billy-reports-groupby" role="group" aria-label="Group approved expenses by">
+                    <button id="billyFinancialReportAircraft" type="button" aria-pressed="false">Aircraft</button>
+                    <button id="billyFinancialReportAirport" type="button" aria-pressed="false">Airport</button>
+                    <button id="billyFinancialReportVendor" type="button" aria-pressed="true">Vendor</button>
+                    <button id="billyFinancialReportCategoryGroup" type="button" aria-pressed="false">Category</button>
+                    <button id="billyFinancialReportMonth" type="button" aria-pressed="false">Month</button>
+                    <button id="billyFinancialReportSender" type="button" aria-pressed="false">Sender</button>
+                  </div>
+                </div>
+                <div class="billy-reports-filters">
+                  <label>Category
+                    <select id="billyFinancialReportCategory" aria-label="Filter report category">
+                      <option value="">All categories</option>
+                    </select>
+                  </label>
+                  <label>From
+                    <input id="billyFinancialReportStart" type="date" aria-label="Report start date">
+                  </label>
+                  <label>To
+                    <input id="billyFinancialReportEnd" type="date" aria-label="Report end date">
+                  </label>
+                </div>
+                <p id="billyFinancialReportSummary" class="billy-reports-summary">Loading approved expenses</p>
+                <div class="billy-reports-scroll">
+                  <div class="billy-reports-table" role="region" aria-label="Approved expenses grouped report">
+                    <div class="billy-reports-columns" aria-hidden="true">
+                      <span>Group</span><span>Expenses</span><span>Fuel (L)</span>
+                      <span>Fuel (t)</span><span>Total amounts</span>
+                    </div>
+                    <div id="billyFinancialReportRows"></div>
+                  </div>
+                </div>
+                <p id="billyFinancialReportFootnote" class="billy-reports-note"></p>
+              </div>
+              <details class="billy-financial-proof-panel billy-reports-secondary">
+                <summary class="billy-financial-proof-summary">
+                  <strong>Trends & integrity</strong>
+                  <span>Charts and internal checks</span>
+                </summary>
+                <div class="billy-reports-secondary-body">
               <div class="billy-financial-section-head">
                 <h3>Approved expenses · 30 days</h3>
                 <label class="billy-financial-select-label">Currency
@@ -404,6 +453,8 @@
                   <div id="billyFinancialIntegrityChecks" class="billy-financial-integrity-checks"></div>
                   <p class="billy-financial-integrity-note">Read-only checks on approved documents.
                     Not a substitute for accounting approval. Unimplemented workflows are shown as not tested.</p>
+                </div>
+              </details>
                 </div>
               </details>
             </section>
