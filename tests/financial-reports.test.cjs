@@ -102,7 +102,7 @@ test("Card surfaces use solid shape and no decorative fake chip",()=>{
  assert.match(cardCSS,/\.billy-financial-cards-panel\{display:block;border:0/);
  assert.match(cardCSS,/background:#373f43/);
  assert.match(cardCSS,/box-shadow:0 8px 22px/);
- assert.match(cardCSS,/\.billy-fcard\[data-selected="true"\] \.billy-fcard-art\{background:/);
+ assert.match(cardCSS,/\.billy-fcard\[data-selected="true"\] \.billy-fcard-art\{\s*background:/);
  assert.match(cardCSS,/\.billy-fcard:focus-visible\{outline:/);
  assert.match(page,/financial-cards\.css\?v=1\.2\.0/);
 });
