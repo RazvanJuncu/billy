@@ -128,7 +128,7 @@
     const wrapper=make("article","billy-ai-answer");
     if(!result.understood){
       wrapper.append(make("p","billy-ai-note",
-        piggyLine("misunderstood",lang)||t("Poți reformula?","Could you rephrase?")));
+        piggyLine("misunderstood",chatLanguage)||t("Poți reformula?","Could you rephrase?")));
       if(result.detail)wrapper.append(make("p","billy-ai-subtle",result.detail));
       return wrapper;
     }
@@ -136,7 +136,7 @@
     const qualifiers=[f.aircraft_registration,
       f.start_date?(f.start_date===f.end_date?f.start_date:f.start_date+" – "+f.end_date):null,
       f.expense_category||null].filter(Boolean);
-    wrapper.append(make("p","billy-ai-persona-intro",piggyLine("answer",lang)));
+    wrapper.append(make("p","billy-ai-persona-intro",piggyLine("answer",chatLanguage)));
     wrapper.append(make("div","billy-ai-answer-kicker",
       t("Documente aprobate · Billy","Approved documents · Billy")));
     const heading=f.intent==="operations"?t("Operațiuni","Operations"):
@@ -184,7 +184,7 @@
       }
     }else{
       wrapper.append(make("p","billy-ai-empty",
-        piggyCopy("empty",lang)||t("Nu există sume validate pentru această selecție.",
+        piggyCopy("empty",chatLanguage)||t("Nu există sume validate pentru această selecție.",
           "No validated expenses found for this selection.")));
     }
     const ops=result.operations||{};
@@ -246,7 +246,7 @@
     return wrapper;
   }
   function renderHudNotice(result,question){
-    const lang=result.language==="ro"?"ro":"en";
+    const lang=chooseLanguage(question);
     const wrapper=make("div","billy-ai-hud-notice");
     const message=result.blocked?piggyCopy("blocked",lang):
       result.analytics===true?piggyLine("report",lang):piggyLine("legacyReport",lang);
