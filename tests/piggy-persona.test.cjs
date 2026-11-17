@@ -152,12 +152,12 @@ test("Chat reports use Piggy's voice but keep source-backed HUD results and clic
   assert.equal(a.fetchCalls,1);
   const message=a.nodes.billyAssistantFeed.children.at(-1);
   const notice=message.children[0];
-  const text=notice.children[0].children[0].textContent;
+  const text=notice.children[0].textContent;
   assert.match(text,/rât|Groh|Oink|scormonit/);
   assert.match(text,/HUD/);
-  const buttons=notice.children[0].children.filter(c=>c.tag==="button");
+  const buttons=notice.children.filter(c=>c.tag==="button");
   assert.equal(buttons.length,1);
-  const actions=notice.children[0].children.find(c=>c.className==="billy-ai-quick-actions");
+  const actions=notice.children.find(c=>c.className==="billy-ai-quick-actions");
   assert.ok(actions);
   assert.equal(actions.children.length,2);
   assert.match(actions.children[0].textContent,/Pe zile/);
