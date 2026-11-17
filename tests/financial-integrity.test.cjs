@@ -17,6 +17,7 @@ function extract(start,end){
 }
 function harness(){
  const code=[
+  extract("function cardPaymentMethod(","function financialProfile("),
   extract("function financialProfile(","function financialCardLast4("),
   extract("function financialFingerprint(","// Financial Operations P1.1"),
   extract("function financialOperations(","async function financialAuditEvents(")

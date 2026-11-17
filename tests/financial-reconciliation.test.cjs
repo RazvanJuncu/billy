@@ -90,5 +90,5 @@ test("UI keeps the single-page Billy Payments workspace and reversible operator 
  assert.match(frontend,/window\.confirm/);
  assert.doesNotMatch(frontend,/\.innerHTML\s*=/);
  assert.match(read("site/financial.js"),/BillyFinancialReconciliation\?\.render/);
- assert.match(read("site/sw.js"),/v121-integrity-chevron/);
+ assert.match(read("site/sw.js"),/v122-financial-intelligence-card-evidence/);
 });

@@ -25,8 +25,8 @@ test("no slip does not exclude approved bills from the financial ledger",()=>{
  assert.doesNotMatch(finance,/if\(!item\.linked_payment_count\)return false/);
 });
 test("explicit card paid-on-bill is evidence, not an inference from digits alone",()=>{
- assert.match(backend,/const bill_card_evidence=\/\^\(\?:card/);
- assert.match(backend,/transaction_status\|\|doc\.payment_status/);
+ assert.match(backend,/const bill_card_evidence=printedCardPayment\(doc\)/);
+ assert.match(backend,/doc\?\.transaction_status\|\|doc\?\.payment_status/);
  assert.match(backend,/bill_card_last4:bill_card_evidence\?bill_card_last4:null/);
  assert.match(backend,/bill_card_evidence:expense\.bill_card_evidence===true/);
  const split=groups({reconciliation:[
@@ -84,7 +84,7 @@ test("No-slip selection is explicit, auditable, and reversible without auto-sett
  assert.match(ui,/Split payments are supported/);
  assert.match(ui,/window\.confirm/);
  assert.doesNotMatch(ui,/\.innerHTML\s*=/);
- assert.match(read("site/sw.js"),/v121-integrity-chevron/);
+ assert.match(read("site/sw.js"),/v122-financial-intelligence-card-evidence/);
 });
 
 test("Collapsed Payments is a compact, single-surface disclosure shelf",()=>{

@@ -71,7 +71,10 @@ function harness(){
   json:value=>new Response(JSON.stringify(value),{status:200}),
   Response
  };
- vm.runInNewContext(backend.slice(first,last)+
+ const helperStart=backend.indexOf("function cardPaymentMethod(");
+ const helperEnd=backend.indexOf("function financialProfile(",helperStart);
+ assert.ok(helperStart>0&&helperEnd>helperStart);
+ vm.runInNewContext(backend.slice(helperStart,helperEnd)+backend.slice(first,last)+
    "\nthis.ledger=financialOperations;this.review=financialReview;",scope);
  return scope;
 }
