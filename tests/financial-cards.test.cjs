@@ -103,5 +103,5 @@ test("Card UI stays inside Payments and cannot present imported JetRead totals",
  assert.match(frontend,/assistant-source\?record_id=/);
  assert.doesNotMatch(frontend,/\.innerHTML\s*=/);
  assert.match(css,/\.billy-financial-cards-grid/);
- assert.match(read("site/sw.js"),/v120-financial-copy-cleanup/);
+ assert.match(read("site/sw.js"),/v121-integrity-chevron/);
 });
