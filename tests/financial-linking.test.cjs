@@ -254,5 +254,5 @@ test("Billy Payments presents inline pair evidence, source previews and explicit
   assert.match(finance,/\/api\/vision\/financial-link/);
   assert.match(finance,/await refresh\(\)/);
   assert.match(css,/\.billy-financial-proposal\{/);
-  assert.match(read("site/index.html"),/financial\.js\?v=2\.1\.0/);
+  assert.match(read("site/index.html"),/financial\.js\?v=2\.2\.0/);
 });
