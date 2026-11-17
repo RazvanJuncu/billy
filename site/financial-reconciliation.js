@@ -137,21 +137,19 @@
     const el=make("div","billy-payments-bill-row");
     const copy=make("div","billy-payments-bill-ident");
     const upper=make("div","billy-payments-bill-title");
-    const pill=make("span","billy-payments-proof-pill",
-      kind==="paid_on_bill"?"CARD ON BILL":
-      kind==="classified"?"CLASSIFIED":"NO SLIP");
     const title=button(entry.vendor||"Unassigned","billy-payments-vendor",
       event=>void openSource(entry.expense_document_id,event.currentTarget));
-    upper.append(pill,title);
-    const information=[
-      String(entry.profile||"Expense").replaceAll("_"," "),
-      entry.date||"Date not available"
-    ];
+    upper.append(title);
+    const meta=make("div","billy-payments-bill-meta");
+    meta.append(window.BillyFinancialCategories?.make?.(entry.profile,entry.category)||
+      make("span","billy-financial-category","EXPENSE"));
+    meta.append(make("small","",entry.date||"Date not available"));
     if(kind==="paid_on_bill")
-      information.push(entry.bill_card_last4?"Card •••• "+entry.bill_card_last4:"Card number unknown");
+      meta.append(make("small","",
+        entry.bill_card_last4?"Card •••• "+entry.bill_card_last4:"Card number unknown"));
     if(kind==="classified"&&entry.on_account)
-      information.push("On account · outstanding");
-    copy.append(upper,make("small","",information.join(" · ")));
+      meta.append(make("small","","On account · outstanding"));
+    copy.append(upper,meta);
     const amount=make("div","billy-payments-bill-amount",
       entry.amount_minor===null?"Amount needed":money(entry.amount_minor,entry.currency));
     if(kind==="classified"&&entry.remaining_minor!==null)
@@ -163,7 +161,7 @@
     if(kind==="no_slip"){
       if(entry.can_review&&entry.remaining_minor!==null&&
          entry.remaining_minor>0&&entry.status!=="overallocated"){
-        actions.append(button("Paid by  ⌄","billy-payments-method-button",()=>{
+        actions.append(button("Paid by","billy-payments-method-button",()=>{
           editingId=editingId===entry.expense_document_id?null:entry.expense_document_id;
           render(activeData,activeRefresh);
         }));
