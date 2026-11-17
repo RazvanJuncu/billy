@@ -26,7 +26,7 @@
   <link rel="stylesheet" href="./financial-reports.css?v=1.1.0">
   <link rel="stylesheet" href="./financial-payments.css?v=1.2.0">
   <link rel="stylesheet" href="./nested-mitosis.css?v=0.3.0">
-  <link rel="stylesheet" href="./intelligence-assistant.css?v=0.4.0">
+  <link rel="stylesheet" href="./intelligence-assistant.css?v=0.5.0">
   <link rel="stylesheet" href="./multi-documents.css?v=1.0.0">
   <link rel="stylesheet" href="./quickscan.css?v=1">
   <link rel="stylesheet" href="./preloader.css?v=1.2.0">
@@ -63,7 +63,8 @@
   <script src="./simple.js?v=2.2.4" defer></script>
   <script src="./piggy-analytics-hud.js?v=2.0.0" defer></script>
   <script src="./piggybank-hud.js?v=1.1.0" defer></script>
-  <script src="./intelligence-assistant.js?v=0.4.1" defer></script>
+  <script src="./piggy-persona.js?v=1.0.0" defer></script>
+  <script src="./intelligence-assistant.js?v=0.5.0" defer></script>
   <script src="./piggybank-stroll.js?v=1.1.0" defer></script>
   <script src="./preloader.js?v=1.2.0" defer></script>
   <script>
@@ -844,14 +845,16 @@
       </header>
       <div class="billy-ai-feed" id="billyAssistantFeed" role="log" aria-live="polite" aria-relevant="additions">
         <div class="billy-ai-welcome">
-          <strong>Ask Piggybank.</strong>
-          <span>Ask about costs, flights, or documents.</span>
+          <strong>Piggy's all ears.</strong>
+          <span>Costs, flights, documents — I've got a snout for details.</span>
+          <div id="billyAssistantSuggestions" class="billy-ai-welcome-actions"
+               aria-label="Suggested questions"></div>
         </div>
       </div>
       <form class="billy-ai-form" id="billyAssistantForm">
         <input id="billyAssistantInput" class="billy-ai-input" type="text"
           autocomplete="off" maxlength="400"
-          aria-label="Ask Piggybank in Romanian or English" placeholder="Ask anything…" />
+          aria-label="Ask Piggybank in Romanian or English" placeholder="Ask Piggy anything…" />
         <button id="billyAssistantSend" class="billy-ai-send" type="submit" aria-label="Send question">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>
         </button>
