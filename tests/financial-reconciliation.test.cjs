@@ -79,16 +79,16 @@ test("API requires a signed-in owner and cannot alter OCR or create bank confirm
 test("UI keeps the single-page Billy Payments workspace and reversible operator reports",()=>{
  assert.match(html,/id="billyFinancialReconciliationPanel"/);
  assert.match(html,/id="billyFinancialReconciliationList"/);
- assert.match(html,/financial-reconciliation\.js\?v=1\.0\.0/);
+ assert.match(html,/financial-reconciliation\.js\?v=2\.0\.0/);
  assert.match(frontend,/Bank transfer/);
  assert.match(frontend,/On account/);
- assert.match(frontend,/Partially covered/);
- assert.match(frontend,/revoke this reported payment entry/i);
+ assert.match(frontend,/Split payments are supported/);
+ assert.match(frontend,/Revoke this payment classification/i);
  assert.match(frontend,/financial-allocation-revoke/);
  assert.match(frontend,/financial-allocation/);
  assert.match(frontend,/amount_minor:minor/);
  assert.match(frontend,/window\.confirm/);
  assert.doesNotMatch(frontend,/\.innerHTML\s*=/);
  assert.match(read("site/financial.js"),/BillyFinancialReconciliation\?\.render/);
- assert.match(read("site/sw.js"),/v116-financial-cards/);
+ assert.match(read("site/sw.js"),/v117-payment-method-workspace/);
 });
