@@ -94,7 +94,7 @@ test("Reports replaces Insights nav but preserves chart and integrity checks",()
  assert.match(css,/\.billy-reports-row/);
  assert.match(page,/financial-reports\.js\?v=1\.1\.0/);
  assert.match(page,/financial-reports\.css\?v=1\.1\.0/);
- assert.match(read("site/sw.js"),/v120-financial-copy-cleanup/);
+ assert.match(read("site/sw.js"),/v121-integrity-chevron/);
 });
 test("Card surfaces use solid shape and no decorative fake chip",()=>{
  assert.doesNotMatch(cardJS,/billy-fcard-chip/);
@@ -105,4 +105,18 @@ test("Card surfaces use solid shape and no decorative fake chip",()=>{
  assert.match(cardCSS,/\.billy-fcard\[data-selected="true"\] \.billy-fcard-art\{\s*background:/);
  assert.match(cardCSS,/\.billy-fcard:focus-visible\{outline:/);
  assert.match(page,/financial-cards\.css\?v=1\.2\.0/);
+});
+
+test("Integrity checks uses the same clean stroke chevron as Payments",()=>{
+ const financialCss=read("site/financial.css");
+ const paymentsCss=read("site/financial-payments.css");
+ assert.match(financialCss,/\.billy-financial-integrity-summary::after\{\s*content:""/);
+ assert.match(financialCss,/border:solid #bec6ca;border-width:0 1\.7px 1\.7px 0/);
+ assert.match(financialCss,/transform:rotate\(45deg\);transition:transform \.17s ease/);
+ assert.match(financialCss,/\.billy-financial-integrity\[open\] \.billy-financial-integrity-summary::after\{\s*transform:rotate\(225deg\)/);
+ assert.doesNotMatch(financialCss,/content:"⌄"/);
+ assert.match(paymentsCss,/\.billy-financial-payment-shelf \.billy-financial-proof-summary::after/);
+ assert.match(read("site/financial.js"),/action===1\?"needs":"need"/);
+ assert.match(page,/financial\.css\?v=2\.0\.0/);
+ assert.match(page,/financial\.js\?v=2\.3\.1/);
 });

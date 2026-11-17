@@ -84,7 +84,7 @@ test("No-slip selection is explicit, auditable, and reversible without auto-sett
  assert.match(ui,/Split payments are supported/);
  assert.match(ui,/window\.confirm/);
  assert.doesNotMatch(ui,/\.innerHTML\s*=/);
- assert.match(read("site/sw.js"),/v120-financial-copy-cleanup/);
+ assert.match(read("site/sw.js"),/v121-integrity-chevron/);
 });
 
 test("Collapsed Payments is a compact, single-surface disclosure shelf",()=>{

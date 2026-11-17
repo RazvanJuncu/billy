@@ -81,13 +81,13 @@ test("Collapsed controls have matching thin CSS chevrons and retain keyboard foc
  assert.match(paymentsCss,/\.billy-financial-proof-summary:focus-visible/);
 });
 test("PWA includes latest copy cleanup assets",()=>{
- assert.match(page,/financial\.js\?v=2\.3\.0/);
+ assert.match(page,/financial\.js\?v=2\.3\.1/);
  assert.match(page,/financial-reports\.js\?v=1\.1\.0/);
  assert.match(page,/financial-reconciliation\.js\?v=2\.1\.0/);
  assert.match(page,/financial-cards\.js\?v=1\.1\.0/);
  assert.match(page,/financial-payments\.css\?v=1\.2\.0/);
  const sw=read("site/sw.js");
- assert.match(sw,/v120-financial-copy-cleanup/);
+ assert.match(sw,/v121-integrity-chevron/);
  assert.match(sw,/\.\/financial-categories\.js/);
  assert.match(sw,/financial-categories\\\.js/);
 });
