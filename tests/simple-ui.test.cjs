@@ -230,7 +230,7 @@ test("Uploaded Documents defaults to a visual hub with no recent documents",()=>
   assert.match(css,/#simpleUploaded\[data-billy-doc-view="Home"\] #simpleDocumentsList/);
   assert.match(hub,/if\(state.mode==="Home"\)/);
   assert.match(hub,/if\(state.mode!=="Aircraft"\)return/);
-  assert.match(read("site/index.html"),/documents-hub\.js\?v=1\.5\.0/);
+  assert.match(read("site/index.html"),/documents-hub\.js\?v=1\.5\.1/);
 });
 test("Fleet is explicitly registered; no OCR-constructed aircraft cards",()=>{
   const hub=read("site/documents-hub.js");
@@ -261,7 +261,7 @@ test("Uploaded Documents has neutral headings and only one proper back chevron",
   assert.match(hub,/Airports:\["M20 10c0 5/);
   assert.match(hub,/Vendors:\["M20\.6 13\.1/);
   assert.match(hub,/All:\["M8 3h11/);
-  assert.match(read("site/index.html"),/documents-hub\.js\?v=1\.5\.0/);
+  assert.match(read("site/index.html"),/documents-hub\.js\?v=1\.5\.1/);
 });
 
 test("Homepage retains a four-zone hierarchy: greeting, Financial, New, Uploaded",()=>{
@@ -327,4 +327,12 @@ test("Flight grouping uses explicit identifiers and cannot infer flights from up
   assert.equal(family.length,1);
   assert.equal(family[0].root,root);
   assert.equal(family[0].children[0],slip);
+});
+
+test("Flights uses a route icon and Artonomy stays understated",()=>{
+  const hub=read("site/documents-hub.js"),css=read("site/simple.css");
+  assert.match(hub,/Flights:\["M5 20a2/);
+  assert.doesNotMatch(hub,/Flights:\["M4 4h16v4/);
+  assert.match(css,/font-size:9px;font-weight:500/);
+  assert.match(css,/\.billy-artonomy-credit img\{display:block;width:85px/);
 });

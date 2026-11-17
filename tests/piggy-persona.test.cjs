@@ -14,7 +14,7 @@ function loadPersona(){
   vm.runInNewContext(personaSource,sandbox,{filename:"piggy-persona.js"});
   return sandbox.window.PiggyPersona;
 }
-test("Piggy speaks in natural, distinct Romanian and English pig-related voices",()=>{
+test("Piggy uses clear, friendly Romanian and English copy",()=>{
   const pig=loadPersona();
   assert.equal(pig.defaultLanguage("ro-RO"),"en");
   assert.equal(pig.defaultLanguage("en-US"),"en");
@@ -23,8 +23,8 @@ test("Piggy speaks in natural, distinct Romanian and English pig-related voices"
   assert.equal(pig.detect("Cheltuieli pe furnizori.","en"),"ro");
   assert.equal(pig.detect("Care sunt facturile noastre?","en"),"ro");
   assert.match(pig.get("welcomeTitle","en"),/ears/i);
-  assert.match(pig.get("welcomeSubtitle","en"),/snout/i);
-  assert.match(pig.get("welcomeSubtitle","ro"),/rât/i);
+  assert.match(pig.get("welcomeSubtitle","en"),/details/i);
+  assert.match(pig.get("welcomeSubtitle","ro"),/detalii/i);
   assert.match(pig.get("input","ro"),/Piggy/);
   for(const language of ["en","ro"]){
     for(const line of ["hello","loading","report","answer"]){
@@ -133,7 +133,7 @@ function app(language){
 test("Real chat UI localizes welcome, replies to hello without APIs and renders real prompt chips",async()=>{
   const en=app("en-US");
   assert.match(en.title.textContent,/ears/);
-  assert.match(en.subtitle.textContent,/snout/);
+  assert.match(en.subtitle.textContent,/details/);
   assert.equal(en.nodes.billyAssistantSuggestions.children.length,2);
   assert.equal(en.nodes.billyAssistantInput.placeholder,"Ask Piggy anything…");
   await en.win.Piggybank.ask("Hi Piggy");
@@ -142,13 +142,13 @@ test("Real chat UI localizes welcome, replies to hello without APIs and renders 
   assert.ok(en.nodes.billyAssistantFeed.children.length>=3);
   const ro=app("ro-RO");
   assert.match(ro.title.textContent,/ears/);
-  assert.match(ro.subtitle.textContent,/snout/);
+  assert.match(ro.subtitle.textContent,/details/);
   assert.equal(ro.nodes.billyAssistantInput.placeholder,"Ask Piggy anything…");
   assert.equal(ro.nodes.billyAssistantSuggestions.children[0].textContent,"Spending by vendor");
   await ro.win.Piggybank.ask("Salut, Piggy!");
   assert.equal(ro.fetchCalls,0);
   assert.match(ro.title.textContent,/urechi/);
-  assert.match(ro.nodes.billyAssistantFeed.children.at(-1).children[0].textContent,/Groh|Oink/);
+  assert.match(ro.nodes.billyAssistantFeed.children.at(-1).children[0].textContent,/Salut/);
 });
 test("Chat reports use Piggy's voice but keep source-backed HUD results and clickable follow-ups",async()=>{
   const a=app("en-US");
@@ -157,7 +157,7 @@ test("Chat reports use Piggy's voice but keep source-backed HUD results and clic
   const message=a.nodes.billyAssistantFeed.children.at(-1);
   const notice=message.children[0];
   const text=notice.children[0].textContent;
-  assert.match(text,/rât|Groh|Oink|scormonit/);
+  assert.match(text,/raport|HUD/i);
   assert.match(text,/HUD/);
   const buttons=notice.children.filter(c=>c.tag==="button");
   assert.equal(buttons.length,1);
@@ -176,7 +176,7 @@ test("Persona stays inside chat; HUD calculations and evidence remain untouched"
   assert.match(client,/result\.blocked\?piggyCopy\("blocked"/);
   assert.match(client,/panel\.classList\.add\("is-sniffing"\)/);
   assert.match(client,/panel\.classList\.remove\("is-sniffing"\)/);
-  assert.match(html,/piggy-persona\.js\?v=1\.0\.1/);
+  assert.match(html,/piggy-persona\.js\?v=1\.0\.2/);
   assert.match(html,/intelligence-assistant\.js\?v=0\.5\.1/);
   assert.match(html,/intelligence-assistant\.css\?v=0\.5\.0/);
   assert.match(css,/@keyframes billy-piggy-snuffle/);
@@ -184,4 +184,15 @@ test("Persona stays inside chat; HUD calculations and evidence remain untouched"
   assert.match(sw,/billydpi-orbit-v\d+-[a-z0-9-]+/);
   assert.match(sw,/\.\/piggy-persona\.js/);
   assert.doesNotMatch(personaSource,/\.innerHTML\s*=|localStorage|sessionStorage|fetch\(/);
+});
+
+test("Piggy copy avoids forced animal jokes and starts in English",()=>{
+  const pig=loadPersona();
+  assert.equal(pig.defaultLanguage("ro-RO"),"en");
+  for(const lang of ["ro","en"]){
+    const keys=["welcomeTitle","welcomeSubtitle","empty","blocked","errorIntro"];
+    const all=keys.map(key=>pig.get(key,lang)).concat(
+      ["hello","loading","report","legacyReport","answer"].map(key=>pig.next(key,lang)));
+    for(const line of all)assert.doesNotMatch(line,/rât|scormon|groh|oink|snout|sniff/i);
+  }
 });

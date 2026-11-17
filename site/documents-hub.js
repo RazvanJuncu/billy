@@ -18,7 +18,7 @@
     Services:["M3 7l9-4 9 4-9 4z","M3 12l9 4 9-4","M3 17l9 4 9-4"],
     Airports:["M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0z","M12 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"],
     Vendors:["M20.6 13.1l-7.5 7.5a2 2 0 0 1-2.8 0L3 13.3V4h9.3l8.3 8.3a1 1 0 0 1 0 .8z","M8 8h.01"],
-    Flights:["M4 4h16v4a3 3 0 0 0 0 6v6H4v-6a3 3 0 0 0 0-6V4z","M12 4v3","M12 10v4","M12 17v3"]
+    Flights:["M5 20a2 2 0 1 0 0-4a2 2 0 0 0 0 4z","M19 8a2 2 0 1 0 0-4a2 2 0 0 0 0 4z","M7 18h6a5 5 0 0 0 0-10h4"]
   };
   const make=(tag,cls,content)=>{
     const node=document.createElement(tag);

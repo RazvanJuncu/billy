@@ -7,43 +7,43 @@
   const catalogue={
     ro:{
       welcomeTitle:"Piggy e numai urechi.",
-      welcomeSubtitle:"Costuri, zboruri, documente. Am rât pentru detalii.",
+      welcomeSubtitle:"Costuri, zboruri, documente. Mă ocup de detalii.",
       input:"Întreabă-l pe Piggy…",
       prompts:[
         {label:"Costuri pe furnizori",question:"Grupează cheltuielile pe furnizori în ultimele 30 de zile."},
         {label:"Documente aprobate",question:"Ce documente aprobate avem?"}
       ],
       hello:[
-        "Groh-groh! Sunt Piggy. Ce scormonim astăzi?",
-        "Oink! Am rât pentru detalii. Ce vrei să aflăm?"
+        "Salut! Sunt Piggy. Cu ce te pot ajuta?",
+        "Salut! Ce ai vrea să verificăm?"
       ],
       loading:[
-        "Îmi bag râtul prin date…",
-        "Scormonesc prin documente…",
-        "Urmăresc firul cifrelor…"
+        "Verific datele…",
+        "Analizez documentele…",
+        "Pregătesc răspunsul…"
       ],
       report:[
-        "Oink! Am scormonit prin cifre. Raportul e gata în HUD.",
-        "Am pus râtul pe treabă. Raportul te așteaptă în HUD.",
-        "Groh! Am pregătit raportul în HUD."
+        "Raportul este pregătit. Îl găsești în HUD.",
+        "Am terminat analiza. Detaliile sunt în HUD.",
+        "Raportul este disponibil în HUD."
       ],
       legacyReport:[
-        "Am scormonit prin cheltuieli. Rezultatele sunt în HUD.",
-        "Am pus râtul pe urma costurilor. Uite raportul în HUD."
+        "Am verificat cheltuielile. Rezultatele sunt în HUD.",
+        "Raportul este gata. Îl poți consulta în HUD."
       ],
-      blocked:"Am găsit o lacună în date. În HUD vezi ce pot confirma și ce lipsește.",
+      blocked:"Nu pot confirma toate informațiile din datele disponibile. În HUD vezi ce este verificat și ce lipsește.",
       answer:[
-        "Am scormonit printre documente. Uite ce pot confirma.",
-        "Am pus râtul pe urma informațiilor. Iată rezultatul."
+        "Am verificat documentele. Iată ce pot confirma.",
+        "Iată ce rezultă din datele disponibile."
       ],
-      empty:"De data asta, râtul meu n-a găsit sume validate pentru selecție.",
-      misunderstood:"Hopa, am pierdut urma. Poți reformula?",
-      errorIntro:"Mi s-a încurcat puțin râtul în date.",
+      empty:"Nu am găsit cheltuieli validate pentru această selecție.",
+      misunderstood:"Nu sunt sigur că am înțeles. Poți reformula?",
+      errorIntro:"Am întâmpinat o problemă la verificarea datelor.",
       errorRetry:"Încearcă din nou sau reformulează întrebarea.",
-      auth:"Piggy are nevoie să fii conectat la echipa Billy pentru a verifica documentele.",
-      inputLimit:"Trimite-mi o întrebare între 3 și 400 de caractere.",
+      auth:"Conectează-te la echipa Billy pentru a verifica documentele.",
+      inputLimit:"Trimite o întrebare între 3 și 400 de caractere.",
       hudButton:"Deschide HUD-ul",
-      hudUnavailable:"Raportul e gata, dar nu pot deschide HUD-ul. Încearcă din nou.",
+      hudUnavailable:"Raportul este gata, dar nu pot deschide HUD-ul. Încearcă din nou.",
       greetingAction:"Salută-l pe Piggy",
       nextByDay:"Pe zile",
       nextByVendor:"Pe furnizori",
@@ -51,40 +51,40 @@
     },
     en:{
       welcomeTitle:"Piggy's all ears.",
-      welcomeSubtitle:"Costs, flights, documents. I've got a snout for details.",
+      welcomeSubtitle:"Costs, flights, documents. I'll handle the details.",
       input:"Ask Piggy anything…",
       prompts:[
         {label:"Spending by vendor",question:"Group expenses by vendor over the last 30 days."},
         {label:"Approved documents",question:"What approved documents do we have?"}
       ],
       hello:[
-        "Oink oink! I'm Piggy. What shall we dig into?",
-        "Snout's ready! What can I help you sniff out?"
+        "Hey! I'm Piggy. What can I help you with?",
+        "Hello! What would you like me to check?"
       ],
       loading:[
-        "Sniffing through the numbers…",
-        "Digging through the documents…",
-        "Following the trail of figures…"
+        "Checking the data…",
+        "Reviewing the documents…",
+        "Preparing your answer…"
       ],
       report:[
-        "Oink! I've sniffed out your report. It's ready in the HUD.",
-        "I've put my snout to work. Your report is on the HUD.",
-        "Digging complete! Your report is ready in the HUD."
+        "Your report is ready in the HUD.",
+        "Analysis complete. The details are in the HUD.",
+        "Your report is available in the HUD."
       ],
       legacyReport:[
-        "I sniffed out the expenses. The results are in the HUD.",
-        "I've followed the money trail. Your report is on the HUD."
+        "I've reviewed the expenses. The results are in the HUD.",
+        "The report is ready. You can view it in the HUD."
       ],
-      blocked:"I found a gap in the evidence. The HUD shows what I can confirm and what's missing.",
+      blocked:"I can't confirm everything from the available records. The HUD shows what's verified and what's missing.",
       answer:[
-        "I've had a good snuffle through the records. Here's what I can confirm.",
-        "I followed the paper trail. Here's what I found in the records."
+        "I've checked the documents. Here's what I can confirm.",
+        "Here's what the available records show."
       ],
-      empty:"My snout couldn't find validated expenses for that selection.",
-      misunderstood:"Oops, I lost the scent. Could you rephrase that?",
-      errorIntro:"My snout hit a snag in the data.",
+      empty:"No validated expenses match that selection.",
+      misunderstood:"I'm not sure I understood. Could you rephrase that?",
+      errorIntro:"I ran into a problem checking the data.",
       errorRetry:"Please try again or rephrase your question.",
-      auth:"Piggy needs you signed in to your Billy team to check its documents.",
+      auth:"Sign in to your Billy team to check its documents.",
       inputLimit:"Ask me something between 3 and 400 characters.",
       hudButton:"Open HUD",
       hudUnavailable:"The report is ready, but I couldn't open the HUD. Please try again.",
