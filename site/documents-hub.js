@@ -112,6 +112,8 @@
         card.addEventListener("click",()=>navigate(view));
         grid.append(card);
       }
+      // Layout follows visible bubble count. Needs attention is a separate header action.
+      grid.dataset.count=String(grid.childElementCount);
       root.append(grid);
       return;
     }

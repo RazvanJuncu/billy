@@ -230,7 +230,7 @@ test("Uploaded Documents defaults to a visual hub with no recent documents",()=>
   assert.match(css,/#simpleUploaded\[data-billy-doc-view="Home"\] #simpleDocumentsList/);
   assert.match(hub,/if\(state.mode==="Home"\)/);
   assert.match(hub,/if\(state.mode!=="Aircraft"\)return/);
-  assert.match(read("site/index.html"),/documents-hub\.js\?v=1\.5\.2/);
+  assert.match(read("site/index.html"),/documents-hub\.js\?v=1\.5\.3/);
 });
 test("Fleet is explicitly registered; no OCR-constructed aircraft cards",()=>{
   const hub=read("site/documents-hub.js");
@@ -261,7 +261,7 @@ test("Uploaded Documents has neutral headings and only one proper back chevron",
   assert.match(hub,/Airports:\["M20 10c0 5/);
   assert.match(hub,/Vendors:\["M20\.6 13\.1/);
   assert.match(hub,/All:\["M8 3h11/);
-  assert.match(read("site/index.html"),/documents-hub\.js\?v=1\.5\.2/);
+  assert.match(read("site/index.html"),/documents-hub\.js\?v=1\.5\.3/);
 });
 
 test("Homepage retains a four-zone hierarchy: greeting, Financial, New, Uploaded",()=>{
@@ -353,6 +353,18 @@ test("Artonomy footer shares header viewport gutter rather than homepage positio
 
 test("Flights icon asset is refreshed on the website and PWA",()=>{
   const html=read("site/index.html"),sw=read("site/sw.js");
-  assert.match(html,/documents-hub\.js\?v=1\.5\.2/);
-  assert.match(sw,/billydpi-orbit-v131-flights-plane-takeoff/);
+  assert.match(html,/documents-hub\.js\?v=1\.5\.3/);
+  assert.match(sw,/billydpi-orbit-v132-adaptive-document-hub/);
+});
+
+
+test("Uploaded Documents bubbles center three on a row and four in a 2x2 grid",()=>{
+  const hub=read("site/documents-hub.js"),css=read("site/simple.css");
+  assert.match(hub,/grid\.dataset\.count=String\(grid\.childElementCount\)/);
+  assert.match(hub,/if\(state\.mode==="Home"&&count>0&&attentionSlot\)/);
+  assert.match(hub,/attentionSlot\.hidden=!attentionSlot\.childElementCount/);
+  assert.match(css,/\.billy-hub-grid\[data-count="3"\],[\s\S]*?\.billy-hub-grid\[data-count="6"\]\{grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+  assert.match(css,/\.billy-hub-grid\[data-count="2"\],[\s\S]*?\.billy-hub-grid\[data-count="4"\]\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\);max-width:480px\}/);
+  assert.match(css,/\.billy-hub-grid\[data-count="5"\]>.billy-hub-app:nth-child\(4\)\{grid-column:2\/span 2\}/);
+  assert.match(read("site/index.html"),/simple\.css\?v=2\.5\.3/);
 });

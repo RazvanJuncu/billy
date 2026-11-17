@@ -1045,6 +1045,20 @@ body[data-billy-screen="uploaded"] .simple-document-delete::after{
 .billy-hub-title{font-weight:680}
 .billy-hub-content{width:100%;min-width:0}
 .billy-hub-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:40px 22px;max-width:720px;margin:40px auto 55px;justify-items:center;animation:billy-hub-appear .28s ease both}
+
+/* Balanced navigation for any number of visible archive bubbles.
+   3 => single row, 4 => 2x2; 6 retains 3x2. */
+.billy-hub-grid[data-count="1"]{grid-template-columns:minmax(0,1fr);max-width:220px}
+.billy-hub-grid[data-count="2"],
+.billy-hub-grid[data-count="4"]{grid-template-columns:repeat(2,minmax(0,1fr));max-width:480px}
+.billy-hub-grid[data-count="3"],
+.billy-hub-grid[data-count="6"]{grid-template-columns:repeat(3,minmax(0,1fr));max-width:720px}
+/* A fifth bubble forms a centered second row without gaps. */
+.billy-hub-grid[data-count="5"]{grid-template-columns:repeat(6,minmax(0,1fr));column-gap:0;max-width:720px}
+.billy-hub-grid[data-count="5"]>.billy-hub-app{grid-column:span 2}
+.billy-hub-grid[data-count="5"]>.billy-hub-app:nth-child(4){grid-column:2/span 2}
+.billy-hub-grid[data-count="5"]>.billy-hub-app:nth-child(5){grid-column:4/span 2}
+
 .billy-hub-app{display:flex;flex-direction:column;align-items:center;gap:13px;min-width:0;width:100%;max-width:174px;padding:8px;border:0!important;background:transparent!important;color:#ededed;cursor:pointer;border-radius:18px}
 .billy-hub-circle{display:grid;place-items:center;width:106px;height:106px;max-width:100%;aspect-ratio:1;border-radius:50%;background:#27292c;transition:background .18s ease,transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .25s ease}
 .billy-hub-symbol{display:block;width:42px;height:42px}
