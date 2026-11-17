@@ -141,7 +141,7 @@ test("Backend is authenticated, tenant scoped, and explicitly blocks unverifiabl
  assert.match(edge,/if\(plan\.compare_previous&&!plan\.start_date\)/);
  assert.match(edge,/PIGGY_PLAN_SCHEMA/);
  assert.match(edge,/responseJsonSchema:PIGGY_PLAN_SCHEMA/);
- assert.match(edge,/lastAnalyticsPlan/); // frontend state tested below after source extraction
+ assert.match(client,/lastAnalyticsPlan/);
 });
 class Element{
  constructor(tag){this.tag=tag;this.children=[];this.attributes={};this.textContent="";
