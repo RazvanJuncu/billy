@@ -2388,6 +2388,24 @@ function financialOperations(roots,evidence,links,today,viewerId=null){
       id:rec.id,profile:financialProfile(rec),
       vendor:assistantValue(rec,"vendor")||"Unassigned",
       aircraft:assistantValue(rec,"registration")||null,
+      airport:assistantValue(rec,"airport")||null,
+      // Sender is not necessarily the uploading operator; show only actual
+      // source sender metadata when present rather than guessing from created_by.
+      sender:(()=>{
+        const raw=doc.sender_name||meta.source_sender?.display_name||
+          (typeof meta.source_sender==="string"?meta.source_sender:"");
+        return typeof raw==="string"&&raw.trim()?raw.trim().slice(0,100):null;
+      })(),
+      fuel_litres:(()=>{
+        const volume=meta.normalization?.approved?.fuel?.litres;
+        return typeof volume==="number"&&Number.isFinite(volume)&&
+          volume>=0&&volume<1e12?volume:null;
+      })(),
+      fuel_tonnes:(()=>{
+        const mass=meta.normalization?.approved?.fuel?.metric_tonnes;
+        return typeof mass==="number"&&Number.isFinite(mass)&&
+          mass>=0&&mass<1e9?mass:null;
+      })(),
       flight:assistantValue(rec,"flight")||null,
       category:assistantValue(rec,"category")||"other",
       reference:String(doc.invoice_number||doc.release_number||"").slice(0,80),
