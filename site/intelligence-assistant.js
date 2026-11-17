@@ -11,8 +11,7 @@
     status=$("billyAssistantStatus"),submit=$("billyAssistantSend");
   let open=false,busy=false,lastQuestion="",pending=null,lastAnalyticsPlan=null;
   const piggy=window.PiggyPersona;
-  let chatLanguage=piggy?.defaultLanguage(
-    typeof navigator!=="undefined"?navigator.language:"en")||"en";
+  let chatLanguage=piggy?.defaultLanguage()||"en";
   const welcome=panel.querySelector(".billy-ai-welcome");
   const welcomeTitle=welcome?.querySelector("strong");
   const welcomeSubtitle=welcome?.querySelector("span");

@@ -106,9 +106,9 @@
     const en=(value.match(eng)||[]).length;
     return ro>en?"ro":en>ro?"en":normalize(fallback);
   }
-  function defaultLanguage(browserLanguage){
-    return /^ro(?:-|$)/i.test(String(browserLanguage||""))?"ro":"en";
-  }
+  // Piggy always greets in English; later messages still choose their language.
+  // Browser/device locale must not determine the initial character voice.
+  function defaultLanguage(){return "en";}
   function get(key,language){
     const entry=catalogue[normalize(language)][key];
     if(typeof entry!=="string")throw Error("Piggy copy key unavailable");

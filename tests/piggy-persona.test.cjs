@@ -16,7 +16,7 @@ function loadPersona(){
 }
 test("Piggy speaks in natural, distinct Romanian and English pig-related voices",()=>{
   const pig=loadPersona();
-  assert.equal(pig.defaultLanguage("ro-RO"),"ro");
+  assert.equal(pig.defaultLanguage("ro-RO"),"en");
   assert.equal(pig.defaultLanguage("en-US"),"en");
   assert.equal(pig.detect("Acum arată-mi evoluția pe zile.","en"),"ro");
   assert.equal(pig.detect("Show me the spending by card.","ro"),"en");
@@ -141,10 +141,13 @@ test("Real chat UI localizes welcome, replies to hello without APIs and renders 
   assert.equal(en.welcome.hidden,true);
   assert.ok(en.nodes.billyAssistantFeed.children.length>=3);
   const ro=app("ro-RO");
-  assert.match(ro.title.textContent,/urechi/);
-  assert.match(ro.subtitle.textContent,/rât/);
+  assert.match(ro.title.textContent,/ears/);
+  assert.match(ro.subtitle.textContent,/snout/);
+  assert.equal(ro.nodes.billyAssistantInput.placeholder,"Ask Piggy anything…");
+  assert.equal(ro.nodes.billyAssistantSuggestions.children[0].textContent,"Spending by vendor");
   await ro.win.Piggybank.ask("Salut, Piggy!");
   assert.equal(ro.fetchCalls,0);
+  assert.match(ro.title.textContent,/urechi/);
   assert.match(ro.nodes.billyAssistantFeed.children.at(-1).children[0].textContent,/Groh|Oink/);
 });
 test("Chat reports use Piggy's voice but keep source-backed HUD results and clickable follow-ups",async()=>{
@@ -173,8 +176,8 @@ test("Persona stays inside chat; HUD calculations and evidence remain untouched"
   assert.match(client,/result\.blocked\?piggyCopy\("blocked"/);
   assert.match(client,/panel\.classList\.add\("is-sniffing"\)/);
   assert.match(client,/panel\.classList\.remove\("is-sniffing"\)/);
-  assert.match(html,/piggy-persona\.js\?v=1\.0\.0/);
-  assert.match(html,/intelligence-assistant\.js\?v=0\.5\.0/);
+  assert.match(html,/piggy-persona\.js\?v=1\.0\.1/);
+  assert.match(html,/intelligence-assistant\.js\?v=0\.5\.1/);
   assert.match(html,/intelligence-assistant\.css\?v=0\.5\.0/);
   assert.match(css,/@keyframes billy-piggy-snuffle/);
   assert.match(css,/prefers-reduced-motion:reduce/);
