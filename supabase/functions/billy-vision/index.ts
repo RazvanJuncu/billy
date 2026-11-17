@@ -2373,6 +2373,14 @@ function financialOperations(roots,evidence,links,today,viewerId=null){
     if(!dateInfo.date){issues.push("missing_date");counts.missing_date++;}
     if(money)counts.priced++;
     const paymentLinks=byExpense.get(rec.id)||[];
+    // A card-paid bill is source evidence even when no separate POS slip exists.
+    // Four visible digits alone do NOT prove payment.
+    const bill_card_evidence=/^(?:card|credit card|debit card|pos)$/i.test(
+      String(doc.payment_method||"").trim())&&
+      /^(?:paid|approved|completed|successful|success)$/i.test(
+        String(doc.transaction_status||doc.payment_status||"").trim());
+    const bill_card_last4=/^[0-9]{4}$/.test(String(doc.card_last4||""))?
+      String(doc.card_last4):null;
     const payment_state=paymentLinks.some(x=>x.payment_result==="confirmed")?
       "payment_confirmed":paymentLinks.length?"payment_linked":"no_payment_proof";
     if(!paymentLinks.length)counts.no_payment_proof++;
@@ -2388,6 +2396,7 @@ function financialOperations(roots,evidence,links,today,viewerId=null){
       amount_minor:money?.minor??null,currency:money?.currency??(
         typeof currency==="string"&&ISO_CURRENCIES.has(currency)?currency:null),
       payment_state,linked_payment_count:paymentLinks.length,
+      bill_card_evidence,bill_card_last4:bill_card_evidence?bill_card_last4:null,
       issues,can_review:rec.created_by===viewerId,
       original_available:Boolean(rec.original_storage_key),
       operator_override_fields:Object.keys(overrides).filter(k=>
@@ -2863,6 +2872,9 @@ function financialCoverage(ledger,links,allocations){
           "covered_reported":"covered_by_confirmed_pos"):
       covered>0?"partial":on_account?"on_account":"unclassified";
     return {expense_document_id:expense.id,vendor:expense.vendor,
+      profile:expense.profile,date:expense.date,reference:expense.reference,
+      bill_card_evidence:expense.bill_card_evidence===true,
+      bill_card_last4:expense.bill_card_last4||null,
       amount_minor:amount,currency:expense.currency,
       proof_minor,confirmed_proof_minor,reported_minor,
       covered_minor:covered,remaining_minor,on_account,status,

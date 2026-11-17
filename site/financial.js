@@ -376,8 +376,14 @@
       (opsList().length===1?"":"s");
     const linked=Array.isArray(state.data?.linked_payments)?
       state.data.linked_payments.length:0;
+    const reconciliation=Array.isArray(state.data?.reconciliation)?
+      state.data.reconciliation:[];
+    const needMethod=reconciliation.filter(row=>
+      Number(row.proof_minor||0)===0&&
+      !row.bill_card_evidence&&
+      (!Array.isArray(row.allocations)||!row.allocations.length)).length;
     $("billyFinancialPaymentsSubtitle").textContent=
-      linked+" linked · "+unmatched.length+" unmatched";
+      needMethod+" bills to classify · "+linked+" linked";
     $("billyFinancialUnmatchedCaption").textContent=
       unmatched.length+" payment slip"+(unmatched.length===1?"":"s")+" without a match";
     if(!section)return;
@@ -388,6 +394,8 @@
     $("billyFinancialExpenseResults").hidden=section!=="expenses";
     // Linked and unmatched receipts are shown together, without an intermediate page.
     $("billyFinancialReconciliationPanel").hidden=section!=="payments";
+    $("billyFinancialPaidOnBillPanel").hidden=section!=="payments";
+    $("billyFinancialReportedPanel").hidden=section!=="payments";
     $("billyFinancialLinkedPanel").hidden=section!=="payments";
     $("billyFinancialUnmatchedPanel").hidden=section!=="payments";
     $("billyFinancialSectionTitle").textContent={

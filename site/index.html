@@ -23,6 +23,7 @@
   <link rel="stylesheet" href="./simple.css?v=2.4.9">
   <link rel="stylesheet" href="./financial.css?v=1.9.0">
   <link rel="stylesheet" href="./financial-cards.css?v=1.0.0">
+  <link rel="stylesheet" href="./financial-payments.css?v=1.0.0">
   <link rel="stylesheet" href="./nested-mitosis.css?v=0.3.0">
   <link rel="stylesheet" href="./intelligence-assistant.css?v=0.3.4">
   <link rel="stylesheet" href="./multi-documents.css?v=1.0.0">
@@ -53,8 +54,8 @@
   <script src="./documents-index.js?v=1.9.1" defer></script>
   <script src="./original-archive.js?v=1.1.0" defer></script>
   <script src="./document-preview.js?v=1.5.2" defer></script>
-  <script src="./financial.js?v=1.9.0" defer></script>
-  <script src="./financial-reconciliation.js?v=1.0.0" defer></script>
+  <script src="./financial.js?v=2.0.0" defer></script>
+  <script src="./financial-reconciliation.js?v=2.0.0" defer></script>
   <script src="./financial-cards.js?v=1.0.0" defer></script>
   <script src="./simple.js?v=2.2.4" defer></script>
   <script src="./piggybank-hud.js?v=1.0.0" defer></script>
@@ -327,6 +328,30 @@
               </div>
             </section>
             <section class="billy-financial-section" id="billyFinancialPaymentsSection" aria-label="Payments" hidden>
+              <div id="billyFinancialReconciliationPanel" class="billy-financial-payment-panel billy-financial-no-slip-panel" hidden>
+                <div class="billy-financial-section-head">
+                  <h3>Bills without a POS slip</h3>
+                  <span id="billyFinancialNoSlipCount" class="billy-financial-section-sub">Awaiting review</span>
+                </div>
+                <p class="billy-financial-reconciliation-note">A slip is not required for an invoice to count as an expense. Choose a method only when verified. On account remains unpaid.</p>
+                <div id="billyFinancialReconciliationList" class="billy-financial-attention-list"></div>
+              </div>
+              <details id="billyFinancialPaidOnBillPanel" class="billy-financial-proof-panel" hidden>
+                <summary class="billy-financial-proof-summary">
+                  <strong>Paid by card on bill</strong>
+                  <span id="billyFinancialPaidOnBillCount">0 bills</span>
+                </summary>
+                <p class="billy-financial-reconciliation-note">Only approved bills explicitly marked card-paid appear here. No separate POS slip is required; bank settlement remains unverified.</p>
+                <div id="billyFinancialPaidOnBillList" class="billy-financial-attention-list"></div>
+              </details>
+              <details id="billyFinancialReportedPanel" class="billy-financial-proof-panel" hidden>
+                <summary class="billy-financial-proof-summary">
+                  <strong>Classified without a slip</strong>
+                  <span id="billyFinancialReportedCount">0 bills</span>
+                </summary>
+                <p class="billy-financial-reconciliation-note">Operator-reported transfers, cash, other methods and on-account invoices. You can amend a classification through a reversible audit entry.</p>
+                <div id="billyFinancialReportedList" class="billy-financial-attention-list"></div>
+              </details>
               <details id="billyFinancialCardsPanel" class="billy-financial-cards-panel" open>
                 <summary class="billy-financial-cards-summary">
                   <strong>Spending by card</strong>
@@ -336,33 +361,23 @@
                   <div id="billyFinancialCardGrid" class="billy-financial-cards-grid"></div>
                   <div id="billyFinancialCardControls" class="billy-financial-card-controls"></div>
                   <div id="billyFinancialCardActivity" class="billy-financial-card-activity"></div>
-                  <p id="billyFinancialCardNote" class="billy-financial-reconciliation-note">
-                    Card spending comes from approved Billy evidence only.
-                  </p>
+                  <p id="billyFinancialCardNote" class="billy-financial-reconciliation-note">Card spending comes from approved Billy evidence only.</p>
                 </div>
               </details>
-              <div id="billyFinancialReconciliationPanel" class="billy-financial-payment-panel" hidden>
-                <div class="billy-financial-section-head">
-                  <h3>Reconciliation</h3>
-                  <span class="billy-financial-section-sub">Payment evidence and outstanding balances</span>
-                </div>
-                <div id="billyFinancialReconciliationList" class="billy-financial-attention-list"></div>
-                <p class="billy-financial-reconciliation-note">Transfers, cash and other methods are operator-reported, not bank-verified. On account is not paid. Payment slips never count as additional expenses.</p>
-              </div>
-              <div id="billyFinancialLinkedPanel" class="billy-financial-payment-panel" hidden>
-                <div class="billy-financial-section-head">
-                  <h3>Linked payment evidence</h3>
-                  <span id="billyFinancialLinksCaption" class="billy-financial-section-sub">Linked receipts</span>
-                </div>
+              <details id="billyFinancialLinkedPanel" class="billy-financial-proof-panel" hidden>
+                <summary class="billy-financial-proof-summary">
+                  <strong>Linked payment evidence</strong>
+                  <span id="billyFinancialLinksCaption">Linked receipts</span>
+                </summary>
                 <div id="billyFinancialLinks" class="billy-financial-links"></div>
-              </div>
-              <div id="billyFinancialUnmatchedPanel" class="billy-financial-payment-panel" hidden>
-                <div class="billy-financial-section-head">
-                  <h3>Unmatched payment slips</h3>
-                  <span id="billyFinancialUnmatchedCaption" class="billy-financial-section-sub">Receipts without an associated expense</span>
-                </div>
+              </details>
+              <details id="billyFinancialUnmatchedPanel" class="billy-financial-proof-panel" hidden>
+                <summary class="billy-financial-proof-summary">
+                  <strong>Unmatched payment slips</strong>
+                  <span id="billyFinancialUnmatchedCaption">Receipts without an associated expense</span>
+                </summary>
                 <div id="billyFinancialUnmatchedList" class="billy-financial-attention-list"></div>
-              </div>
+              </details>
             </section>
             <section class="billy-financial-section" id="billyFinancialInsightsSection" aria-label="Insights" hidden>
               <div class="billy-financial-section-head">
