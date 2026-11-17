@@ -4122,6 +4122,11 @@ async function piggyAnalyticsAsk(req,principal){
   catch{return error("Piggy could not interpret this report. Please rephrase.",422);}
   if(plan.intent==="unknown")
     return json({understood:false,analytics:false,language:plan.language});
+  // Never transform a request about flight DESTINATIONS into a financial
+  // transaction-airport filter, even when the AI planner omitted that scope.
+  if(!plan.destination_airport&&
+     /(?:\bflights?\b.{0,36}\b(?:to|into)\b|\bzborur(?:i|ile|ilor)\b.{0,36}\b(?:în|in|spre|către|catre)\b)/i.test(question))
+    plan.destination_airport="requested flight destination";
   if(plan.destination_airport){
     return json({understood:true,analytics:true,blocked:true,language:plan.language,
       plan,visualization:"table",groups:[],documents:[],
@@ -4131,6 +4136,14 @@ async function piggyAnalyticsAsk(req,principal){
       coverage:{matching_documents:0,partial:false},
       as_of:today,source:"Billy approved documents"});
   }
+  if(plan.compare_previous&&!plan.start_date)
+    return json({understood:true,analytics:true,blocked:true,language:plan.language,
+      plan,visualization:"table",groups:[],documents:[],
+      notes:[plan.language==="ro"?
+        "Compararea cu perioada precedentă necesită un interval de date. Cere, de exemplu, ultimele 7 zile.":
+        "Select a date range for a previous-period comparison (e.g. last 7 days)."],
+      coverage:{matching_documents:0,partial:false},as_of:today,
+      source:"Billy approved documents"});
   if((plan.card_currency||plan.card_last4||plan.group_by==="card")&&plan.kind!=="card_spending")
     return error("Card filters require a card-spending report.",422);
   const roots=await assistantRows(principal);
