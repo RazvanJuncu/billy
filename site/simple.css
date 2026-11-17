@@ -1429,17 +1429,16 @@ body[data-billy-screen="uploaded"] #simpleUploaded .billy-hub-symbol{
 body:not([data-billy-screen="home"]) .billy-artonomy-credit{display:none!important}
 body[data-billy-screen="home"] .billy-artonomy-credit{
   display:flex;position:fixed;bottom:max(16px,env(safe-area-inset-bottom));
-  left:clamp(20px,3.4vw,64px);z-index:1;
+  left:max(24px,5vw);z-index:1;
   align-items:center;gap:6px;max-width:calc(100vw - 40px);
   color:#96999c;font-size:9px;font-weight:500;letter-spacing:0;
   white-space:nowrap;opacity:.58;pointer-events:none;user-select:none;
 }
 .billy-artonomy-credit img{display:block;width:85px;height:auto;max-width:32vw;object-fit:contain}
 html[data-billy-mobile="1"] body:not(.billy-functions-revealed) .billy-artonomy-credit{display:none!important}
-@media(max-width:900px){
+@media(max-width:720px){
   body[data-billy-screen="home"] .billy-artonomy-credit{
-    position:static;left:auto;bottom:auto;justify-content:center;
-    order:5;margin:18px auto 0;align-self:center;
+    left:max(18px,env(safe-area-inset-left));bottom:max(16px,env(safe-area-inset-bottom));
     font-size:8px;gap:5px;
   }
   .billy-artonomy-credit img{width:74px}

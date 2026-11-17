@@ -336,3 +336,17 @@ test("Flights uses a route icon and Artonomy stays understated",()=>{
   assert.match(css,/font-size:9px;font-weight:500/);
   assert.match(css,/\.billy-artonomy-credit img\{display:block;width:85px/);
 });
+
+test("Artonomy footer shares header viewport gutter rather than homepage positioning context",()=>{
+  const html=read("site/index.html"),css=read("site/simple.css");
+  const shell=html.indexOf('<div class="studio-shell">');
+  const footer=html.indexOf('class="billy-artonomy-credit"');
+  const header=html.indexOf('<header class="studio-header">',shell);
+  const home=html.indexOf('id="simpleHome"',shell);
+  assert.ok(shell>=0&&footer>shell&&footer<header&&footer<home,
+    "Keep the footer outside the translated .simple-home container");
+  assert.match(css,/body\[data-billy-screen\] \.studio-header\{[\s\S]*?padding:0 max\(24px,5vw\)!important/);
+  assert.match(css,/body\[data-billy-screen="home"\] \.billy-artonomy-credit\{[\s\S]*?left:max\(24px,5vw\)/);
+  assert.doesNotMatch(css,/\.billy-artonomy-credit\{[\s\S]*?position:static/);
+  assert.match(html,/simple\.css\?v=2\.5\.2/);
+});
