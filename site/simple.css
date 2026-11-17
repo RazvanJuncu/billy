@@ -1424,3 +1424,23 @@ body[data-billy-screen="uploaded"] #simpleUploaded .billy-hub-symbol{
   #simpleUploaded[data-billy-doc-view="Flights"] .billy-doc-search{flex:1 1 calc(100% - 57px)}
   #simpleUploaded[data-billy-doc-view="Flights"] .billy-doc-flight-aircraft{flex:1 1 100%;order:3}
 }
+
+/* Homescreen-only creator credit using the user's original Artonomy lockup. */
+body:not([data-billy-screen="home"]) .billy-artonomy-credit{display:none!important}
+body[data-billy-screen="home"] .billy-artonomy-credit{
+  display:flex;position:fixed;bottom:max(20px,env(safe-area-inset-bottom));
+  left:clamp(24px,4.4vw,88px);z-index:1;
+  align-items:center;gap:10px;max-width:calc(100vw - 48px);
+  color:#979a9c;font-size:11px;font-weight:500;letter-spacing:0;
+  white-space:nowrap;opacity:.75;pointer-events:none;user-select:none;
+}
+.billy-artonomy-credit img{display:block;width:132px;height:auto;max-width:44vw;object-fit:contain}
+html[data-billy-mobile="1"] body:not(.billy-functions-revealed) .billy-artonomy-credit{display:none!important}
+@media(max-width:900px){
+  body[data-billy-screen="home"] .billy-artonomy-credit{
+    position:static;left:auto;bottom:auto;justify-content:center;
+    order:5;margin:24px auto 0;align-self:center;
+    font-size:10px;gap:8px;
+  }
+  .billy-artonomy-credit img{width:116px}
+}

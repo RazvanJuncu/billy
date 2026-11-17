@@ -133,7 +133,7 @@ test("Piggy marker only decorates duplicate root families and links to their ori
   assert.match(css,/--billy-duplicate-tone:#656565/);
   assert.match(css,/pointer-events:none/);
   assert.match(css,/#simpleUploaded \.billy-duplicate-wrap\{/);
-  assert.match(html,/documents-index\.js\?v=1\.9\.1/);
+  assert.match(html,/documents-index\.js\?v=2\.0\.0/);
   assert.match(html,/document-preview\.js\?v=1\.5\.2/);
   assert.match(preview,/Duplicate document/);
   assert.match(preview,/Open original/);

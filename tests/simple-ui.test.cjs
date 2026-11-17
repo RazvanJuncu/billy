@@ -195,7 +195,7 @@ test("Uploaded Documents has distinct monochrome icons for all service categorie
   assert.match(index,/header\.append\(serviceIcon\(key\)\)/);
   assert.match(index,/button\.prepend\(serviceIcon\(node\.__billyParentId\?"Receipt":node\.__billyDocument\.service\)\)/);
   assert.match(css,/\.billy-service-icon/);
-  assert.match(read("site/index.html"),/documents-index\.js\?v=1\.9\.1/);
+  assert.match(read("site/index.html"),/documents-index\.js\?v=2\.0\.0/);
 });
 
 test("Uploaded archive opens a saved-document preview instead of downloading JSON",()=>{
@@ -230,7 +230,7 @@ test("Uploaded Documents defaults to a visual hub with no recent documents",()=>
   assert.match(css,/#simpleUploaded\[data-billy-doc-view="Home"\] #simpleDocumentsList/);
   assert.match(hub,/if\(state.mode==="Home"\)/);
   assert.match(hub,/if\(state.mode!=="Aircraft"\)return/);
-  assert.match(read("site/index.html"),/documents-hub\.js\?v=1\.4\.0/);
+  assert.match(read("site/index.html"),/documents-hub\.js\?v=1\.5\.0/);
 });
 test("Fleet is explicitly registered; no OCR-constructed aircraft cards",()=>{
   const hub=read("site/documents-hub.js");
@@ -261,7 +261,7 @@ test("Uploaded Documents has neutral headings and only one proper back chevron",
   assert.match(hub,/Airports:\["M20 10c0 5/);
   assert.match(hub,/Vendors:\["M20\.6 13\.1/);
   assert.match(hub,/All:\["M8 3h11/);
-  assert.match(read("site/index.html"),/documents-hub\.js\?v=1\.4\.0/);
+  assert.match(read("site/index.html"),/documents-hub\.js\?v=1\.5\.0/);
 });
 
 test("Homepage retains a four-zone hierarchy: greeting, Financial, New, Uploaded",()=>{
@@ -282,4 +282,18 @@ test("Homepage retains a four-zone hierarchy: greeting, Financial, New, Uploaded
   assert.doesNotMatch(excerpt,/billyFinancialMiniChart|billyFinancialMiniCurrency|Approved expenses/);
   assert.doesNotMatch(financialJS,/billyFinancialMiniChart|billyFinancialMiniCurrency|billyFinancialMiniCaption/);
   assert.match(home,/id="billyFinancialChart"/,"Detailed graph remains inside Financial");
+});
+
+test("Flights is a sixth archive hub destination and the home alone credits Artonomy",()=>{
+  const hub=read("site/documents-hub.js"),index=read("site/documents-index.js");
+  const html=read("site/index.html"),css=read("site/simple.css");
+  assert.match(hub,/const views=\["All","Aircraft","Services","Airports","Vendors","Flights"\]/);
+  assert.match(index,/const flightContext=/);
+  assert.match(index,/groupKey==="flight"/);
+  assert.match(index,/state\.mode==="Flights"&&state\.flightAircraft/);
+  assert.match(html,/class="billy-artonomy-credit"/);
+  assert.match(html,/src="\.\/artonomy-lockup\.svg"/);
+  assert.match(css,/body:not\(\[data-billy-screen="home"\]\) \.billy-artonomy-credit\{display:none!important\}/);
+  assert.match(read("site/sw.js"),/"\.\/artonomy-lockup\.svg"/);
+  assert.match(read("site/artonomy-lockup.svg"),/viewBox="0 0 1467 320"/);
 });
