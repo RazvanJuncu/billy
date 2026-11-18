@@ -1448,6 +1448,8 @@ body[data-billy-screen="home"] .billy-artonomy-credit{
   color:#96999c;font-size:9px;font-weight:500;letter-spacing:0;
   white-space:nowrap;opacity:.58;pointer-events:none;user-select:none;
 }
+/* Visually align the small credit text with the wordmark inside the SVG lockup. */
+.billy-artonomy-credit span{transform:translateY(3px)}
 .billy-artonomy-credit img{display:block;width:85px;height:auto;max-width:32vw;object-fit:contain}
 html[data-billy-mobile="1"] body:not(.billy-functions-revealed) .billy-artonomy-credit{display:none!important}
 @media(max-width:720px){
